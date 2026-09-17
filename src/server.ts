@@ -9,6 +9,7 @@ import { attachmentDownload } from './attachments.js';
 import { startSchema } from './schema.js';
 import { startSync, stopSync, recoverSync, startSyncScheduler } from './sync.js';
 import { addRelatedMail, getRelatedMail, unlinkRelatedMail, relatedSource } from './related.js';
+import { analysisStatus, searchByAnalysis } from './mail-search.js';
 export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRead = callAttachment) {
   if(config.token.length<32) throw new Error('TRIAGE_TOKEN must have at least 32 characters');
   const app=express(); app.disable('x-powered-by');
@@ -52,7 +53,8 @@ export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRe
     const args=z.object({query:z.string().max(1000).optional(),from_address:z.string().max(320).optional(),
       sent_after:z.string().datetime({offset:true}).optional(),sent_before:z.string().datetime({offset:true}).optional(),
       limit:z.coerce.number().int().min(1).max(100).default(30),offset:z.coerce.number().int().min(0).default(0)}).parse(req.query);
-    res.json(await mailCall('search_emails',args));
+    const status=analysisStatus.default('all').parse(req.query.analysis_status);
+    res.json(await searchByAnalysis(args,status,args=>mailCall('search_emails',args),ids=>mailAnalysis(config.store,ids)));
   });
   app.get('/api/mail-analysis',async(req,res)=>{
     const ids=z.string().max(2000).regex(/^\d+(,\d+)*$/).transform(value=>value.split(',').map(Number))

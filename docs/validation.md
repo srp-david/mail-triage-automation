@@ -1,5 +1,45 @@
 # 검증 기록
+
+> 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
+
+## 2026-09-17 P1 전 UI·UX 보완
+
+- 사용자 지정 우선순위대로 추가 답변 초안, 상태별 분석 행동, 메일 선택/모바일 복귀, 상태 안내, 검색/이전 문서 표시를 개선했다. 현재 API 계약·서버·DB·Worker는 변경하지 않았다.
+- `public/answer-drafts.js`는 출처/분석별 초안을 sessionStorage와 메모리에 보관한다. 화면 이동·보고서/브라우저 새로고침·같은 단일 토큰 세션의 재로그인 후 복원, 실패 시 보존, 성공/명시적 삭제 시 제거를 확인했다. 전송 중 입력을 비활성화하고 뒤늦은 성공 응답이 새로 작성된 다른 초안을 지우지 않도록 제출값을 대조한다. 저장소 차단 시 메모리 보존과 새로고침 제한을 안내한다. localStorage·서버에 초안을 추가 저장하지 않는다.
+- 기본 분석 버튼을 상태에 맞춰 바꾸고 새 분석 등록 전 메일별 기존 실행을 재조회한다. 이미 진행 중이면 해당 실행을 열며 최종 중복 방지는 기존 서버 제약에 맡긴다. 처리 완료는 실행 중 숨기고 분석 종료와 실제 업무 처리를 분리해 안내한다. 등록 알림 대신 현재 진행 화면을 사용하며 일부 작업 실패/연결 지연은 경고색, 전체 실패는 별도 상태로 표시한다.
+- 메일 선택 강조/aria-current, 모바일 상세와 목록 복귀의 검색·스크롤·포커스 유지, 조건 초기화/빈 결과/조회 오류 재시도, 이전 문서 경로·해시 기본 접힘을 확인했다. 첨부 기본 접힘과 기존 HTML 정제/미리보기 동작은 유지한다.
+- `npm.cmd run check`, 변경 브라우저 JavaScript와 실제 실행 검증 스크립트 구문 검사, `git diff --check` 통과.
+- 합성 API를 제공하는 임시 로컬 서버에서 브라우저 검증 10개 통과: `verify-pre-p1-ux.mjs`, `verify-analysis-progress.mjs`, `verify-handling-ui.mjs`, `verify-history-ui.mjs`, `verify-mail-analysis.mjs`, `verify-status-filter.mjs`, `verify-maintenance-ui.mjs`, `verify-sync-refresh.mjs`, `verify-image-preview.mjs`, `verify-preview.mjs`. 신규 검증은 분석별 초안 분리·저장소 차단·재인증·실패 후 재전송·활성 실행 재확인·검색 실패 복구를 포함한다. 모든 검증에서 pageerror 없음. Office의 의도된 실패 응답/CSP 차단은 기존 테스트대로 확인했다.
+- 기존 테스트의 이전 버튼 문구와 모바일 상세에서 바로 목록을 클릭하던 동작을 새 사용자 흐름에 맞췄다. `.runtime/pre-p1-desktop.png`, `pre-p1-mobile.png`, `analysis-progress-mobile.png`의 합성 화면을 육안 확인했다. 실제 고객 메일·ERP·MCP 요청, 실제 분석/동기화, DB 통합 테스트, 실행 중 Docker 서비스 반영은 수행하지 않았다. `verify-live-worker.mjs`는 선택자만 갱신하고 구문 검사했으며 실제 실행하지 않았다.
+- README와 통합 계획 1.3절에 사용법·완료 범위·후속 계정별 초안 분리 과제를 기록했다. P1~P8은 여전히 구현 전이다.
+
+### 후속 Docker 반영 및 작업별 커밋
+
+- 사용자 요청으로 `docker compose build api` 후 활성 분석 0건·동기화 completed를 다시 확인하고 `docker compose up -d --no-build --no-deps --wait api`로 API만 교체했다. DB·Worker 컨테이너는 유지했다.
+- 반영 후 API healthy 및 Worker ready/online 확인. 제공 중인 `app.js`, `answer-drafts.js`, `analysis-progress.js`, `index.html`, `style.css`의 SHA-256이 작업 파일과 일치한다. 기존 분석 6건의 결과·리뷰·처리 상태를 반영 전후 해시로 대조하여 보존을 확인했다.
+- 배포된 localhost:3080의 정적 파일을 사용하는 합성 브라우저 검증에서 초안 보존·재로그인·전송 실패 복구·중복 분석 이동·검색/모바일/문서 정보 동작과 pageerror 0건을 확인했다. API 요청은 합성 응답으로 대체했으며 고객 분석·실제 동기화는 실행하지 않았다.
+- 변경을 초안 보존, 상태별 분석/메일 이동, 검색/이전 문서 표시, 통합 검증/문서의 네 작업 단위로 분리한다. `.runtime`의 배포 비교 자료·임시 분리 도구·합성 캡처는 Git에서 제외한다.
+
+## 2026-09-17 문서 정리와 통합 구현 계획
+
+- `implementation-plan.md`를 회사 이메일 인증·공용 이력 API/PostgreSQL·개인 PC의 웹/AI/MCP 기준으로 통합했다. 기술 스택·패키지 경계, 인증/자료 권한, DB·API 계약, 실행 배정·동기화·복구, Windows 설치·업데이트, 서버 사양·백업·이관·롤백, P0~P8 산출물·완료 기준·대략적 공수와 결정 대기 항목을 명시했다. 설계값과 이미 구현/검증된 사실을 구분했다.
+- 기존 구현 계획과 배포 제안의 통합 직전 본문을 각각 `implementation-history-2026-09-17.md`, `team-deployment-proposal-2026-09-17.md`에 보존했다. 정리 중 추가된 메일 검색 상태 필터 기록도 최신 원본에 포함해 보존했다. 이전 원문은 바꾸지 않고 역사 자료 안내만 앞에 추가했다.
+- `docs/README.md`에 모든 문서의 역할과 우선순위를 정리했다. 기존 배포 계획 경로는 통합 안내로 유지하고 README/작업 요약/운영/인계 문서에서 현재 사양과 당시 기록을 구분했다. README의 이미지 첨부·이전 이력 연결 설명도 기존 검증 기록에 맞췄다.
+- 문서 검사: 로컬 Markdown 링크·코드 fence·문자 인코딩, 계획 필수 주제, 문서 목록 누락 없음. 보존한 두 계획 본문이 통합 직전 원본 bytes와 일치함을 확인했다. 기존 검증·운영·인계 본문도 안내 추가 외에 보존했다. `git diff --check -- README.md docs` 통과.
+- 문서 갱신 직전/직후 앱·소스·스크립트·테스트·viewer·구성 106개 파일 hash 일치. 작업 폴더의 별도 미커밋 앱 변경은 수정하지 않았다. 문서 검사 증거는 Git 제외 `.runtime/docs-consolidation-20260917/verification.json`에 보존한다.
+- 이번 검증은 문서 정합성 검사다. 앱 테스트 재실행, 실제 Auth0 가입, DB 이관, 고객 분석, 서비스 재시작, 외부 배포·게시·커밋은 수행하지 않았다. 현재 앱의 운영 검증을 다시 완료했다고 주장하지 않는다.
+
 검증일: 2026-09-16
+
+## 2026-09-17 분석 작업 이벤트와 경과 시간
+
+- Worker의 `item.completed` 중 MCP 호출과 로컬 명령 종료를 고정된 작업 종류/성공 여부로 변환한다. 시작 및 결과 저장 시작은 Worker가 직접 기록한다. 모델 텍스트·reasoning·도구 인수·결과·SQL·경로는 진행 기록에 포함하지 않는다. 로컬 명령은 실제 코드/파일 확인을 단정하지 않고 `분석 도구 실행`으로 표시한다.
+- 실행별 `progress_events`는 최근 20건으로 제한하며 저장 시각은 DB가 부여한다. 유효한 실행 소유권/lease/running 상태에서만 저장하고 종료 후 기록을 바꾸지 않는다. heartbeat는 별도 시각이며 작업 진척과 구분한다. 진행 기록 저장 실패는 보고서 저장을 막지 않고 고정 오류 코드만 남긴다. 기존 실행에 없는 이벤트는 만들어내지 않는다.
+- 분석 및 재분석 요청 후 진행 화면을 열고 경과 시간을 초 단위로 갱신한다. 상태는 3초 간격으로 조회하며 최종 상태에서는 자동으로 보고서/질문/실패 사유를 표시하고 조회를 종료한다. 작업 기록은 접어서 제공하고 다시 열어도 서버 기록을 조회한다. 응답 지연과 상태 조회 실패를 별도 표시하며 갱신 실패를 분석 실패로 단정하지 않는다. 직접 실행은 경과 시간/heartbeat만 제공하고 상세 이벤트 미제공을 안내한다.
+- `npm.cmd run check`, JSON 이벤트 분류 단위 테스트, `docker compose --profile verification run --no-deps --rm tests`: 전체 38개 통과. 기록 상한/시각/소유권/만료/종료 후 쓰기 금지/heartbeat 독립성/보고서 보존 검증 포함. 격리 테스트 스키마를 사용했다.
+- `node --import tsx scripts/verify-analysis-progress.mjs`: 대기→분석, 시간 갱신, 작업 실패와 실행 실패 구분, heartbeat 지연, 상태 조회 실패/재시도, 완료/확인 필요/실패 자동 전환, 새로고침 후 기록 유지, 닫은 뒤 늦은 응답 무시, 이력 복귀 시 타이머 정리, 모바일 가로 넘침 없음, 동작 줄이기 및 pageerror 0개 확인. 합성 모바일 스크린샷을 확인했다.
+- 기존 `verify-handling-ui.mjs`, `verify-history-ui.mjs` 회귀 검증 통과. 새 분석 진행 화면으로 바로 이동하는 변경에 맞춰 재분석 테스트의 이력 복귀 동작을 보완했다. 실제 고객 분석·동기화·ERP 변경은 수행하지 않았다. 실제 Codex 분석으로 신규 이벤트까지 확인하는 검증은 미실행이다.
+- 로컬 반영: 대기/실행 중 분석 및 동기화가 0건임을 재확인하고 `docker compose --profile analysis up -d --no-deps --wait api worker`로 API/Worker만 교체했다. API healthy, Worker ready/online, 인증된 실행 조회의 progress/heartbeat 필드, 제공 중인 app.js/analysis-progress.js/style.css와 로컬 파일의 SHA-256 일치 확인. 기존 보고서 4건의 통합 내용 해시가 반영 전후 동일하다. DB 컨테이너/볼륨은 재생성하지 않았다.
 
 ## 2026-09-17 미커밋 UI 변경 정리
 

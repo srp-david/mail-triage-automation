@@ -1,5 +1,7 @@
 # 이력 이관과 운영 도구
 
+> 현재 구현된 단일 사용자 토큰 API와 Docker 환경의 운영 안내다. 사용자별 v1 API·로컬 설치형 앱의 목표 사양은 [통합 구현 계획](implementation-plan.md)을 따른다. 아래 명령을 아직 구현되지 않은 팀 운영 명령으로 해석하지 않는다.
+
 명령은 `mail-triage-web`에서 실행한다. API 설정은 `TRIAGE_CONFIG` JSON(`url`, `token`, `storeId`), 환경변수 `TRIAGE_API_URL`+`TRIAGE_TOKEN`, 프로젝트 `.env` 순서로 읽는다. JSON/토큰/메일 원문/receipt/백업은 `.runtime` 등 Git 제외 경로에 둔다. API/DB가 중단되면 새 분석을 시작하지 않는다.
 
 ## 메일 전체 동기화와 이어받기

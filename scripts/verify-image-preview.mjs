@@ -87,7 +87,7 @@ try{
  assert.equal(await dialog.evaluate(e=>e.scrollWidth>e.clientWidth),false);
  await page.screenshot({path:'.runtime/image-preview-mobile.png'});await close();
  plain=true;const before=imageCalls.length;
- await page.locator('#mails .mail').click();
+ await page.getByRole('button',{name:'메일 목록으로',exact:true}).click();await page.locator('#mails .mail').click();
  await page.getByText('본문 서식을 불러오지 못해 텍스트로 표시합니다. 이미지는 첨부파일 목록의 미리보기로 확인할 수 있습니다.',{exact:true}).waitFor();
  assert.equal(await page.locator('.mail-images,.mail-body img').count(),0);assert.equal(imageCalls.length,before);
  await page.locator('.mail-attachments summary').click();await open();await loaded();await close();

@@ -24,6 +24,7 @@ await page.route('**/api/**',async route=>{
  else if(p==='/api/runs'&&req.method()==='POST'){submitted=req.postDataJSON();json={id:'next',status:'queued'};}
  else if(p==='/api/runs')json=[row()];
  else if(p==='/api/runs/one')json={...row(),result:{report:'# 합성 보고서\n\n기존 근거를 보존합니다.',question:state==='needs_input'?'어느 문서인가요?':'',knowledge:''},reviews:[]};
+ else if(p==='/api/runs/next')json={...row(),id:'next',status:'queued',result:null,reviews:[]};
  else if(p==='/api/legacy')json=[];
  else throw new Error('Unexpected route '+p);
  await route.fulfill({json});
@@ -49,16 +50,16 @@ try{
  fail=true;await page.getByRole('button',{name:'처리 완료',exact:true}).click();await page.getByText('합성 충돌: 진행 중인 분석',{exact:true}).last().waitFor();
  assert.equal(await page.getByRole('button',{name:'처리 완료',exact:true}).isEnabled(),true);assert.equal(await page.locator('#report textarea').count(),1);
  state='running';await page.locator('#history-refresh').click();await page.waitForFunction(()=>document.querySelector('#report h2')?.textContent.includes('분석 중'));
- assert.equal(await page.getByRole('button',{name:'처리 완료',exact:true}).isDisabled(),true);
+ assert.equal(await page.getByRole('button',{name:'처리 완료',exact:true}).count(),0);
  assert.equal(await page.locator('#report textarea').count(),0);
  state='completed';await page.locator('#history-refresh').click();await page.locator('#report textarea').waitFor();
  assert.equal(await page.locator('#report .markdown-body').textContent(),original);
  assert.equal(await page.getByRole('button',{name:'답변하고 다시 분석',exact:true}).isEnabled(),true);
  await page.getByRole('button',{name:'답변하고 다시 분석',exact:true}).click();await page.getByText('답변을 입력하세요.',{exact:true}).last().waitFor();assert.equal(submitted,null);
  await page.getByRole('textbox',{name:'추가 답변',exact:true}).fill('합성 추가 조건을 반영해 주세요.');
- await page.getByRole('button',{name:'답변하고 다시 분석',exact:true}).click();await page.getByText('답변을 반영한 새 분석을 등록했습니다.',{exact:true}).last().waitFor();
+ await page.getByRole('button',{name:'답변하고 다시 분석',exact:true}).click();await page.locator('.analysis-progress').waitFor();
  assert.equal(submitted.parentId,'one');assert.equal(submitted.answer,'합성 추가 조건을 반영해 주세요.');assert.equal(submitted.mailId,1);assert.equal(submitted.storeId,'fixture');assert.equal(submitted.messageId,'<synthetic@example.test>');assert.equal(submitted.source,'web');assert.ok(submitted.requestId);
- await page.locator('#mail-runs button').click();await page.locator('#report textarea').waitFor();
+ await page.locator('#history-back').click();await page.locator('#mail-runs button').click();await page.locator('#report textarea').waitFor();
  handled='2026-09-17T01:00:00Z';await page.locator('#history-refresh').click();await page.getByRole('button',{name:'처리 완료 취소',exact:true}).waitFor();assert.equal(await page.locator('#report textarea').count(),0);
  handled=null;identityKind='outlook';await page.locator('#history-refresh').click();await page.getByText('Outlook 예외 메일은 직접 실행에서 답변을 반영해 다시 분석하세요. 원본 파일과 공용 메일 식별자를 함께 사용합니다.',{exact:true}).waitFor();assert.equal(await page.locator('#report textarea').count(),0);
  identityKind='mcp';await page.locator('#history-refresh').click();await page.locator('#report textarea').waitFor();

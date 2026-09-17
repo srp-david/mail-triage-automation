@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS analysis_run (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS one_active_mail ON analysis_run(mail_key) WHERE status IN ('queued','running');
 CREATE INDEX IF NOT EXISTS analysis_by_mail ON analysis_run(mail_key,created_at DESC,id DESC);
+ALTER TABLE analysis_run ADD COLUMN IF NOT EXISTS heartbeat_at timestamptz;
+ALTER TABLE analysis_run ADD COLUMN IF NOT EXISTS progress_events jsonb NOT NULL DEFAULT '[]'::jsonb;
 CREATE TABLE IF NOT EXISTS report_version (
   run_id uuid PRIMARY KEY REFERENCES analysis_run(id), result jsonb NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()

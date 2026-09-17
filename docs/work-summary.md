@@ -1,9 +1,9 @@
 # mail-triage-web 작업 정리 및 후속 작업
 작성일: 2026-09-16
 작업 소유권: erp-manager에서 시작한 구현을 mail-triage-web 프로젝트의 Codex로 이전한다.
-인계 시점 기록에 후속 작업을 추가한다. 최신 상태는 아래 최신 작업 요약과 [계획서](implementation-plan.md), [검증 기록](validation.md)을 따른다.
+이 문서는 인계·작업 당시의 기록이다. 2026-09-17 문서 통합 이후 앞으로의 작업·기술 선택·단계는 [통합 구현 계획](implementation-plan.md)에서만 관리한다. 구현·검증 근거는 [검증 기록](validation.md), 전체 문서는 [문서 안내](README.md)를 따른다. 아래의 현재/미완료/다음 순서는 기록 당시 기준이다.
 
-## 최신 작업 요약 — viewer 이후 계획서 후속 구현
+## 작업 당시 요약 — viewer 이후 계획서 후속 구현
 
 - 2026-09-17 연속 동기화 구현: 정상 partial은 100개씩 계속 처리하고 3,000개 제한을 제거했다. DB에 실행을 먼저 저장하고 API 내부 스케줄러가 묶음별로 처리한다. 중지/일시 중지/명시적 이어받기, API 재시작 복구, 5·15·30초 제한 재시도, 실패·무진행 중단, 진행률/목록 갱신을 추가했다. 3,200개 합성 수집을 포함한 통합 테스트 30개, 브라우저 UI 및 별도 프로세스 종료/DB 재시작 복구 검증 통과. 실제 전체 수집은 실행하지 않았다. 팀 다중 API/서버리스용 처리기 분리는 계획으로 유지한다.
 - 2026-09-17 동기화 후 목록 갱신 누락 수정. 10초 폴링에서 running을 관측한 경우에만 갱신하던 조건을 실행 ID/종료 결과 비교로 바꿨다. 버튼 직후 빠른 완료와 폴링 간 완료, 다른 탭의 동기화도 감지한다. 검색 조건/선택 상세는 유지하고 목록은 첫 페이지로 이동한다. 부분 실패 후 저장된 메일 조회와 목록 실패 재시도, POST 중 버튼 비활성화도 포함한다.
@@ -24,7 +24,7 @@
 2026-09-17 후속 검증: 사용자가 제목으로 지정한 메일을 MCP ID 1130으로 확정했다. 실제 웹 버튼→Worker 분석→보고서 저장→직접/웹 조회 및 핵심 근거 대조를 완료했다(약 5분 11초). 누락된 기존 처리 로그를 Worker에 읽기 전용으로 연결했고, 원본 처리 상태와 이번 보고서 분류도 대조했다. 결과 사본은 `.runtime/worker-e2e-1130-report.md`, 검증 JSON은 `.runtime/worker-e2e-1130-validation.json`이다. 남은 것은 메일별 과거 이력 연결과 최종 공용 전환이다. 원본 문서와 기존 완료 상태는 보존한다. 커밋/푸시는 수행하지 않았다.
 
 ## 먼저 읽을 파일
-- 팀 인증·배포 후속 계획: [team-deployment-plan.md](team-deployment-plan.md) — 2026-09-17 사용자 요청. 회사 SSO 제외, 상시 서버 없음/개인 PC만 보유. Auth0 이메일·비밀번호와 팀 권한을 먼저 구현하고 PC 파일럿 후 상시 VM 이전을 검토한다. Vercel은 웹 분리 배포 후보이며 현재 Worker/MCP를 그대로 대체하지 않는다. 이번 변경에서는 계획만 추가했고 로그인 구현·유료 서비스 가입·외부 배포는 하지 않았다.
+- 최신 계획: [implementation-plan.md](implementation-plan.md) — 공용 이력 API·PostgreSQL, 회사 이메일 인증, 팀원별 로컬 실행과 설치 프로그램. 이전 중앙 실행형 제안은 [역사 자료](team-deployment-proposal-2026-09-17.md)에 보존한다.
 - 계획서: C:/Users/david/IdeaProjects/mail-triage-web/docs/implementation-plan.md
 - 검증 기록: C:/Users/david/IdeaProjects/mail-triage-web/docs/validation.md
 - 실행 안내: C:/Users/david/IdeaProjects/mail-triage-web/README.md

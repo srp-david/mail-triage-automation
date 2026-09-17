@@ -19,7 +19,7 @@ try{
  const mail=await api('/mails/'+mailId),status=await api('/status');
  await page.locator('#query').fill(mail.subject);
  const searchResponse=page.waitForResponse(r=>r.url().includes('/api/mails?')&&new URL(r.url()).searchParams.get('query')===mail.subject);
- await page.locator('#search-form button').click();
+ await page.getByRole('button',{name:'검색',exact:true}).click();
  await searchResponse;
  const matches=await api('/mails?limit=100&query='+encodeURIComponent(mail.subject));
  assert.deepEqual(matches.emails.filter(m=>m.subject===mail.subject).map(m=>Number(m.id)),[mailId],'동일 제목의 다른 메일이 있어 자동 선택하지 않습니다.');
@@ -40,7 +40,7 @@ try{
      await route.continue();
    });
    const pending=page.waitForResponse(r=>r.url().endsWith('/api/runs')&&r.request().method()==='POST');
-   await page.getByRole('button',{name:'이 메일 분석',exact:true}).click();const response=await pending;
+   await page.getByRole('button',{name:prior.length?'새로 분석':'분석 시작',exact:true}).click();const response=await pending;
    assert.equal(response.status(),201);const run=await response.json();
    const receipt=JSON.parse(await readFile(receiptPath,'utf8'));await writeFile(receiptPath,JSON.stringify({...receipt,runId:run.id,state:'registered'},null,2),{mode:0o600});
    console.log(JSON.stringify({mailId,runId:run.id,status:run.status,startedThroughWebButton:true,pageErrors:errors}));

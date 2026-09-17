@@ -45,6 +45,7 @@ try{
  await page.setViewportSize({width:390,height:844});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  await page.screenshot({path:'.runtime/mail-analysis-mobile.png'});
+ await page.getByRole('button',{name:'메일 목록으로',exact:true}).click();
  unavailable=true;await tick();await badge(1).getByText('이력 확인 불가',{exact:true}).waitFor();
  unavailable=false;await tick();await badge(1).getByText('✓ 분석 완료',{exact:true}).waitFor();
  slow=true;await tick();while(!release)await new Promise(r=>setTimeout(r,10));

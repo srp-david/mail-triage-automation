@@ -17,6 +17,24 @@ after(async()=>{await pool.end();if(!/^triage_test_[a-f0-9]+$/.test(schema))thro
 const input=(mailId:number,source='direct')=>({storeId:'fixture-store',mailId,messageId:'<same@example.test>',subject:'Synthetic test mail',source,requestId:randomUUID()});
 const result={outcome:'completed',project:'unknown',report:'Synthetic report; no customer data.',question:'',knowledge:'',evidence:[]};
 
+test('progress is bounded, owner-protected, persistent, and independent of heartbeat and final status',async()=>{
+ const job=await h.startRun(input(79001));
+ await assert.rejects(h.recordProgress(job.id,'wrong',{kind:'mail_read',outcome:'completed'}),/소유권/);
+ await assert.rejects(h.recordProgress(job.id,job.ownerToken!,{kind:'mail_read',outcome:'completed',text:'private'}));
+ for(let i=0;i<23;i++)await h.recordProgress(job.id,job.ownerToken!,{kind:i===22?'db_tool':'mail_read',outcome:i===22?'failed':'completed'});
+ const before=await h.getRun(job.id);assert.equal(before.progress_events.length,20);assert.equal(before.status,'running');
+ assert.deepEqual(Object.keys(before.progress_events[0]).sort(),['at','kind','outcome']);
+ assert.equal(before.progress_events.at(-1).kind,'db_tool');assert.equal(before.progress_events.at(-1).outcome,'failed');
+ await h.heartbeat(job.id,job.ownerToken!);const pulse=await h.getRun(job.id);
+ assert.ok(pulse.heartbeat_at);assert.deepEqual(pulse.progress_events,before.progress_events);
+ await h.finishRun(job.id,job.ownerToken!,result);
+ await assert.rejects(h.recordProgress(job.id,job.ownerToken!,{kind:'result_saving',outcome:'completed'}),/소유권/);
+ const done=await h.getRun(job.id);assert.deepEqual(done.progress_events,before.progress_events);assert.deepEqual(done.result,result);
+ const expired=await h.startRun(input(79002));await pool.query("UPDATE analysis_run SET lease_until=now()-interval '1 second' WHERE id=$1",[expired.id]);
+ await assert.rejects(h.recordProgress(expired.id,expired.ownerToken!,{kind:'mail_read',outcome:'completed'}),/소유권/);
+ assert.deepEqual((await h.getRun(expired.id)).progress_events,[]);
+});
+
 test('manual related mail links are shared across reports and preserve handling and report content',async()=>{
  const rel=await import('../src/related.js'),{config}=await import('../src/config.js');
  const data={...input(78001),storeId:config.store};

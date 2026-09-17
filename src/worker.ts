@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { copyFile, mkdir, readFile, writeFile, access, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pool, migrate } from './db.js';
-import { expireRuns, failRun, finishRun, getRun, heartbeat } from './history.js';
+import { expireRuns, failRun, finishRun, getRun, heartbeat, recordProgress } from './history.js';
+import { toolProgress, type ProgressEvent } from './progress.js';
 import { claimWhenApiReady } from './worker-gate.js';
 import { resultJsonSchema, resultSchema } from './schema.js';
 import { digest } from './history.js';
@@ -45,6 +46,12 @@ async function recoveryReceipt(directory:string,value:unknown){
   await rename(temporary,join(directory,'recovery.json'));
 }
 async function analyze(job:any){
+  // Serialize observations to preserve their order. Progress failures must not lose a report.
+  let progressWrites=Promise.resolve();
+  const publish=(event:ProgressEvent)=>{
+    progressWrites=progressWrites.then(()=>recordProgress(job.id,job.ownerToken,event)).catch(()=>{console.error('analysis_progress_write_failed');});
+    return progressWrites;
+  };
   const run=await getRun(job.id);
   const directory=join(work,job.id);await mkdir(directory,{recursive:true});
   const schemaPath=join(directory,'schema.json');const outputPath=join(directory,'result.json');
@@ -70,12 +77,14 @@ async function analyze(job:any){
   // Keep history/database credentials out of the model's shell environment.
   child=spawn('codex',['exec','--enable','use_legacy_landlock','--skip-git-repo-check','--sandbox','read-only','--json','-C',root,'--output-schema',schemaPath,'-o',outputPath,'-'],
     {env,stdio:['pipe','pipe','pipe']});
+  child.once('spawn',()=>void publish({kind:'analysis_started',outcome:'completed'}));
   let buffer='';let stderr='';const toolCalls:Array<{server:string;tool:string;status:string;isError:boolean;emailId:number|null}>=[];
   child.stdout!.on('data',chunk=>{
     buffer+=String(chunk);
     while(buffer.includes('\n')){
       const end=buffer.indexOf('\n');const line=buffer.slice(0,end);buffer=buffer.slice(end+1);
       try{const event=JSON.parse(line);const item=event.item;
+        const progress=toolProgress(event);if(progress)void publish(progress);
         if(item?.type==='mcp_tool_call' && event.type==='item.completed')
           toolCalls.push({server:item.server,tool:item.tool,status:item.status,isError:item.result?.isError??false,emailId:item.arguments?.id??null});
       }catch{}
@@ -89,6 +98,7 @@ async function analyze(job:any){
   const timeout=setTimeout(()=>child?.kill('SIGTERM'),30*60*1000);
   try{
     const code=await new Promise<number|null>((resolve,reject)=>{child!.once('error',reject);child!.once('close',resolve);});
+    await progressWrites;
     await writeFile(join(directory,'tool-calls.json'),JSON.stringify(toolCalls,null,2));
     if(leaseError)throw new Error('분석 실행 소유권 만료');
     if(code!==0){await writeFile(join(directory,'error.log'),stderr);throw new Error('Codex 실행 실패. 로컬 Worker 결과 폴더의 error.log를 확인하세요.');}
@@ -97,9 +107,10 @@ async function analyze(job:any){
     const recovery={version:1,runId:job.id,ownerToken:job.ownerToken,resultHash:digest(JSON.stringify(result)),
       requestId:randomUUID(),state:'pending'};
     await recoveryReceipt(directory,recovery);
+    await publish({kind:'result_saving',outcome:'completed'});
     await finishRun(job.id,job.ownerToken,result);
     await recoveryReceipt(directory,{...recovery,state:'registered'});
-  }finally{clearInterval(pulse);clearTimeout(timeout);child=null;}
+  }finally{clearInterval(pulse);clearTimeout(timeout);await progressWrites;child=null;}
 }
 await presence('ready');
 const presenceTimer=setInterval(()=>void presence(child?'analyzing':'ready').catch(()=>{}),30000);

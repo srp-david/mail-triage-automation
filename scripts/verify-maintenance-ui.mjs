@@ -29,7 +29,7 @@ try{
  await page.getByRole('button',{name:'기존 문서 조회',exact:true}).click();
  await page.waitForFunction(()=>document.querySelectorAll('#legacy-list .run').length===2);
  assert.equal(await page.locator('#legacy-list .run').count(),2);
- await page.getByRole('button',{name:documents[0].source_path,exact:true}).click();
+ await page.getByRole('button',{name:documents[0].source_path.split('/').pop(),exact:true}).click();
  await page.locator('#legacy-document .markdown-body').waitFor();assert.equal(await page.locator('#legacy-document img').count(),0);
  assert.ok((await page.locator('#legacy-document .markdown-body').textContent()).includes('resolved by customer confirmation'));
  await page.keyboard.press('Escape');await page.getByRole('link',{name:'메일함',exact:true}).click();
@@ -39,7 +39,7 @@ try{
  await page.locator('#mail-runs .run button').click();await page.getByText(/Outlook 예외 메일은 직접 실행에서/).waitFor();
  assert.equal(await page.getByRole('button',{name:'답변하고 다시 분석',exact:true}).count(),0);
  await page.keyboard.press('Escape');await page.getByRole('link',{name:'이전 이력',exact:true}).click();
- await page.getByRole('button',{name:documents[0].source_path,exact:true}).click();
+ await page.getByRole('button',{name:documents[0].source_path.split('/').pop(),exact:true}).click();
  await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  assert.deepEqual(errors,[]);assert.deepEqual(mutations,[]);
  console.log(JSON.stringify({legacyList:true,explicitMailFilter:true,untrustedMarkdownSafe:true,externalManualAnswer:true,mobile:true,pageErrors:errors,apiMutations:mutations}));

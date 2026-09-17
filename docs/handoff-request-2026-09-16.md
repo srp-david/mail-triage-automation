@@ -1,5 +1,7 @@
 # mail-triage-web Codex 소유권 인계
 
+> 2026-09-16 인계 당시 요청을 보존한 역사 문서다. 아래 지시와 미완료 목록은 새 작업 요청이 아니며 현재 개발 범위는 [통합 구현 계획](implementation-plan.md)을 따른다.
+
 사용자는 남은 작업을 C:/Users/david/IdeaProjects/mail-triage-web 프로젝트 안에서 진행하기로 했다.
 이 요청은 Claude 리뷰가 아닌 Codex로의 전체 작업 인수인계다. 발신자는 전송 후 같은 구현을 계속하지 않는다.
 

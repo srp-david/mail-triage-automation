@@ -41,7 +41,7 @@ try{
  assert.equal(await page.locator('#sync-progress').isVisible(),false);assert.equal(await page.locator('progress').count(),0);
  assert.equal(mailRequests.length,1);await tick();assert.equal(mailRequests.length,1);
  await page.locator('#query').fill('고객 검색');await page.locator('#from').fill('fixture@example.test');await page.locator('#after').fill('2026-09-01');
- await page.locator('#search-form button').click();await page.waitForTimeout(30);
+ await page.getByRole('button',{name:'검색',exact:true}).click();await page.waitForTimeout(30);
  await page.locator('#next').click();await page.waitForFunction(()=>document.querySelector('#next').disabled);
  await page.locator('#mails .mail').click();await page.locator('#detail h2').waitFor();
  const before=mailRequests.length;

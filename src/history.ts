@@ -3,6 +3,7 @@ import { pool, transaction } from './db.js';
 import { config, HttpError } from './config.js';
 import { startSchema, resultSchema } from './schema.js';
 import { listRelatedMails } from './related.js';
+import { progressSchema } from './progress.js';
 export const digest = (x: string) => createHash('sha256').update(x).digest('hex');
 export function sameSecret(a: string, b: string) { return timingSafeEqual(Buffer.from(digest(a)), Buffer.from(digest(b))); }
 function directToken(id: string) { return createHmac('sha256', config.token).update(id).digest('hex'); }
@@ -52,13 +53,23 @@ export async function claimRun() {
     const run = (await c.query("SELECT * FROM analysis_run WHERE status='queued' AND source='web' ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1")).rows[0];
     if (!run) return null;
     const ownerToken = randomUUID();
-    await c.query("UPDATE analysis_run SET status='running',started_at=now(),lease_until=now()+interval '15 minutes',owner_hash=$2 WHERE id=$1", [run.id,digest(ownerToken)]);
+    await c.query("UPDATE analysis_run SET status='running',started_at=now(),heartbeat_at=now(),lease_until=now()+interval '15 minutes',owner_hash=$2 WHERE id=$1", [run.id,digest(ownerToken)]);
     return { ...run, ownerToken };
   });
 }
 export async function heartbeat(id: string, token: string) {
-  const r = await pool.query("UPDATE analysis_run SET lease_until=now()+interval '15 minutes' WHERE id=$1 AND owner_hash=$2 AND status='running' AND lease_until>now()", [id,digest(token)]);
+  const r = await pool.query("UPDATE analysis_run SET heartbeat_at=now(),lease_until=now()+interval '15 minutes' WHERE id=$1 AND owner_hash=$2 AND status='running' AND lease_until>now()", [id,digest(token)]);
   if (!r.rowCount) throw new HttpError(409,'실행 소유권 또는 유효 시간이 만료되었습니다.');
+}
+export async function recordProgress(id:string,token:string,input:unknown) {
+  const event=progressSchema.parse(input);
+  const r=await pool.query(`UPDATE analysis_run SET progress_events=(
+      SELECT COALESCE(jsonb_agg(entry ORDER BY position),'[]'::jsonb) FROM
+      jsonb_array_elements(progress_events || jsonb_build_array($3::jsonb || jsonb_build_object('at',clock_timestamp())))
+        WITH ORDINALITY AS entries(entry,position)
+      WHERE position>GREATEST(0,jsonb_array_length(progress_events)+1-20)
+    ) WHERE id=$1 AND owner_hash=$2 AND status='running' AND lease_until>now()`,[id,digest(token),JSON.stringify(event)]);
+  if(!r.rowCount)throw new HttpError(409,'유효한 실행 소유권이 없습니다.');
 }
 export async function finishRun(id: string, token: string, input: unknown) {
   const result = resultSchema.parse(input);
@@ -81,7 +92,7 @@ export async function failRun(id: string, token: string, message: string) {
   if (!r.rowCount) throw new HttpError(409,'유효한 실행 소유권이 없습니다.');
 }
 export async function getRun(id: string) {
-  const run = (await pool.query(`SELECT r.id,r.source,r.status,r.parent_id,r.answer,r.error,r.created_at,r.started_at,r.finished_at,
+  const run = (await pool.query(`SELECT r.id,r.source,r.status,r.parent_id,r.answer,r.error,r.created_at,r.started_at,r.finished_at,r.heartbeat_at,r.progress_events,
     m.store_id,m.mail_id,m.message_id,m.subject,m.identity_kind,m.handled_at,m.id AS mail_key,p.result FROM analysis_run r JOIN mail_identity m ON m.id=r.mail_key
     LEFT JOIN report_version p ON p.run_id=r.id WHERE r.id=$1`, [id])).rows[0];
   if (!run) throw new HttpError(404,'분석을 찾을 수 없습니다.');
