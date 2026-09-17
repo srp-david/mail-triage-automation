@@ -12,7 +12,12 @@ export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRe
   if(config.token.length<32) throw new Error('TRIAGE_TOKEN must have at least 32 characters');
   const app=express(); app.disable('x-powered-by');
   app.use((req,res,next)=>{
-    const csp="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'";
+    // Only the packaged Office renderer needs WASM and React's inline layout styles.
+    // Document assets stay local; remote images/fonts/frames and form navigation are blocked.
+    const preview=req.path.startsWith('/preview/');
+    const csp=preview
+      ? "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self'; img-src data: blob:; font-src data: blob:; style-src 'self' 'unsafe-inline'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
+      : "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'";
     res.set({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':csp});next();
   });
   app.use(express.json({limit:'2mb'}));

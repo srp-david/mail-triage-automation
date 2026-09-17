@@ -1,6 +1,7 @@
 import { attachmentCard, isImageAttachment, loadImageCards } from './attachments.js';
 import { renderMailBody } from './mail-body.js';
 import { attachmentList } from './attachment-list.js';
+import { openOfficePreview, closeOfficePreview } from './office-preview.js';
 const $=id=>document.getElementById(id);
 let storeId='',offset=0,nextOffset=null,detailGeneration=0,activeView='mailbox';
 let mailListGeneration=0,analysisGeneration=0;
@@ -13,7 +14,7 @@ function notice(text){$('notice').textContent=text;if(dialog.open)$('history-not
 async function api(path,body){
   const r=await fetch('/api'+path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
   const value=await r.json();
-  if(r.status===401){closeHistory();$('login').hidden=false;$('workspace').hidden=true;throw new Error('접속 토큰을 입력하세요.');}
+  if(r.status===401){closeHistory();closeOfficePreview();$('login').hidden=false;$('workspace').hidden=true;throw new Error('접속 토큰을 입력하세요.');}
   if(!r.ok)throw new Error(value.error??'요청 실패');
   return value;
 }
@@ -49,7 +50,7 @@ async function mails(){
 }
 async function detail(id){
  closeHistory();
- 
+ closeOfficePreview();
  const generation=++detailGeneration;
  notice('메일을 불러오는 중입니다.');
  const [m,body]=await Promise.all([api('/mails/'+id),api('/mails/'+id+'/body').catch(()=>({html:'',unavailable:true}))]);
@@ -78,7 +79,7 @@ async function detail(id){
    document.body.append(link);link.click();link.remove();
    setTimeout(()=>URL.revokeObjectURL(url),60000);
  };
- const files=attachmentList(m.attachments??[],download);
+ const files=attachmentList(m.attachments??[],download,attachment=>openOfficePreview(attachment,loadFile,download));
  if(files)d.append(files);
  const cache=new Map();
  const fetchAttachment=attachment=>{
@@ -136,7 +137,7 @@ async function runs(context=mainHistory,append=false){
  }finally{if(contextActive(context)&&version===context.runVersion)more.disabled=false;}
 }
 function showHistory(title,subtitle=''){
- if(!dialog.open){previousFocus=document.activeElement;dialog.showModal();document.body.classList.add('history-open');}
+ if(!dialog.open){previousFocus=document.activeElement;closeOfficePreview();dialog.showModal();document.body.classList.add('history-open');}
  $('history-title').textContent=title;$('history-subtitle').textContent=subtitle;$('history-notice').textContent='';
 }
 function closeHistory(){
@@ -217,7 +218,7 @@ async function refreshHistory(){
 }
 function selectedView(){return ['mailbox','history','legacy'].includes(location.hash.slice(1))?location.hash.slice(1):'mailbox';}
 async function navigate(){
- closeHistory();activeView=selectedView();notice('');
+ closeHistory();closeOfficePreview();activeView=selectedView();notice('');
  for(const name of ['mailbox','history','legacy']){
    $('view-'+name).hidden=name!==activeView;
    const link=document.querySelector('[data-view="'+name+'"]');if(name===activeView)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');

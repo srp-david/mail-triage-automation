@@ -145,3 +145,24 @@ test('attachment downloads require authentication and return exact bytes as a na
  }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
 });
 
+test('Office viewer permits local WASM without relaxing mail-page CSP',async()=>{
+ const {createApp}=await import('../src/server.js');
+ const server=createApp().listen(0,'127.0.0.1');
+ await new Promise<void>(resolve=>server.once('listening',resolve));
+ const base='http://127.0.0.1:'+(server.address() as any).port;
+ try{
+  const page=await fetch(base+'/');
+  const viewer=await fetch(base+'/preview/');
+  assert.equal(page.status,200);assert.equal(viewer.status,200);
+  const mainCsp=page.headers.get('content-security-policy')!;
+  const viewerCsp=viewer.headers.get('content-security-policy')!;
+  assert.ok(!mainCsp.includes('unsafe-inline'));assert.ok(!mainCsp.includes('wasm-unsafe-eval'));
+  assert.ok(viewerCsp.includes("script-src 'self' 'wasm-unsafe-eval'"));
+  assert.ok(viewerCsp.includes("connect-src 'self'"));
+  assert.ok(viewerCsp.includes('img-src data: blob:'));
+  assert.ok(viewerCsp.includes("frame-ancestors 'self'"));
+  assert.ok(viewerCsp.includes("form-action 'none'"));
+  assert.equal((await fetch(base+'/api/mails/10/attachments/1.2/download')).status,401);
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
+});
+

@@ -4,25 +4,34 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run build:viewer",
+    "build:viewer": "vite build --config viewer/vite.config.ts",
     "start": "node dist/server.js",
     "worker": "node dist/worker.js",
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit && tsc -p viewer/tsconfig.json",
     "test": "tsx --test test/*.test.ts",
     "diagnose": "tsx src/diagnose.ts"
   },
   "dependencies": {
+    "@extend-ai/react-docx": "0.9.2",
+    "@extend-ai/react-pptx": "0.2.1",
+    "@extend-ai/react-xlsx": "0.16.4",
     "@modelcontextprotocol/sdk": "1.30.0",
     "express": "5.2.1",
     "pg": "8.23.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.0.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "playwright-core": "^1.63.0",
     "tsx": "^4.0.0",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "vite": "8.3.0"
   }
 }
