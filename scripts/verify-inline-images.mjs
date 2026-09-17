@@ -79,10 +79,11 @@ try{
  await page.setViewportSize({width:390,height:844});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth),false);
  await page.locator('#detail').screenshot({path:'.runtime/inline-images-mobile.png'});
- // Older/offline MCP falls back to the full plain body and automatic attachment gallery.
+ // Older/offline MCP falls back to the full plain body and on-demand attachment previews.
  await page.route('**/api/mails/'+chosen.mail.id+'/body',route=>route.fulfill({status:503,json:{error:'test unavailable'}}));
  await page.locator('#mails .mail').nth(chosen.index).click();
- await page.getByText('본문 서식을 불러오지 못해 텍스트로 표시합니다. 이미지는 아래에서 확인할 수 있습니다.',{exact:true}).waitFor();
+ await page.getByText('본문 서식을 불러오지 못해 텍스트로 표시합니다. 이미지는 첨부파일 목록의 미리보기로 확인할 수 있습니다.',{exact:true}).waitFor();
+ assert.equal(await page.locator('#detail .mail-images .attachment-card').count(),0);
  assert.equal(await page.locator('#detail > pre').textContent(),chosen.mail.body);
  assert.equal(await page.locator('#detail .mail-body').count(),0);
  assert.deepEqual(errors,[]);assert.deepEqual(unexpected,[]);

@@ -1,5 +1,7 @@
+import { previewImageType } from './attachments.js';
 export const PREVIEW_LIMIT = 5 * 1024 * 1024;
 export function previewFormat(attachment) {
+  if (previewImageType(attachment)) return 'image';
   const extension = /\.([^.]+)$/.exec(String(attachment.filename ?? ''))?.[1].toLowerCase();
   return ['docx', 'pptx', 'xlsx'].includes(extension) ? extension : null;
 }
@@ -21,9 +23,10 @@ export function openOfficePreview(attachment, loadFile, download) {
   const close = document.createElement('button'); close.textContent = '닫기'; close.type = 'button'; close.autofocus = true;
   controls.append(save, retry, close); head.append(title, controls);
   const hint = document.createElement('p'); hint.className = 'preview-hint';
-  hint.textContent = '읽기 전용 미리보기 · 원본과 서식이 다를 수 있습니다.';
+  hint.textContent = format === 'image' ? '이미지 미리보기' : '읽기 전용 미리보기 · 원본과 서식이 다를 수 있습니다.';
   const status = document.createElement('p'); status.className = 'preview-status'; status.setAttribute('role', 'status');
   const viewport = document.createElement('div'); viewport.className = 'preview-viewport';
+  if (format === 'image') viewport.classList.add('image-preview-viewport');
   dialog.append(head, hint, status, viewport); document.body.append(dialog);
   let controller, timer, frame, generation = 0, closed = false;
   const finish = () => {
@@ -52,6 +55,27 @@ export function openOfficePreview(attachment, loadFile, download) {
     try {
       const blob = await loadFile(attachment, controller.signal);
       if (blob.size > PREVIEW_LIMIT) throw new Error('미리보기는 파일당 5 MiB까지 지원합니다.');
+      if (closed || current !== generation) return;
+      if (format === 'image') {
+        const source = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('이미지 파일을 읽지 못했습니다.'));
+          reader.readAsDataURL(new Blob([blob], {type: previewImageType(attachment)}));
+        });
+        if (closed || current !== generation) return;
+        status.textContent = '이미지를 여는 중입니다…';
+        const image = document.createElement('img'); image.alt = attachment.filename || '첨부 이미지';
+        image.onload = () => {
+          if (closed || current !== generation) return;
+          clearTimeout(timer); status.hidden = true;
+        };
+        image.onerror = () => {
+          if (!closed && current === generation) fail('이미지를 표시하지 못했습니다. 다시 시도하거나 원본을 다운로드해 주세요.');
+        };
+        image.src = source; viewport.append(image);
+        return;
+      }
       const buffer = await blob.arrayBuffer();
       if (closed || current !== generation) return;
       if (buffer.byteLength < 4 || new DataView(buffer).getUint32(0, true) !== 0x04034b50)

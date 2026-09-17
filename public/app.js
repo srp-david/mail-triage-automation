@@ -1,4 +1,4 @@
-import { attachmentCard, isImageAttachment, loadImageCards } from './attachments.js';
+import { loadImageCards } from './attachments.js';
 import { renderMailBody } from './mail-body.js';
 import { attachmentList } from './attachment-list.js';
 import { openOfficePreview, closeOfficePreview } from './office-preview.js';
@@ -148,24 +148,13 @@ async function detail(id){
    }).catch(error=>{cache.delete(key);throw error;}));
    return cache.get(key);
  };
- let cards=[],used=new Set();
+ let cards=[];
  if(body.html){
    const rendered=renderMailBody(body,m.attachments??[],fetchAttachment);
-   d.append(rendered.element);cards=rendered.cards;used=rendered.used;
+   d.append(rendered.element);cards=rendered.cards;
  }else{
    d.append(element('pre',m.body));
-   if(body.unavailable||body.warnings?.length)d.append(element('p','본문 서식을 불러오지 못해 텍스트로 표시합니다. 이미지는 아래에서 확인할 수 있습니다.','meta'));
- }
- const images=(m.attachments??[]).filter(a=>isImageAttachment(a)&&!used.has(a.attachmentId));
- if(images.length){
-   const gallery=element('div',null,'mail-images');
-   gallery.append(element('h3','첨부 이미지 · '+images.length+'개'));
-   for(const attachment of images){
-     if(!attachment.attachmentId){gallery.append(element('p','이미지 식별자가 없어 표시할 수 없습니다.'));continue;}
-     const card=attachmentCard(attachment,()=>fetchAttachment(attachment));
-     gallery.append(card.element);cards.push(card);
-   }
-   d.append(gallery);
+   if(body.unavailable||body.warnings?.length)d.append(element('p','본문 서식을 불러오지 못해 텍스트로 표시합니다. 이미지는 첨부파일 목록의 미리보기로 확인할 수 있습니다.','meta'));
  }
 
 

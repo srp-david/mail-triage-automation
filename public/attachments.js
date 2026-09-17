@@ -1,4 +1,11 @@
 const imageTypes=new Set(['image/png','image/jpeg','image/gif','image/webp','image/bmp','image/avif']);
+export function previewImageType(attachment){
+  const mime=String(attachment.contentType??'').split(';')[0].trim().toLowerCase();
+  if(imageTypes.has(mime))return mime;
+  if(mime&&mime!=='application/octet-stream')return null;
+  const extension=String(attachment.filename??'').split('.').pop().toLowerCase();
+  return ({png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',bmp:'image/bmp',avif:'image/avif'})[extension]??null;
+}
 export function isImageAttachment(attachment){
   return String(attachment.contentType??'').toLowerCase().startsWith('image/');
 }
