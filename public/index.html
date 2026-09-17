@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>메일 분석실</title><link rel="stylesheet" href="/style.css"></head>
+<body><header><div><small>ERP MAINTENANCE</small><h1>메일 분석실</h1><p>메일 확인부터 분석 보고서까지, 한곳에서.</p></div><span id="connection">연결 확인 중</span></header>
+<main>
+<section id="login" hidden><h2>분석실 연결</h2><p>프로젝트 .env의 TRIAGE_TOKEN을 입력하세요. 현재 브라우저에서만 로그인됩니다.</p><form id="login-form"><input type="password" id="token" autocomplete="current-password" required aria-label="접속 토큰"><button>연결</button></form></section>
+<div id="workspace" hidden>
+<nav class="workspace-nav" aria-label="주 메뉴"><a href="#mailbox" data-view="mailbox" aria-current="page">메일함</a><a href="#history" data-view="history">분석 이력</a><a href="#legacy" data-view="legacy">이전 이력</a></nav>
+<div id="view-mailbox">
+<section class="toolbar"><form id="search-form"><input id="query" placeholder="제목·본문 검색" aria-label="검색어"><input id="from" placeholder="발신자 이메일" aria-label="발신자"><input type="date" id="after" aria-label="시작일"><button>검색</button></form><button id="sync">메일 동기화</button><p id="sync-status">아직 동기화 기록이 없습니다.</p></section>
+<div class="columns"><section><div class="section-head"><h2>메일함</h2><span id="total"></span></div><div id="mails"></div><div class="pager"><button id="previous">이전</button><button id="next">다음</button></div></section>
+<section id="detail"><div class="empty"><h2>메일을 선택하세요</h2><p>본문과 첨부를 확인하고 분석을 시작할 수 있습니다.</p></div></section></div>
+</div>
+<section id="view-history" hidden><div class="section-head"><h2>공용 분석 이력</h2><button id="refresh">새로고침</button></div><p>직접 스킬과 웹에서 실행한 분석을 함께 표시합니다. 분석 완료는 고객 문의 해결과 별개입니다.</p><div id="runs"></div><button id="more-runs">이력 더 보기</button></section>
+<section id="view-legacy" hidden><div class="section-head"><h2>이전 이력</h2><button id="legacy-refresh">기존 문서 조회</button></div><p>기존 보고서와 처리 로그의 보존 사본입니다. 확인되지 않은 메일 연결과 업무 상태는 추정하지 않습니다.</p><div id="legacy-list"></div><button id="legacy-more" hidden>이전 이력 더 보기</button></section>
+</div><p id="notice" role="status"></p>
+</main><footer>메일·DB 조회 기반 분석 · 웹에서는 Claude 2차 리뷰를 실행하지 않습니다.</footer>
+<dialog id="history-dialog" class="history-dialog" aria-labelledby="history-title" aria-describedby="history-subtitle">
+<div class="history-head"><div><h2 id="history-title">이 메일 분석 이력</h2><p id="history-subtitle"></p></div><button id="history-close" autofocus>닫기</button></div>
+<div class="history-tools"><button id="history-back" hidden>이력 목록으로</button><button id="history-refresh">새로고침</button><p id="history-notice" role="status"></p></div>
+<div id="history-body" class="history-body"><div id="mail-history-lists"><section><h3>분석 이력</h3><div id="mail-runs"></div><button id="mail-more-runs">이력 더 보기</button></section><section><h3>연결된 이전 이력</h3><div id="mail-legacy-list"></div><button id="mail-legacy-more" hidden>이전 이력 더 보기</button><p class="meta">메일 연결이 확인된 기존 문서만 표시합니다. 미연결 문서는 이전 이력 메뉴에서 확인하세요.</p></section></div><section id="report" tabindex="-1" hidden></section></div>
+</dialog><script src="/app.js" type="module"></script></body></html>

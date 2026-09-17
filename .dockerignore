@@ -1,0 +1,9 @@
+.git
+node_modules
+dist
+public/preview
+public/markdown
+.env
+.runtime
+
+*.dump

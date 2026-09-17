@@ -1,0 +1,124 @@
+name: mail-triage-web
+x-app: &app
+  build: .
+  image: mail-triage-web:local
+  init: true
+  restart: unless-stopped
+  environment: &environment
+    DATABASE_URL: postgresql://triage:${POSTGRES_PASSWORD:?Run setup first}@db:5432/triage
+    TRIAGE_TOKEN: ${TRIAGE_TOKEN:?Run setup first}
+    TRIAGE_API_URL: http://api:3080
+    MAIL_MCP_URL: ${MAIL_MCP_URL:-http://host.docker.internal:17082/mcp}
+    DB_MCP_URL: ${DB_MCP_URL:-http://host.docker.internal:17080/mcp}
+    MAIL_MCP_HOST_HEADER: localhost:17082
+    MAIL_STORE_ID: ${MAIL_STORE_ID:-local-mail-v1}
+    PORT: 3080
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  depends_on:
+    db:
+      condition: service_healthy
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: triage
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run setup first}
+      POSTGRES_DB: triage
+    volumes:
+      - history:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U triage"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  api:
+    <<: *app
+    ports:
+      - "127.0.0.1:${TRIAGE_PORT:-3080}:3080"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  worker:
+    <<: *app
+    profiles: ["analysis"]
+    command: ["node", "dist/worker.js"]
+    environment:
+      <<: *environment
+      CODEX_HOME: /codex
+      CODEX_MODEL: ${CODEX_MODEL:-gpt-6-astra}
+      ERP_MANAGER_ROOT: /reference
+      ERP_GG_ROOT: /erp/gg
+      ERP_GGFAC_ROOT: /erp/gg-fac
+      ERP_DCODE_ROOT: /erp/d-code
+    volumes:
+      - codex:/codex
+      - work:/work
+      - type: bind
+        source: ${CODEX_AUTH_FILE:?Set CODEX_AUTH_FILE}
+        target: /seed/auth.json
+        read_only: true
+      - type: bind
+        source: ${ERP_MANAGER_PATH}/erp
+        target: /reference/erp
+        read_only: true
+      - type: bind
+        source: ${ERP_MANAGER_PATH}/tools
+        target: /reference/tools
+        read_only: true
+      - type: bind
+        source: ${ERP_MANAGER_PATH}/AGENTS.md
+        target: /reference/AGENTS.md
+        read_only: true
+      - type: bind
+        source: ${ERP_MANAGER_PATH}/.agents/skills/mail-triage
+        target: /reference/.agents/skills/mail-triage
+        read_only: true
+      - type: bind
+        source: ${ERP_MANAGER_PATH}/.claude/commands/mail-triage.md
+        target: /reference/.claude/commands/mail-triage.md
+        read_only: true
+      - type: bind
+        source: ${ERP_MANAGER_PATH}/.claude/mail/mcp-workflow.md
+        target: /reference/.claude/mail/mcp-workflow.md
+        read_only: true
+      - type: bind
+        source: ${ERP_MANAGER_PATH}/.claude/mail/shared-history.md
+        target: /reference/.claude/mail/shared-history.md
+        read_only: true
+      - type: bind
+        source: ${ERP_MANAGER_PATH}/.claude/mail/triage-log.md
+        target: /reference/.claude/mail/triage-log.md
+        read_only: true
+      - type: bind
+        source: ${ERP_GG_PATH:?Set ERP_GG_PATH}
+        target: /erp/gg
+        read_only: true
+      - type: bind
+        source: ${ERP_GGFAC_PATH:?Set ERP_GGFAC_PATH}
+        target: /erp/gg-fac
+        read_only: true
+      - type: bind
+        source: ${ERP_DCODE_PATH:?Set ERP_DCODE_PATH}
+        target: /erp/d-code
+        read_only: true
+  tests:
+    <<: *app
+    profiles: ["verification"]
+    restart: "no"
+    command: ["npm", "test"]
+    environment:
+      <<: *environment
+      TRIAGE_CLI_SOURCE: /integration/triage-history.mjs
+    volumes:
+      - type: bind
+        source: ${ERP_MANAGER_PATH}/tools/triage-history.mjs
+        target: /integration/triage-history.mjs
+        read_only: true
+volumes:
+  history:
+  codex:
+  work:

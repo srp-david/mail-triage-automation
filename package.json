@@ -1,0 +1,28 @@
+{
+  "name": "mail-triage-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "worker": "node dist/worker.js",
+    "check": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "diagnose": "tsx src/diagnose.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "express": "5.2.1",
+    "pg": "8.23.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.0.0",
+    "playwright-core": "^1.63.0",
+    "tsx": "^4.0.0",
+    "typescript": "7.0.2"
+  }
+}

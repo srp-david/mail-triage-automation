@@ -1,0 +1,147 @@
+import { test, after } from 'node:test';
+import assert from 'node:assert/strict';
+import pg from 'pg';
+import { randomUUID } from 'node:crypto';
+process.env.NODE_ENV='test';
+process.env.TRIAGE_TOKEN='test-token-'.repeat(8);
+const schema='triage_test_'+randomUUID().replaceAll('-','');
+if(!process.env.DATABASE_URL)throw new Error('Tests require a PostgreSQL DATABASE_URL');
+const admin=new pg.Client({connectionString:process.env.DATABASE_URL});await admin.connect();
+await admin.query('CREATE SCHEMA '+schema);
+process.env.PGOPTIONS='-c search_path='+schema;
+const {pool,migrate}=await import('../src/db.js');
+const h=await import('../src/history.js');
+const {syncDecision}=await import('../src/sync.js');
+await migrate();
+after(async()=>{await pool.end();if(!/^triage_test_[a-f0-9]+$/.test(schema))throw new Error('unsafe test schema');await admin.query('DROP SCHEMA '+schema+' CASCADE');await admin.end();});
+const input=(mailId:number,source='direct')=>({storeId:'fixture-store',mailId,messageId:'<same@example.test>',subject:'Synthetic test mail',source,requestId:randomUUID()});
+const result={outcome:'completed',project:'unknown',report:'Synthetic report; no customer data.',question:'',knowledge:'',evidence:[]};
+test('concurrent admission allows one run; retry is idempotent; completed reports remain immutable',async()=>{
+ const a=input(1),b=input(1);
+ const attempts=await Promise.allSettled([h.startRun(a),h.startRun(b)]);
+ assert.equal(attempts.filter(x=>x.status==='fulfilled').length,1);
+ const index=attempts.findIndex(x=>x.status==='fulfilled');const job=(attempts[index] as PromiseFulfilledResult<any>).value;
+ assert.equal((await h.startRun(index===0?a:b)).id,job.id);
+ await assert.rejects(h.finishRun(job.id,'wrong',result));
+ await h.finishRun(job.id,job.ownerToken,result);
+ await h.finishRun(job.id,job.ownerToken,result);
+ await assert.rejects(h.finishRun(job.id,job.ownerToken,{...result,report:'changed'}));
+ const second=await h.startRun(input(1));await h.finishRun(second.id,second.ownerToken!,result);
+ assert.equal((await h.listRuns('fixture-store',1)).length,2);
+ assert.equal((await h.getRun(job.id)).result.report,result.report);
+ assert.ok(!('owner_hash' in await h.getRun(job.id)));
+});
+test('expired worker cannot commit after another run starts',async()=>{
+ const job=await h.startRun(input(2));
+ await pool.query("UPDATE analysis_run SET lease_until=now()-interval '1 second' WHERE id=$1",[job.id]);
+ const replacement=await h.startRun(input(2));
+ await assert.rejects(h.heartbeat(job.id,job.ownerToken!));
+ await assert.rejects(h.finishRun(job.id,job.ownerToken!,result));
+ await h.finishRun(replacement.id,replacement.ownerToken!,result);
+});
+test('Message-ID alone never merges mail and store identity changes are rejected',async()=>{
+ const a=await h.startRun(input(3)),b=await h.startRun(input(4));
+ assert.notEqual(a.id,b.id);
+ await h.finishRun(a.id,a.ownerToken!,result);await h.finishRun(b.id,b.ownerToken!,result);
+ await assert.rejects(h.startRun({...input(3),messageId:'<different@example.test>'}));
+ const c=await h.startRun({...input(3),storeId:'another-store'});await h.finishRun(c.id,c.ownerToken!,result);
+});
+test('worker claim is exclusive and supports questions as a new run',async()=>{
+ const job=await h.startRun(input(5,'web'));assert.equal(job.status,'queued');assert.equal(job.ownerToken,undefined);
+ const claims=await Promise.all([h.claimRun(),h.claimRun()]);assert.equal(claims.filter(Boolean).length,1);
+ const claimed=claims.find(Boolean)!;
+ await h.finishRun(claimed.id,claimed.ownerToken,{...result,outcome:'needs_input',question:'Which screen?'});
+ await assert.rejects(h.startRun({...input(5),parentId:job.id}));
+ const next=await h.startRun({...input(5),parentId:job.id,answer:'TEST_SCREEN'});
+ await h.finishRun(next.id,next.ownerToken!,result);
+});
+test('same request ID with changed data is rejected',async()=>{
+ const data=input(6);const run=await h.startRun(data);
+ await assert.rejects(h.startRun({...data,subject:'changed'}));await h.finishRun(run.id,run.ownerToken!,result);
+});
+test('review retries do not append duplicate content',async()=>{
+ const run=await h.startRun(input(7));await h.finishRun(run.id,run.ownerToken!,result);
+ const requestId=randomUUID();
+ assert.equal(await h.addReview(run.id,requestId,'Claude','Review'),await h.addReview(run.id,requestId,'Claude','Review'));
+ assert.equal((await h.getRun(run.id)).reviews.length,1);
+});
+test('sync partial errors and no progress cannot become successful completion',()=>{
+ assert.equal(syncDecision({status:'success',saved:1,failed:0,remaining:0,errors:[]}),'complete');
+ assert.equal(syncDecision({status:'success',saved:100,failed:0,remaining:3,errors:[]}),'continue');
+ assert.equal(syncDecision({status:'success',saved:0,failed:0,remaining:3,errors:[]}),'partial');
+ assert.equal(syncDecision({status:'partial',saved:2,failed:1,remaining:0,errors:[]}),'partial');
+ assert.equal(syncDecision({status:'success',saved:2,failed:0,remaining:null,errors:[]}),'partial');
+});
+test('HTTP authentication and origin checks protect shared history',async()=>{
+ const {createApp}=await import('../src/server.js');
+ const server=createApp().listen(0,'127.0.0.1');
+ await new Promise<void>(resolve=>server.once('listening',resolve));
+ const base='http://127.0.0.1:'+(server.address() as any).port;
+ try{
+  assert.equal((await fetch(base+'/api/runs')).status,401);
+  assert.equal((await fetch(base+'/api/runs',{headers:{authorization:'Bearer '+process.env.TRIAGE_TOKEN}})).status,200);
+  assert.equal((await fetch(base+'/api/runs',{headers:{authorization:'Bearer '+process.env.TRIAGE_TOKEN,origin:'https://other.invalid'}})).status,403);
+  assert.equal((await fetch(base+'/api/runs/not-a-uuid',{headers:{authorization:'Bearer '+process.env.TRIAGE_TOKEN}})).status,400);
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
+});
+
+test('direct CLI and web API share reports without writing legacy files',async()=>{
+ const {mkdtemp,mkdir,readFile,writeFile,rm}=await import('node:fs/promises');
+ const {tmpdir}=await import('node:os');const {join}=await import('node:path');
+ const {execFile}=await import('node:child_process');const {promisify}=await import('node:util');
+ const {createApp}=await import('../src/server.js');
+ const dir=await mkdtemp(join(tmpdir(),'triage-cli-'));
+ const fixture={id:99001,messageId:'<cli-fixture@example.test>',subject:'Synthetic CLI fixture',body:'Test only'};
+ const server=createApp(async()=>fixture,async()=>fixture).listen(0,'127.0.0.1');
+ await new Promise<void>(resolve=>server.once('listening',resolve));
+ const base='http://127.0.0.1:'+(server.address() as any).port;
+ try{
+  const source=process.env.TRIAGE_CLI_SOURCE;if(!source)throw new Error('Set TRIAGE_CLI_SOURCE to the real erp-manager CLI');
+  await mkdir(join(dir,'tools'));
+  await writeFile(join(dir,'tools/triage-history.mjs'),await readFile(source));
+  const configFile=join(dir,'config.json');
+  await writeFile(configFile,JSON.stringify({url:base,token:process.env.TRIAGE_TOKEN,storeId:'local-mail-v1'}));
+  const cli=async(...args:string[])=>JSON.parse((await promisify(execFile)(process.execPath,[join(dir,'tools/triage-history.mjs'),...args],
+    {env:{...process.env,TRIAGE_CONFIG:configFile}})).stdout);
+  const run=await cli('begin','99001');assert.equal(run.status,'running');
+  const output=join(dir,'result.json');await writeFile(output,JSON.stringify(result));
+  await cli('complete',run.id,output);
+  const headers={authorization:'Bearer '+process.env.TRIAGE_TOKEN,'Content-Type':'application/json'};
+  const stored=await (await fetch(base+'/api/runs/'+run.id,{headers})).json();
+  assert.equal(stored.result.report,result.report);
+  const web=await (await fetch(base+'/api/runs',{method:'POST',headers,body:JSON.stringify({
+    storeId:'local-mail-v1',mailId:99001,messageId:fixture.messageId,source:'web',requestId:randomUUID()
+  })})).json();
+  const claimed=await h.claimRun();assert.equal(claimed.id,web.id);
+  await h.finishRun(claimed.id,claimed.ownerToken,{...result,report:'Synthetic web report'});
+  const list=await cli('list','99001');assert.equal(list.length,2);assert.ok(list.some((x:any)=>x.source==='web'));
+  assert.equal((await cli('get',web.id)).result.report,'Synthetic web report');
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));await rm(dir,{recursive:true,force:true});}
+});
+
+test('attachment downloads require authentication and return exact bytes as a named file',async()=>{
+ const {createApp}=await import('../src/server.js');
+ const bytes=Buffer.from([0,255,1,128]);let calls=0;
+ const server=createApp(undefined,undefined,async(emailId,attachmentId)=>{
+   calls++;
+   if(attachmentId==='1.3')return {isError:true,structuredContent:{code:'ATTACHMENT_TOO_LARGE'},content:[]};
+   return {structuredContent:{emailId,attachment:{attachmentId,filename:'자료.xlsx'}},
+     content:[{type:'resource',resource:{blob:bytes.toString('base64'),mimeType:'application/octet-stream'}}]};
+ }).listen(0,'127.0.0.1');
+ await new Promise<void>(resolve=>server.once('listening',resolve));
+ const base='http://127.0.0.1:'+(server.address() as any).port;
+ const path='/api/mails/10/attachments/1.2/download';
+ const headers={authorization:'Bearer '+process.env.TRIAGE_TOKEN};
+ try{
+   assert.equal((await fetch(base+path)).status,401);assert.equal(calls,0);
+   assert.equal((await fetch(base+path,{headers:{...headers,origin:'https://other.invalid'}})).status,403);assert.equal(calls,0);
+   const response=await fetch(base+path,{headers});
+   assert.equal(response.status,200);
+   assert.equal(response.headers.get('content-type'),'application/octet-stream');
+   assert.ok(response.headers.get('content-disposition')?.startsWith('attachment;'));
+   assert.ok(response.headers.get('content-disposition')?.includes(encodeURIComponent('자료.xlsx')));
+   assert.deepEqual(Buffer.from(await response.arrayBuffer()),bytes);
+   assert.equal((await fetch(base+'/api/mails/10/attachments/1.3/download',{headers})).status,413);
+ }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
+});
+
