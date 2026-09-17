@@ -39,6 +39,13 @@ ALTER TABLE mail_identity ALTER COLUMN mail_id DROP NOT NULL;
 ALTER TABLE mail_identity ADD COLUMN IF NOT EXISTS identity_kind text NOT NULL DEFAULT 'mcp';
 ALTER TABLE mail_identity ADD COLUMN IF NOT EXISTS external_key text;
 ALTER TABLE mail_identity ADD COLUMN IF NOT EXISTS external_source_hash text;
+ALTER TABLE mail_identity ADD COLUMN IF NOT EXISTS handled_at timestamptz;
+CREATE TABLE IF NOT EXISTS related_mail (
+  id uuid PRIMARY KEY, mail_key uuid NOT NULL REFERENCES mail_identity(id),
+  store_id text NOT NULL, mail_id bigint NOT NULL, message_id text NOT NULL,
+  metadata jsonb NOT NULL, linked_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(mail_key,store_id,mail_id)
+);
 CREATE UNIQUE INDEX IF NOT EXISTS external_identity_key ON mail_identity(store_id,external_key) WHERE external_key IS NOT NULL;
 CREATE TABLE IF NOT EXISTS legacy_document (
   id uuid PRIMARY KEY, namespace text NOT NULL, source_path text NOT NULL, source_hash text NOT NULL,

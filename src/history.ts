@@ -2,6 +2,7 @@ import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto
 import { pool, transaction } from './db.js';
 import { config, HttpError } from './config.js';
 import { startSchema, resultSchema } from './schema.js';
+import { listRelatedMails } from './related.js';
 export const digest = (x: string) => createHash('sha256').update(x).digest('hex');
 export function sameSecret(a: string, b: string) { return timingSafeEqual(Buffer.from(digest(a)), Buffer.from(digest(b))); }
 function directToken(id: string) { return createHmac('sha256', config.token).update(id).digest('hex'); }
@@ -30,6 +31,7 @@ async function admitRun(data: Omit<ReturnType<typeof startSchema.parse>,'mailId'
     if (mail && mail.message_id !== data.messageId) throw new HttpError(409, '메일 식별자가 변경되었습니다. MCP 저장소 식별자를 점검하세요.');
     if (!mail) mail = (await c.query('INSERT INTO mail_identity(id,store_id,mail_id,message_id,subject) VALUES($1,$2,$3,$4,$5) RETURNING *',
       [randomUUID(), data.storeId, data.mailId, data.messageId, data.subject])).rows[0];
+    if (mail.handled_at) throw new HttpError(409, '처리 완료된 메일입니다. 분석 이력에서 처리 완료를 취소한 뒤 다시 분석하세요.');
     await c.query("UPDATE analysis_run SET status='failed',error='실행 연결 만료',finished_at=now() WHERE mail_key=$1 AND status='running' AND lease_until < now()", [mail.id]);
     const active = (await c.query("SELECT id FROM analysis_run WHERE mail_key=$1 AND status IN ('queued','running')", [mail.id])).rows[0];
     if (active) throw new HttpError(409, '이미 진행 중인 분석이 있습니다: ' + active.id);
@@ -80,11 +82,11 @@ export async function failRun(id: string, token: string, message: string) {
 }
 export async function getRun(id: string) {
   const run = (await pool.query(`SELECT r.id,r.source,r.status,r.parent_id,r.answer,r.error,r.created_at,r.started_at,r.finished_at,
-    m.store_id,m.mail_id,m.message_id,m.subject,m.identity_kind,m.id AS mail_key,p.result FROM analysis_run r JOIN mail_identity m ON m.id=r.mail_key
+    m.store_id,m.mail_id,m.message_id,m.subject,m.identity_kind,m.handled_at,m.id AS mail_key,p.result FROM analysis_run r JOIN mail_identity m ON m.id=r.mail_key
     LEFT JOIN report_version p ON p.run_id=r.id WHERE r.id=$1`, [id])).rows[0];
   if (!run) throw new HttpError(404,'분석을 찾을 수 없습니다.');
   const reviews = (await pool.query('SELECT id,author,body,created_at FROM review WHERE run_id=$1 ORDER BY created_at', [id])).rows;
-  return {...run,reviews,reportHash:run.result?digest(run.result.report):null};
+  return {...run,reviews,relatedMails:await listRelatedMails(run.mail_key),reportHash:run.result?digest(run.result.report):null};
 }
 
 export async function recoverResult(id:string, ownerToken:string, result:unknown, requestId:string) {
@@ -100,7 +102,7 @@ export async function recoverResult(id:string, ownerToken:string, result:unknown
   return {id:recovered.id,status:parsed.outcome,recoveredFrom:id};
 }
 export async function listRuns(store?: string, mailId?: number, offset=0) {
-  return (await pool.query(`SELECT r.id,r.source,r.status,r.error,r.created_at,r.finished_at,m.store_id,m.mail_id,m.subject,m.identity_kind
+  return (await pool.query(`SELECT r.id,r.source,r.status,r.error,r.created_at,r.finished_at,m.store_id,m.mail_id,m.subject,m.identity_kind,m.handled_at
     FROM analysis_run r JOIN mail_identity m ON m.id=r.mail_key
     WHERE ($1::text IS NULL OR m.store_id=$1) AND ($2::bigint IS NULL OR m.mail_id=$2)
     ORDER BY r.created_at DESC,r.id DESC LIMIT 100 OFFSET $3`, [store??null,mailId??null,offset])).rows;
@@ -108,7 +110,7 @@ export async function listRuns(store?: string, mailId?: number, offset=0) {
 // One metadata query for the visible page; never retrieve report bodies here.
 export async function mailAnalysis(store: string, mailIds: number[]) {
   if (!mailIds.length) return [];
-  return (await pool.query(`SELECT m.mail_id::text AS "mailId", a."runCount", a."completedCount", a."latestStatus", l."legacyCount"
+  return (await pool.query(`SELECT m.mail_id::text AS "mailId", m.handled_at AS "handledAt", a."runCount", a."completedCount", a."latestStatus", l."legacyCount"
     FROM mail_identity m
     CROSS JOIN LATERAL (
       SELECT count(*)::int AS "runCount", count(*) FILTER (WHERE r.status='completed')::int AS "completedCount",
@@ -119,6 +121,21 @@ export async function mailAnalysis(store: string, mailIds: number[]) {
       SELECT count(*)::int AS "legacyCount" FROM legacy_link WHERE mail_key=m.id
     ) l
     WHERE m.store_id=$1 AND m.identity_kind='mcp' AND m.mail_id=ANY($2::bigint[])`, [store,mailIds])).rows;
+}
+// Handling belongs to the mail, independently of immutable analysis outcomes.
+export async function setMailHandled(runId: string, completed: boolean) {
+  return transaction(async c => {
+    const mail = (await c.query(`SELECT m.* FROM mail_identity m JOIN analysis_run r ON r.mail_key=m.id WHERE r.id=$1`, [runId])).rows[0];
+    if (!mail) throw new HttpError(404, '분석을 찾을 수 없습니다.');
+    // Use the same lock as admission, including directly registered Outlook mail.
+    await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [mail.identity_kind==='outlook'?mail.id:mail.store_id+':'+mail.mail_id]);
+    if (completed) {
+      const active = await c.query("SELECT 1 FROM analysis_run WHERE mail_key=$1 AND status IN ('queued','running')", [mail.id]);
+      if (active.rowCount) throw new HttpError(409, '진행 중인 분석이 끝난 뒤 처리 완료할 수 있습니다.');
+    }
+    return (await c.query(`UPDATE mail_identity SET handled_at=CASE WHEN $2 THEN COALESCE(handled_at,now()) ELSE NULL END
+      WHERE id=$1 RETURNING id AS mail_key,handled_at`, [mail.id,completed])).rows[0];
+  });
 }
 export async function addReview(id: string, requestId: string, author: string, body: string) {
   await getRun(id);

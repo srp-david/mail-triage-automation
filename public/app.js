@@ -4,6 +4,7 @@ import { attachmentList } from './attachment-list.js';
 import { openOfficePreview, closeOfficePreview } from './office-preview.js';
 import { markdownView } from './markdown/viewer.js';
 import { showMailAnalysis } from './mail-analysis.js';
+import { relatedMails } from './related-mails.js';
 const $=id=>document.getElementById(id);
 let storeId='',offset=0,nextOffset=null,detailGeneration=0,activeView='mailbox';
 let mailListGeneration=0,analysisGeneration=0;
@@ -36,11 +37,15 @@ async function status(){
  $('sync-stop').textContent=sync?.status==='stopping'?'중지 요청됨':'중지';
  const states={running:'진행 중',retrying:'재시도 대기',stopping:'현재 묶음 종료 후 중지',paused:'일시 중지',completed:'완료',partial:'일부 미완료',failed:'실패'};
  $('sync-status').textContent=sync?'동기화 '+(states[sync.status]??sync.status)+' · 이번 실행 저장 '+sync.saved+'건 · 실패 시도 '+sync.failed+'건 · 남음 '+(sync.remaining??'미확인')+' · '+(sync.batch_count??0)+'묶음 · '+date(sync.finished_at??sync.started_at):'아직 웹 동기화 기록이 없습니다.';
- const progress=$('sync-progress');progress.hidden=!sync;
- if(Number.isFinite(sync?.detail?.serverCount)&&sync.detail.serverCount>0&&Number.isFinite(sync.detail.serverStored)){
-   progress.max=sync.detail.serverCount;progress.value=Math.min(sync.detail.serverStored,sync.detail.serverCount);
- }else progress.removeAttribute('value');
- if(!syncRunning&&!Number.isFinite(sync?.detail?.serverStored))progress.hidden=true;
+ const progress=$('sync-progress');progress.hidden=!syncRunning;
+ $('sync-status').hidden=syncRunning;
+ progress.classList.toggle('is-waiting',sync?.status==='retrying');
+ let counts='이번 실행 저장 '+(sync?.saved??0)+'건';
+ if(Number.isFinite(sync?.detail?.serverCount)&&sync.detail.serverCount>0&&Number.isFinite(sync.detail.serverStored)&&sync.detail.serverStored>=0){
+   const total=sync.detail.serverCount,stored=Math.min(sync.detail.serverStored,total);
+   counts='서버 메일 '+stored.toLocaleString('ko-KR')+' / '+total.toLocaleString('ko-KR')+'건 ('+Math.floor(stored/total*100)+'%)';
+ }
+ $('sync-progress-text').textContent=syncRunning?'동기화 '+(states[sync.status]??sync.status)+' · '+counts:'';
  const reasons={interrupted:'서버 재시작으로 중지되었습니다. 이어서 동기화하면 저장된 메일은 건너뜁니다.',retry_exhausted:'자동 재시도 3회를 마쳤습니다. 연결 상태를 확인한 뒤 이어서 동기화하세요.',no_progress:'새로 저장된 메일 없이 남은 메일이 있어 중지했습니다.',invalid_response:'수집 결과를 확인할 수 없어 중지했습니다.',error:'수집 오류가 있어 중지했습니다. 연결·메일 서버·저장 공간을 확인하세요.'};
  const message=sync?.status==='stopping'?'현재 처리 중인 최대 100개 묶음이 끝나면 중지합니다.':sync?.status==='retrying'?'일시적인 연결 오류로 '+sync.retry_count+'/3회 재시도를 기다립니다. '+date(sync.next_attempt_at):reasons[sync?.detail?.reason]??(sync?.status==='paused'?'저장된 메일은 유지됩니다. 이어서 동기화하면 미수집 메일부터 받습니다.':'100개씩 순서대로 수집합니다. 수집 중에도 메일 조회·분석이 가능합니다.');
  $('sync-message').textContent=message+(sync?.uncertain?' 응답이 끊긴 묶음의 저장 건수는 이번 실행 집계에서 빠질 수 있습니다.':'')+(sync?.failed>0?' 실패 시도는 누적 횟수이며 남음에는 해당 묶음의 실패 메일이 포함되지 않습니다.':'');
@@ -180,7 +185,7 @@ async function runs(context=mainHistory,append=false){
    const items=await api('/runs?'+historyQuery(context,append?context.runOffset:0));
    if(!contextActive(context)||version!==context.runVersion)return;
    if(!append){list.replaceChildren();context.runOffset=0;}
-   for(const r of items){const row=element('div',null,'run');row.append(element('span',labels[r.status]??r.status,'badge'),action(r.subject+' · '+(r.source==='direct'?'직접 실행':'웹')+' · '+date(r.created_at),()=>report(r.id)));list.append(row);}
+   for(const r of items){const row=element('div',null,'run');row.append(element('span',r.handled_at?'처리 완료':labels[r.status]??r.status,'badge'),action(r.subject+' · '+(r.source==='direct'?'직접 실행':'웹')+' · '+date(r.created_at),()=>report(r.id)));list.append(row);}
    context.runOffset+=items.length;more.hidden=items.length<100;
    if(!items.length&&!append)list.append(element('p','저장된 분석이 없습니다.'));
  }catch(error){
@@ -223,12 +228,35 @@ function backToHistory(){
 async function report(id){
  const request=showDocument('run',id),r=await api('/runs/'+id);if(!documentActive(request))return;
  const box=request.box;box.replaceChildren(element('h2',r.subject+' · '+(labels[r.status]??r.status)));
+ if(r.result){
+   const tools=element('div',null,'report-tools');tools.setAttribute('role','group');tools.setAttribute('aria-label','문서 도구');
+   const link=element('a','Markdown 파일 열기 ↗','document-button');link.href='/api/runs/'+id+'/export';link.target='_blank';link.rel='noopener';link.title='Markdown 원본 파일을 새 탭에서 엽니다.';
+   tools.append(link);box.append(tools);
+ }
+ const handling=element('div',null,'handling-actions');
+ handling.append(element('p',r.handled_at?'처리 완료 · '+date(r.handled_at):'메일 처리가 끝났다면 재분석 없이 완료로 표시하세요.','meta'));
+ const complete=action(r.handled_at?'처리 완료 취소':'처리 완료',async()=>{
+   complete.disabled=true;
+   try{
+     await api('/runs/'+id+'/handling',{completed:!r.handled_at});
+     if(documentActive(request))await report(id);
+     await Promise.all([refreshMailAnalysis(),safe(()=>runs(mainHistory)),...(mailHistory?[safe(()=>runs(mailHistory))]:[])]);
+     notice(r.handled_at?'처리 완료를 취소했습니다.':'메일을 처리 완료로 표시했습니다.');
+   }finally{complete.disabled=false;}
+ });
+ complete.disabled=['queued','running'].includes(r.status);
+ if(complete.disabled)complete.title='진행 중인 분석이 끝난 뒤 처리 완료할 수 있습니다.';
+ handling.append(complete);box.append(handling);
+ if(r.handled_at)box.append(element('p','처리가 완료된 메일입니다. 아래 보고서와 질문은 당시 분석 기록으로 보존됩니다.','meta'));
+ if(r.handled_at||r.relatedMails?.length)box.append(relatedMails({run:r,runId:id,storeId,api,active:()=>documentActive(request),reload:()=>report(id)}));
  if(r.error)box.append(element('p',r.error));
  if(r.result){
    box.append(markdownView(r.result.report,'보고서'));
    if(r.result.knowledge)box.append(element('h3','업무 지식 반영 제안'),markdownView(r.result.knowledge,'업무 지식 제안'));
    for(const review of r.reviews)box.append(element('h3',review.author+' 리뷰'),markdownView(review.body,review.author+' 리뷰'));
-   if(r.status==='needs_input'&&r.identity_kind==='outlook'){
+   if(r.status==='needs_input'&&r.handled_at){
+     box.append(element('h3','당시 추가 확인 질문'),element('p',r.result.question));
+   }else if(r.status==='needs_input'&&r.identity_kind==='outlook'){
      box.append(element('p',r.result.question),element('p','Outlook 예외 메일은 직접 실행에서 답변을 반영해 다시 분석하세요. 원본 파일과 공용 메일 식별자를 함께 사용합니다.'));
    }else if(r.status==='needs_input'){
      box.append(element('p',r.result.question));const answer=element('textarea');answer.setAttribute('aria-label','추가 답변');box.append(answer);
@@ -240,7 +268,6 @@ async function report(id){
        }finally{submit.disabled=false;}
      });box.append(submit);
    }
-   const link=element('a','Markdown 보고서 열기');link.href='/api/runs/'+id+'/export';link.target='_blank';link.rel='noopener';box.append(link);
  }
  if(!r.result&&!r.error)box.append(element('p','아직 보고서가 없습니다. 새로고침으로 진행 상태를 확인하세요.'));
  box.focus({preventScroll:true});

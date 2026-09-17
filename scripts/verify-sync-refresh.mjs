@@ -38,6 +38,7 @@ const settled=()=>page.waitForFunction(()=>!document.querySelector('#sync').disa
 const shown=()=>page.getByRole('button',{name:new RegExp('합성 메일 '+serial)}).waitFor();
 try{
  await page.goto(base);await shown();await page.waitForTimeout(30);
+ assert.equal(await page.locator('#sync-progress').isVisible(),false);assert.equal(await page.locator('progress').count(),0);
  assert.equal(mailRequests.length,1);await tick();assert.equal(mailRequests.length,1);
  await page.locator('#query').fill('고객 검색');await page.locator('#from').fill('fixture@example.test');await page.locator('#after').fill('2026-09-01');
  await page.locator('#search-form button').click();await page.waitForTimeout(30);
@@ -73,14 +74,16 @@ try{
  mode='delayed';await page.locator('#sync').click();await page.waitForTimeout(30);
  sync={...sync,saved:100,remaining:3100,batch_count:1,detail:{serverCount:3200,serverStored:100}};
  const progressCount=mailRequests.length;await tick();
- assert.equal(mailRequests.length,progressCount+1);assert.equal(await page.locator('#sync-progress').getAttribute('value'),'100');
- assert.equal(await page.locator('#sync-progress').getAttribute('max'),'3200');assert.equal(await page.locator('#sync-stop').isVisible(),true);
+ assert.equal(mailRequests.length,progressCount+1);assert.equal(await page.locator('#sync-progress').isVisible(),true);
+ assert.match(await page.locator('#sync-progress-text').textContent(),/100 \/ 3,200건 \(3%\)/);assert.equal(await page.locator('#sync-stop').isVisible(),true);
+ assert.equal(await page.locator('#sync-status').isVisible(),false);
  await mkdir('.runtime',{recursive:true});await page.screenshot({path:'.runtime/sync-progress-desktop.png'});
  await page.locator('#sync-stop').click();await page.waitForFunction(()=>document.querySelector('#sync-stop').textContent==='중지 요청됨');
  assert.equal(await page.locator('#sync-stop').isDisabled(),true);assert.equal(await page.locator('#sync').isDisabled(),true);
  sync={...sync,status:'paused',saved:200,remaining:3000,batch_count:2,finished_at:'2026-09-17T00:05:00Z',detail:{serverCount:3200,serverStored:200}};
  await tick();await settled();assert.equal(await page.locator('#sync').textContent(),'이어서 동기화');
  assert.equal(await page.locator('#sync-stop').isVisible(),false);assert.match(await page.locator('#sync-status').textContent(),/저장 200건/);
+ assert.equal(await page.locator('#sync-progress').isVisible(),false);
  const beforeReload=posts;sync={...sync,uncertain:true,detail:{reason:'interrupted'}};
  await page.reload();await page.getByRole('button',{name:'이어서 동기화',exact:true}).waitFor();
  assert.equal(posts,beforeReload);assert.match(await page.locator('#sync-message').textContent(),/서버 재시작/);
@@ -88,8 +91,14 @@ try{
  await page.locator('#sync').click();await page.waitForTimeout(30);
  sync={...sync,status:'retrying',saved:0,batch_count:1,retry_count:1,next_attempt_at:'2026-09-17T00:06:00Z',detail:{reason:'retry'}};
  await tick();assert.match(await page.locator('#sync-message').textContent(),/1\/3회/);assert.equal(await page.locator('#sync').isDisabled(),true);
+ assert.equal(await page.locator('#sync-progress').isVisible(),true);assert.match(await page.locator('#sync-progress-text').textContent(),/재시도 대기.*이번 실행 저장 0건/);
  await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  await page.screenshot({path:'.runtime/sync-progress-mobile.png'});
+ await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('.sync-spinner').evaluate(e=>getComputedStyle(e).animationName),'none');
+ for(const state of ['completed','partial','failed','paused']){
+   sync={...sync,status:state,detail:{serverCount:3200,serverStored:200}};await tick();
+   assert.equal(await page.locator('#sync-progress').isVisible(),false);assert.equal(await page.locator('#sync-progress-text').textContent(),'');assert.equal(await page.locator('#sync-status').isVisible(),true);
+ }
  assert.deepEqual(errors,[]);assert.ok(mutations.every(p=>p==='/api/sync'||/^\/api\/sync\/sync-\d+\/stop$/.test(p)));
  console.log(JSON.stringify({immediateCompletion:true,delayedCompletion:true,externalCompletion:true,firstPageWithFilters:true,selectionPreserved:true,noDuplicateRefresh:true,partialAndFailureRefresh:true,failedListRetry:true,duplicateClickBlocked:true,progressRefresh:true,stopAfterBatch:true,restartAndResume:true,retryDisplay:true,mobile:true,syntheticSyncPosts:posts,pageErrors:errors}));
 }finally{releasePost?.();releaseList?.();await browser.close();if(server)await new Promise(r=>server.close(r));}

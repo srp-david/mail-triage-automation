@@ -2,12 +2,13 @@ import express from 'express';
 import { z } from 'zod';
 import { config, HttpError } from './config.js';
 import { pool, migrate } from './db.js';
-import { addReview, expireRuns, failRun, finishRun, getRun, heartbeat, listRuns, mailAnalysis, sameSecret, startRun, startExternalRun, recoverResult } from './history.js';
+import { addReview, expireRuns, failRun, finishRun, getRun, heartbeat, listRuns, mailAnalysis, sameSecret, startRun, startExternalRun, recoverResult, setMailHandled } from './history.js';
 import { importLegacy, listLegacy, getLegacy, linkLegacy, registerExternal, prepareKnowledge, getKnowledge, claimKnowledge, completeKnowledge, hashSchema } from './archive.js';
 import { callMail, fullMail, withMcp, callAttachment } from './mcp.js';
 import { attachmentDownload } from './attachments.js';
 import { startSchema } from './schema.js';
 import { startSync, stopSync, recoverSync, startSyncScheduler } from './sync.js';
+import { addRelatedMail, getRelatedMail, unlinkRelatedMail, relatedSource } from './related.js';
 export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRead = callAttachment) {
   if(config.token.length<32) throw new Error('TRIAGE_TOKEN must have at least 32 characters');
   const app=express(); app.disable('x-powered-by');
@@ -76,6 +77,28 @@ export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRe
     res.attachment(file.filename).type('application/octet-stream').send(file.data);
   });
   app.post('/api/sync',async(_req,res)=>res.status(202).json(await startSync()));
+  app.post('/api/runs/:id/related-mails',async(req,res)=>{
+    const id=z.string().uuid().parse(req.params.id);
+    const b=z.object({storeId:z.string(),mailId:z.number().int().positive().max(Number.MAX_SAFE_INTEGER),messageId:z.string().min(1).max(4000)}).strict().parse(req.body);
+    const source=await relatedSource(id);
+    if(b.storeId!==config.store||source.store_id!==config.store)throw new HttpError(409,'현재 MCP 저장소가 아닙니다.');
+    if(!source.handled_at)throw new HttpError(409,'처리 완료한 뒤 관련 메일을 연결하세요.');
+    const mail=await mailCall('get_email',{id:b.mailId,body_limit:1});
+    res.json(await addRelatedMail(id,b.storeId,b.mailId,b.messageId,mail));
+  });
+  app.get('/api/runs/:id/related-mails/:linkId',async(req,res)=>{
+    const link=await getRelatedMail(z.string().uuid().parse(req.params.id),z.string().uuid().parse(req.params.linkId));
+    const mail=await mailRead(Number(link.mail_id));
+    if(Number(mail.id)!==Number(link.mail_id)||mail.messageId!==link.message_id)throw new HttpError(409,'연결한 원본 메일의 식별자가 변경되어 열 수 없습니다.');
+    res.json(mail);
+  });
+  app.post('/api/runs/:id/related-mails/:linkId/unlink',async(req,res)=>{
+    res.json(await unlinkRelatedMail(z.string().uuid().parse(req.params.id),z.string().uuid().parse(req.params.linkId)));
+  });
+  app.post('/api/runs/:id/handling',async(req,res)=>{
+    const {completed}=z.object({completed:z.boolean()}).strict().parse(req.body);
+    res.json(await setMailHandled(z.string().uuid().parse(req.params.id),completed));
+  });
   app.post('/api/sync/:id/stop',async(req,res)=>res.json(await stopSync(z.string().uuid().parse(req.params.id))));
   app.get('/api/legacy',async(req,res)=>{
     const q=z.object({storeId:z.string().optional(),mailId:z.coerce.number().int().positive().optional(),offset:z.coerce.number().int().min(0).default(0)}).parse(req.query);

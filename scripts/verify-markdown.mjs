@@ -53,6 +53,12 @@ try{
  assert.equal(await body.locator('a[href]').getAttribute('target'),'_blank');
  assert.equal(await page.locator('#report .markdown-body h2').count(),3);
  assert.equal(await page.locator('#report a[href="/api/runs/one/export"]').count(),1);
+ const fileButton=page.getByRole('link',{name:'Markdown 파일 열기 ↗',exact:true});
+ assert.equal(await fileButton.getAttribute('target'),'_blank');assert.equal(await fileButton.getAttribute('rel'),'noopener');
+ assert.equal(await page.locator('#report .report-tools .document-button').count(),1);
+ assert.ok((await fileButton.boundingBox()).y+(await fileButton.boundingBox()).height<=(await body.boundingBox()).y);
+ assert.equal(await fileButton.evaluate(e=>getComputedStyle(e).textDecorationLine),'none');
+ await fileButton.focus();assert.equal(await fileButton.evaluate(e=>e===document.activeElement),true);
  await page.getByRole('button',{name:'보고서 원문 보기',exact:true}).click();
  assert.equal(await body.isVisible(),false);assert.equal(await page.locator('#report .markdown-source').first().textContent(),source);
  await page.getByRole('button',{name:'보고서 문서 보기',exact:true}).click();assert.equal(await body.isVisible(),true);
