@@ -245,10 +245,14 @@ async function report(id){
    for(const review of r.reviews)box.append(element('h3',review.author+' 리뷰'),markdownView(review.body,review.author+' 리뷰'));
    if(r.status==='needs_input'&&r.handled_at){
      box.append(element('h3','당시 추가 확인 질문'),element('p',r.result.question));
-   }else if(r.status==='needs_input'&&r.identity_kind==='outlook'){
-     box.append(element('p',r.result.question),element('p','Outlook 예외 메일은 직접 실행에서 답변을 반영해 다시 분석하세요. 원본 파일과 공용 메일 식별자를 함께 사용합니다.'));
-   }else if(r.status==='needs_input'){
-     box.append(element('p',r.result.question));const answer=element('textarea');answer.setAttribute('aria-label','추가 답변');box.append(answer);
+   }else if(!r.handled_at&&['needs_input','completed'].includes(r.status)&&r.identity_kind==='outlook'){
+     if(r.result.question)box.append(element('p',r.result.question));
+     box.append(element('p','Outlook 예외 메일은 직접 실행에서 답변을 반영해 다시 분석하세요. 원본 파일과 공용 메일 식별자를 함께 사용합니다.'));
+   }else if(!r.handled_at&&['needs_input','completed'].includes(r.status)){
+     box.append(element('h3','추가 답변 · 재분석'));
+     if(r.result.question)box.append(element('p',r.result.question));
+     if(r.status==='completed')box.append(element('p','분석이 완료되었습니다. 추가 조건이나 의견을 입력하면 기존 보고서와 함께 다시 분석합니다.','meta'));
+     const answer=element('textarea');answer.setAttribute('aria-label','추가 답변');answer.maxLength=20000;box.append(answer);
      const submit=action('답변하고 다시 분석',async()=>{
        if(!answer.value.trim())throw new Error('답변을 입력하세요.');
        submit.disabled=true;
