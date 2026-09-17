@@ -7,7 +7,9 @@ import { showMailAnalysis } from './mail-analysis.js';
 const $=id=>document.getElementById(id);
 let storeId='',offset=0,nextOffset=null,detailGeneration=0,activeView='mailbox';
 let mailListGeneration=0,analysisGeneration=0;
-let priorSync=null;
+let lastSyncRevision=null,syncRefresh=null,syncStarting=false,syncRunning=false;
+let currentSync=null,syncStopping=false;
+const syncActive=sync=>['running','retrying','stopping'].includes(sync?.status);
 const mainHistory={prefix:'',mailId:null,runOffset:0,legacyOffset:0,runVersion:0,legacyVersion:0};
 let mailHistory=null,dialogGeneration=0,reportGeneration=0,previousFocus=null,listFocus=null,openedDocument=null;
 const dialog=$('history-dialog');
@@ -27,10 +29,45 @@ function date(value){return value?new Date(value).toLocaleString('ko-KR'):'날�
 async function status(){
  const s=await api('/status');storeId=s.storeId;
  $('connection').textContent=s.worker?.online&&s.worker.state!=='stopped'?'분석 Worker 연결됨':'메일 조회 가능 · 분석 Worker 미연결';
- const sync=s.sync;
- $('sync').disabled=sync?.status==='running';
- $('sync-status').textContent=sync?'동기화 '+(sync.status==='running'?'진행 중':labels[sync.status]??sync.status)+' · 저장 '+sync.saved+'건 · 실패 '+sync.failed+'건 · 남음 '+(sync.remaining??'미확인')+' · '+date(sync.finished_at??sync.started_at):'아직 웹 동기화 기록이 없습니다.';
+ const sync=s.sync;currentSync=sync;
+ syncRunning=syncActive(sync);$('sync').disabled=syncStarting||syncRunning;
+ $('sync').textContent=['paused','partial','failed'].includes(sync?.status)?'이어서 동기화':'메일 동기화';
+ $('sync-stop').hidden=!syncRunning;$('sync-stop').disabled=syncStopping||sync?.status==='stopping';
+ $('sync-stop').textContent=sync?.status==='stopping'?'중지 요청됨':'중지';
+ const states={running:'진행 중',retrying:'재시도 대기',stopping:'현재 묶음 종료 후 중지',paused:'일시 중지',completed:'완료',partial:'일부 미완료',failed:'실패'};
+ $('sync-status').textContent=sync?'동기화 '+(states[sync.status]??sync.status)+' · 이번 실행 저장 '+sync.saved+'건 · 실패 시도 '+sync.failed+'건 · 남음 '+(sync.remaining??'미확인')+' · '+(sync.batch_count??0)+'묶음 · '+date(sync.finished_at??sync.started_at):'아직 웹 동기화 기록이 없습니다.';
+ const progress=$('sync-progress');progress.hidden=!sync;
+ if(Number.isFinite(sync?.detail?.serverCount)&&sync.detail.serverCount>0&&Number.isFinite(sync.detail.serverStored)){
+   progress.max=sync.detail.serverCount;progress.value=Math.min(sync.detail.serverStored,sync.detail.serverCount);
+ }else progress.removeAttribute('value');
+ if(!syncRunning&&!Number.isFinite(sync?.detail?.serverStored))progress.hidden=true;
+ const reasons={interrupted:'서버 재시작으로 중지되었습니다. 이어서 동기화하면 저장된 메일은 건너뜁니다.',retry_exhausted:'자동 재시도 3회를 마쳤습니다. 연결 상태를 확인한 뒤 이어서 동기화하세요.',no_progress:'새로 저장된 메일 없이 남은 메일이 있어 중지했습니다.',invalid_response:'수집 결과를 확인할 수 없어 중지했습니다.',error:'수집 오류가 있어 중지했습니다. 연결·메일 서버·저장 공간을 확인하세요.'};
+ const message=sync?.status==='stopping'?'현재 처리 중인 최대 100개 묶음이 끝나면 중지합니다.':sync?.status==='retrying'?'일시적인 연결 오류로 '+sync.retry_count+'/3회 재시도를 기다립니다. '+date(sync.next_attempt_at):reasons[sync?.detail?.reason]??(sync?.status==='paused'?'저장된 메일은 유지됩니다. 이어서 동기화하면 미수집 메일부터 받습니다.':'100개씩 순서대로 수집합니다. 수집 중에도 메일 조회·분석이 가능합니다.');
+ $('sync-message').textContent=message+(sync?.uncertain?' 응답이 끊긴 묶음의 저장 건수는 이번 실행 집계에서 빠질 수 있습니다.':'')+(sync?.failed>0?' 실패 시도는 누적 횟수이며 남음에는 해당 묶음의 실패 메일이 포함되지 않습니다.':'');
  return s;
+}
+function syncRevision(sync){
+ if(!sync||syncActive(sync)&&!sync.saved)return null;
+ return JSON.stringify([sync.id,syncActive(sync)?'active':sync.status,sync.saved,sync.batch_count??0,sync.finished_at]);
+}
+async function refreshAfterSync(sync){
+ const revision=syncRevision(sync);if(!revision)return false;
+ // The same completion can be observed by both the button and periodic status check.
+ while(syncRefresh)await syncRefresh;
+ if(revision===lastSyncRevision)return false;
+ syncRefresh=(async()=>{
+   if(!syncActive(sync))offset=0;
+   try{
+     if(!await mails())return false;
+     lastSyncRevision=revision;
+     if(!syncActive(sync)){
+       const outcome=sync.status==='completed'?'동기화가 완료되었습니다.':sync.status==='paused'?'동기화를 일시 중지했습니다.':sync.status==='partial'?'동기화가 일부 미완료되었습니다.':'동기화가 실패했습니다.';
+       notice(outcome+' 현재 저장된 메일로 목록을 갱신했습니다.');
+     }
+     return true;
+   }catch(error){throw new Error('동기화 후 목록을 갱신하지 못했습니다. 다음 상태 확인 때 다시 시도합니다. '+error.message);}
+ })();
+ try{return await syncRefresh;}finally{syncRefresh=null;}
 }
 async function mails(){
  const generation=++mailListGeneration;++analysisGeneration;
@@ -250,19 +287,28 @@ $('legacy-refresh').onclick=()=>safe(()=>legacy());
 $('legacy-more').onclick=()=>safe(()=>legacy(mainHistory,true));
 $('login-form').onsubmit=e=>{e.preventDefault();safe(async()=>{await api('/login',{token:$('token').value});$('token').value='';await boot();});};
 $('search-form').onsubmit=e=>{e.preventDefault();offset=0;safe(mails);};
-$('sync').onclick=()=>safe(async()=>{await api('/sync',{});notice('동기화를 시작했습니다.');await status();});
+$('sync').onclick=()=>safe(async()=>{
+ if(syncStarting||syncRunning)return;syncStarting=true;$('sync').disabled=true;
+ try{await api('/sync',{});notice('동기화를 시작했습니다.');const s=await status();await refreshAfterSync(s.sync);}
+ finally{syncStarting=false;$('sync').disabled=syncRunning;}
+});
+$('sync-stop').onclick=()=>safe(async()=>{
+ if(!syncActive(currentSync)||syncStopping)return;syncStopping=true;$('sync-stop').disabled=true;
+ try{await api('/sync/'+currentSync.id+'/stop',{});notice('현재 묶음 처리가 끝나면 동기화를 중지합니다.');const s=await status();await refreshAfterSync(s.sync);}
+ finally{syncStopping=false;}
+});
 $('previous').onclick=()=>{offset=Math.max(0,offset-30);safe(mails);};
 $('next').onclick=()=>{if(nextOffset!=null){offset=nextOffset;safe(mails);}};
 $('refresh').onclick=()=>safe(()=>runs());
 $('more-runs').onclick=()=>safe(()=>runs(mainHistory,true));
 window.addEventListener('hashchange',()=>{if(!$('workspace').hidden)safe(navigate);});
-async function boot(){await status();$('login').hidden=true;$('workspace').hidden=false;await Promise.all([mails(),navigate()]);notice('');}
+async function boot(){const s=await status();lastSyncRevision=syncRevision(s.sync);$('login').hidden=true;$('workspace').hidden=false;await Promise.all([mails(),navigate()]);notice('');}
 safe(boot);
 let polling=false;
 setInterval(()=>{
  if($('workspace').hidden||polling)return;polling=true;
  void safe(async()=>{
-   const s=await status();if(priorSync==='running'&&s.sync?.status!=='running')await mails();else if(activeView==='mailbox')await refreshMailAnalysis();priorSync=s.sync?.status;
+   const s=await status();if(!await refreshAfterSync(s.sync)&&activeView==='mailbox')await refreshMailAnalysis();
    if(dialog.open&&mailHistory&&!openedDocument&&mailHistory.runOffset<=100&&!$('mail-runs').contains(document.activeElement))await runs(mailHistory);
    else if(!dialog.open&&activeView==='history'&&mainHistory.runOffset<=100&&!$('runs').contains(document.activeElement))await runs();
  }).finally(()=>{polling=false;});

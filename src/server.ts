@@ -7,7 +7,7 @@ import { importLegacy, listLegacy, getLegacy, linkLegacy, registerExternal, prep
 import { callMail, fullMail, withMcp, callAttachment } from './mcp.js';
 import { attachmentDownload } from './attachments.js';
 import { startSchema } from './schema.js';
-import { startSync, recoverSync } from './sync.js';
+import { startSync, stopSync, recoverSync, startSyncScheduler } from './sync.js';
 export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRead = callAttachment) {
   if(config.token.length<32) throw new Error('TRIAGE_TOKEN must have at least 32 characters');
   const app=express(); app.disable('x-powered-by');
@@ -75,7 +75,8 @@ export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRe
     const file=attachmentDownload(await attachmentRead(emailId,attachmentId),emailId,attachmentId);
     res.attachment(file.filename).type('application/octet-stream').send(file.data);
   });
-  app.post('/api/sync',async(_req,res)=>res.status(202).json(await startSync(mailCall)));
+  app.post('/api/sync',async(_req,res)=>res.status(202).json(await startSync()));
+  app.post('/api/sync/:id/stop',async(req,res)=>res.json(await stopSync(z.string().uuid().parse(req.params.id))));
   app.get('/api/legacy',async(req,res)=>{
     const q=z.object({storeId:z.string().optional(),mailId:z.coerce.number().int().positive().optional(),offset:z.coerce.number().int().min(0).default(0)}).parse(req.query);
     res.json(await listLegacy(q.storeId,q.mailId,q.offset));
@@ -150,6 +151,7 @@ export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRe
 }
 if(process.env.NODE_ENV!=='test'){
   await migrate();await expireRuns();await recoverSync();
+  startSyncScheduler();
   const timer=setInterval(()=>void expireRuns().catch(()=>{}),60000);timer.unref();
   createApp().listen(config.port,'0.0.0.0',()=>console.log('mail-triage-web ready on '+config.port));
 }

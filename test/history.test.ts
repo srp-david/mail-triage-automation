@@ -68,6 +68,7 @@ test('review retries do not append duplicate content',async()=>{
 test('sync partial errors and no progress cannot become successful completion',()=>{
  assert.equal(syncDecision({status:'success',saved:1,failed:0,remaining:0,errors:[]}),'complete');
  assert.equal(syncDecision({status:'success',saved:100,failed:0,remaining:3,errors:[]}),'continue');
+ assert.equal(syncDecision({status:'partial',saved:100,failed:0,remaining:3,errors:[]}),'continue');
  assert.equal(syncDecision({status:'success',saved:0,failed:0,remaining:3,errors:[]}),'partial');
  assert.equal(syncDecision({status:'partial',saved:2,failed:1,remaining:0,errors:[]}),'partial');
  assert.equal(syncDecision({status:'success',saved:2,failed:0,remaining:null,errors:[]}),'partial');

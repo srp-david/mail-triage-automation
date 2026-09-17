@@ -50,7 +50,7 @@ try{
    const job=await h.claimRun();if(job?.id!==fixture.pending.id)throw new Error('Queued run was lost');
    await h.finishRun(job.id,job.ownerToken,result);
    const {recoverSync}=await import('../dist/sync.js');await recoverSync();
-   if((await pool.query('SELECT status FROM sync_run WHERE id=$1',[fixture.syncId])).rows[0].status!=='failed')throw new Error('Interrupted sync was not recovered');
+   if((await pool.query('SELECT status FROM sync_run WHERE id=$1',[fixture.syncId])).rows[0].status!=='paused')throw new Error('Interrupted sync was not recovered');
    console.log(JSON.stringify({label,singletonReleased:true,staleRejected,queuedCompleted:true,syncRecovered:true}));
  }else throw new Error('Unknown recovery fixture command');
 }finally{await pool.end();}

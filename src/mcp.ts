@@ -28,6 +28,16 @@ export async function callMail(name: string, args: Record<string, unknown>) {
 export async function callAttachment(emailId:number,attachmentId:string):Promise<any> {
   return withMcp(config.mailUrl,c=>c.callTool({name:'get_attachment',arguments:{email_id:emailId,attachment_id:attachmentId}}));
 }
+// Preserve structured sync error codes; permanent auth/storage errors must not be retried.
+export async function callSync(_name: string, args: Record<string, unknown>) {
+  return withMcp(config.mailUrl, async c => {
+    const raw=await c.callTool({name:'sync',arguments:args},undefined,{timeout:180000});
+    const result=unpack({...raw,isError:false});
+    if(result.code)return {status:'failed',saved:0,failed:0,remaining:null,errors:[{code:result.code}]};
+    if(raw.isError)throw new HttpError(502,'MCP sync failed without a structured code');
+    return result;
+  });
+}
 export async function fullMail(id: number) {
   let offset = 0; let body = ''; let first: any;
   for (;;) {

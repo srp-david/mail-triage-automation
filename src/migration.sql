@@ -30,6 +30,10 @@ CREATE TABLE IF NOT EXISTS sync_run (
   started_at timestamptz NOT NULL DEFAULT now(), finished_at timestamptz
 );
 CREATE TABLE IF NOT EXISTS worker_state (name text PRIMARY KEY, seen_at timestamptz NOT NULL, state text NOT NULL);
+ALTER TABLE sync_run ADD COLUMN IF NOT EXISTS batch_count integer NOT NULL DEFAULT 0;
+ALTER TABLE sync_run ADD COLUMN IF NOT EXISTS retry_count integer NOT NULL DEFAULT 0;
+ALTER TABLE sync_run ADD COLUMN IF NOT EXISTS next_attempt_at timestamptz;
+ALTER TABLE sync_run ADD COLUMN IF NOT EXISTS uncertain boolean NOT NULL DEFAULT false;
 
 ALTER TABLE mail_identity ALTER COLUMN mail_id DROP NOT NULL;
 ALTER TABLE mail_identity ADD COLUMN IF NOT EXISTS identity_kind text NOT NULL DEFAULT 'mcp';

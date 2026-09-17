@@ -6,7 +6,7 @@
 <div id="workspace" hidden>
 <nav class="workspace-nav" aria-label="주 메뉴"><a href="#mailbox" data-view="mailbox" aria-current="page">메일함</a><a href="#history" data-view="history">분석 이력</a><a href="#legacy" data-view="legacy">이전 이력</a></nav>
 <div id="view-mailbox">
-<section class="toolbar"><form id="search-form"><input id="query" placeholder="제목·본문 검색" aria-label="검색어"><input id="from" placeholder="발신자 이메일" aria-label="발신자"><input type="date" id="after" aria-label="시작일"><button>검색</button></form><button id="sync">메일 동기화</button><p id="sync-status">아직 동기화 기록이 없습니다.</p></section>
+<section class="toolbar"><form id="search-form"><input id="query" placeholder="제목·본문 검색" aria-label="검색어"><input id="from" placeholder="발신자 이메일" aria-label="발신자"><input type="date" id="after" aria-label="시작일"><button>검색</button></form><button id="sync">메일 동기화</button><button id="sync-stop" hidden>중지</button><p id="sync-status" role="status">아직 동기화 기록이 없습니다.</p><progress id="sync-progress" aria-label="서버 메일 수집 진행률" hidden></progress><p id="sync-message" class="meta"></p></section>
 <div class="columns"><section><div class="section-head"><h2>메일함</h2><span id="total"></span></div><div id="mails"></div><div class="pager"><button id="previous">이전</button><button id="next">다음</button></div></section>
 <section id="detail"><div class="empty"><h2>메일을 선택하세요</h2><p>본문과 첨부를 확인하고 분석을 시작할 수 있습니다.</p></div></section></div>
 </div>
