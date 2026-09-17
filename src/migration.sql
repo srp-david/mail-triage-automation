@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS analysis_run (
   created_at timestamptz NOT NULL DEFAULT now(), started_at timestamptz, finished_at timestamptz
 );
 CREATE UNIQUE INDEX IF NOT EXISTS one_active_mail ON analysis_run(mail_key) WHERE status IN ('queued','running');
+CREATE INDEX IF NOT EXISTS analysis_by_mail ON analysis_run(mail_key,created_at DESC,id DESC);
 CREATE TABLE IF NOT EXISTS report_version (
   run_id uuid PRIMARY KEY REFERENCES analysis_run(id), result jsonb NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()

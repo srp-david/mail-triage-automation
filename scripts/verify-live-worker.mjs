@@ -50,7 +50,10 @@ try{
    assert.equal(Number(run.mail_id),mailId);assert.equal(run.source,'web');assert.equal(sha256(run.result.report),run.reportHash);
    await page.getByRole('button',{name:'이 메일 분석 이력',exact:true}).click();
    await page.locator('#mail-runs .run button').filter({hasText:mail.subject}).first().click();
-   await page.locator('#report pre').first().waitFor();assert.equal(await page.locator('#report pre').first().textContent(),run.result.report);
+   await page.locator('#report .markdown-body').first().waitFor();
+   await page.getByRole('button',{name:'보고서 원문 보기',exact:true}).click();
+   assert.equal(await page.locator('#report .markdown-source').first().textContent(),run.result.report);
+   await page.getByRole('button',{name:'보고서 문서 보기',exact:true}).click();
    if(o['direct-cli']){
      const {stdout}=await promisify(execFile)(process.execPath,[o['direct-cli'],'get',run.id]);
      const direct=JSON.parse(stdout);assert.equal(direct.id,run.id);assert.deepEqual(direct.result,run.result);assert.equal(direct.reportHash,run.reportHash);

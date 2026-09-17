@@ -2,7 +2,7 @@ import express from 'express';
 import { z } from 'zod';
 import { config, HttpError } from './config.js';
 import { pool, migrate } from './db.js';
-import { addReview, expireRuns, failRun, finishRun, getRun, heartbeat, listRuns, sameSecret, startRun, startExternalRun, recoverResult } from './history.js';
+import { addReview, expireRuns, failRun, finishRun, getRun, heartbeat, listRuns, mailAnalysis, sameSecret, startRun, startExternalRun, recoverResult } from './history.js';
 import { importLegacy, listLegacy, getLegacy, linkLegacy, registerExternal, prepareKnowledge, getKnowledge, claimKnowledge, completeKnowledge, hashSchema } from './archive.js';
 import { callMail, fullMail, withMcp, callAttachment } from './mcp.js';
 import { attachmentDownload } from './attachments.js';
@@ -52,6 +52,11 @@ export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRe
       sent_after:z.string().datetime({offset:true}).optional(),sent_before:z.string().datetime({offset:true}).optional(),
       limit:z.coerce.number().int().min(1).max(100).default(30),offset:z.coerce.number().int().min(0).default(0)}).parse(req.query);
     res.json(await mailCall('search_emails',args));
+  });
+  app.get('/api/mail-analysis',async(req,res)=>{
+    const ids=z.string().max(2000).regex(/^\d+(,\d+)*$/).transform(value=>value.split(',').map(Number))
+      .pipe(z.array(z.number().int().positive().max(Number.MAX_SAFE_INTEGER)).min(1).max(100)).parse(req.query.mailIds);
+    res.json(await mailAnalysis(config.store,[...new Set(ids)]));
   });
   app.get('/api/mails/:id',async(req,res)=>res.json(await mailRead(z.coerce.number().int().positive().parse(req.params.id))));
   app.get('/api/mails/:id/body',async(req,res)=>{

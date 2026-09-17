@@ -45,7 +45,7 @@ try{
  assert.match(await page.locator('#history-subtitle').textContent(),/mail one/);
  await page.locator('#mail-more-runs').click();await page.waitForFunction(()=>document.querySelectorAll('#mail-runs .run').length===101);
  assert.equal(await visible('#mail-more-runs'),false);
- await page.locator('#mail-runs button').first().click();await page.locator('#report pre').waitFor();
+ await page.locator('#mail-runs button').first().click();await page.locator('#report .markdown-body').waitFor();
  assert.equal(await visible('#mail-history-lists'),false);assert.equal(await page.locator('#report script').count(),0);
  assert.equal(await page.evaluate(()=>scrollY),scroll);
  await page.locator('#history-back').click();assert.equal(await page.locator('#mail-runs .run').count(),101);
@@ -53,7 +53,7 @@ try{
  assert.equal(await trigger.evaluate(e=>e===document.activeElement),true);assert.equal(await page.evaluate(()=>scrollY),scroll);
  await page.getByRole('link',{name:'분석 이력',exact:true}).click();await page.locator('#runs button').waitFor();
  assert.equal(await page.locator('#runs .run').count(),1);assert.equal(await visible('#view-mailbox'),false);
- await page.locator('#runs button').click();await page.locator('#report pre').waitFor();assert.equal(await visible('#history-back'),false);
+ await page.locator('#runs button').click();await page.locator('#report .markdown-body').waitFor();assert.equal(await visible('#history-back'),false);
  await page.keyboard.press('Escape');await page.getByRole('link',{name:'메일함',exact:true}).click();
  assert.equal(await page.locator('#query').inputValue(),'kept search');assert.match(await page.locator('#detail h2').textContent(),/mail one/);
  failList=true;await trigger.click();await page.getByText('Synthetic history failure',{exact:true}).last().waitFor();
@@ -64,13 +64,13 @@ try{
  await page.getByText('저장된 분석이 없습니다.',{exact:true}).waitFor();release();slowReport=false;
  await page.waitForTimeout(100);assert.equal(await visible('#report'),false);assert.match(await page.locator('#history-subtitle').textContent(),/mail two/);
  await page.keyboard.press('Escape');await page.getByRole('link',{name:'이전 이력',exact:true}).click();await page.locator('#legacy-list button').waitFor();
- await page.locator('#legacy-list button').click();await page.locator('#legacy-document pre').waitFor();
+ await page.locator('#legacy-list button').click();await page.locator('#legacy-document .markdown-body').waitFor();
  await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  assert.equal(await page.locator('#history-dialog').evaluate(e=>e.scrollWidth>e.clientWidth),false);
  await mkdir('.runtime',{recursive:true});await page.screenshot({path:'.runtime/history-mobile.png'});
  await page.keyboard.press('Escape');await page.setViewportSize({width:1280,height:900});
  await page.getByRole('link',{name:'메일함',exact:true}).click();await page.locator('#mails .mail').first().click();await trigger.click();
- await page.locator('#mail-runs button').first().click();await page.locator('#report pre').waitFor();await page.screenshot({path:'.runtime/history-desktop.png'});
+ await page.locator('#mail-runs button').first().click();await page.locator('#report .markdown-body').waitFor();await page.screenshot({path:'.runtime/history-desktop.png'});
  unauthorized=true;await page.locator('#history-refresh').click();await page.locator('#login:not([hidden])').waitFor();assert.equal(await visible('#history-dialog'),false);
  assert.deepEqual(errors,[]);assert.deepEqual(mutations,[]);
  console.log(JSON.stringify({menuIsolation:true,mailStatePreserved:true,scopedModal:true,pagination:true,reportBack:true,escapeFocusAndScroll:true,retry:true,staleResponseIgnored:true,emptyHistory:true,mobile:true,sessionExpiry:true,pageErrors:errors,apiMutations:mutations}));

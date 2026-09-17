@@ -105,6 +105,21 @@ export async function listRuns(store?: string, mailId?: number, offset=0) {
     WHERE ($1::text IS NULL OR m.store_id=$1) AND ($2::bigint IS NULL OR m.mail_id=$2)
     ORDER BY r.created_at DESC,r.id DESC LIMIT 100 OFFSET $3`, [store??null,mailId??null,offset])).rows;
 }
+// One metadata query for the visible page; never retrieve report bodies here.
+export async function mailAnalysis(store: string, mailIds: number[]) {
+  if (!mailIds.length) return [];
+  return (await pool.query(`SELECT m.mail_id::text AS "mailId", a."runCount", a."completedCount", a."latestStatus", l."legacyCount"
+    FROM mail_identity m
+    CROSS JOIN LATERAL (
+      SELECT count(*)::int AS "runCount", count(*) FILTER (WHERE r.status='completed')::int AS "completedCount",
+        (array_agg(r.status ORDER BY r.created_at DESC,r.id DESC))[1] AS "latestStatus"
+      FROM analysis_run r WHERE r.mail_key=m.id
+    ) a
+    CROSS JOIN LATERAL (
+      SELECT count(*)::int AS "legacyCount" FROM legacy_link WHERE mail_key=m.id
+    ) l
+    WHERE m.store_id=$1 AND m.identity_kind='mcp' AND m.mail_id=ANY($2::bigint[])`, [store,mailIds])).rows;
+}
 export async function addReview(id: string, requestId: string, author: string, body: string) {
   await getRun(id);
   const previous = (await pool.query('SELECT * FROM review WHERE request_id=$1',[requestId])).rows[0];

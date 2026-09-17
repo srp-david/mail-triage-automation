@@ -30,8 +30,8 @@ try{
  await page.waitForFunction(()=>document.querySelectorAll('#legacy-list .run').length===2);
  assert.equal(await page.locator('#legacy-list .run').count(),2);
  await page.getByRole('button',{name:documents[0].source_path,exact:true}).click();
- await page.locator('#legacy-document pre').waitFor();assert.equal(await page.locator('#legacy-document img').count(),0);
- assert.ok((await page.locator('#legacy-document pre').textContent()).includes('resolved by customer confirmation'));
+ await page.locator('#legacy-document .markdown-body').waitFor();assert.equal(await page.locator('#legacy-document img').count(),0);
+ assert.ok((await page.locator('#legacy-document .markdown-body').textContent()).includes('resolved by customer confirmation'));
  await page.keyboard.press('Escape');await page.getByRole('link',{name:'메일함',exact:true}).click();
  await page.locator('#mails .mail').click();await page.getByRole('button',{name:'이 메일 분석 이력',exact:true}).click();
  await page.waitForFunction(()=>document.querySelectorAll('#mail-legacy-list .run').length===1);

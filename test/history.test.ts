@@ -166,3 +166,46 @@ test('Office viewer permits local WASM without relaxing mail-page CSP',async()=>
  }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
 });
 
+test('mail analysis summaries batch current-store identity, saved history and latest state without bodies',async()=>{
+ const {config}=await import('../src/config.js');
+ const storeId=config.store,mailId=88001;
+ const first=await h.startRun({...input(mailId),storeId});await h.finishRun(first.id,first.ownerToken!,result);
+ const retry=await h.startRun({...input(mailId),storeId});await h.failRun(retry.id,retry.ownerToken!,'Synthetic failure');
+ await pool.query("UPDATE analysis_run SET created_at=now()+interval '1 minute' WHERE id=$1",[retry.id]);
+ const other=await h.startRun({...input(mailId),storeId:'unrelated-store'});
+ await h.finishRun(other.id,other.ownerToken!,result);
+ const pending=await h.startRun({...input(88002,'web'),storeId});
+ const needs=await h.startRun({...input(88003),storeId});await h.finishRun(needs.id,needs.ownerToken!,{...result,outcome:'needs_input',question:'Synthetic question'});
+ const {importLegacy,linkLegacy}=await import('../src/archive.js');
+ const body='Synthetic previous analysis';
+ const doc=await importLegacy({namespace:'badge-fixture',path:'report.md',hash:h.digest(body),kind:'report',body});
+ await linkLegacy(doc.id,h.digest(body),{storeId,mailId:88004,messageId:'<legacy@example.test>',subject:'Same subject'},'Synthetic verifier');
+ await importLegacy({namespace:'badge-fixture',path:'unlinked.md',hash:h.digest(body),kind:'report',body});
+ // More than a history page of runs must not hide the older completed result.
+ const key=(await h.getRun(first.id)).mail_key;
+ for(let i=0;i<101;i++)await pool.query(`INSERT INTO analysis_run(id,mail_key,source,request_id,request_hash,status,created_at)
+   VALUES($1,$2,'direct',$3,'synthetic','failed',now()-interval '1 day')`,[randomUUID(),key,randomUUID()]);
+ const rows=await h.mailAnalysis(storeId,[mailId,88002,88003,88004,88005]);
+ const byId=new Map(rows.map(r=>[r.mailId,r]));
+ assert.deepEqual(byId.get(String(mailId)),{mailId:String(mailId),runCount:103,completedCount:1,latestStatus:'failed',legacyCount:0});
+ assert.equal(byId.get('88002')?.latestStatus,'queued');assert.equal(byId.get('88002')?.completedCount,0);
+ assert.equal(byId.get('88003')?.latestStatus,'needs_input');assert.equal(byId.get('88003')?.completedCount,0);
+ assert.deepEqual(byId.get('88004'),{mailId:'88004',runCount:0,completedCount:0,latestStatus:null,legacyCount:1});
+ assert.equal(byId.has('88005'),false);assert.deepEqual(await h.mailAnalysis(storeId,[]),[]);
+ const {createApp}=await import('../src/server.js');let mailCalls=0;
+ const server=createApp(async()=>{mailCalls++;throw new Error('MCP should not be called');}).listen(0,'127.0.0.1');
+ await new Promise<void>(resolve=>server.once('listening',resolve));
+ const base='http://127.0.0.1:'+(server.address() as any).port,headers={authorization:'Bearer '+process.env.TRIAGE_TOKEN};
+ try{
+   const path='/api/mail-analysis?mailIds='+mailId+','+mailId;
+   assert.equal((await fetch(base+path)).status,401);
+   const response=await fetch(base+path,{headers});assert.equal(response.status,200);
+   assert.deepEqual(await response.json(),[byId.get(String(mailId))]);
+   for(const invalid of ['', '0', '-1', 'abc', '1.5',Array(101).fill('1').join(',')])
+     assert.equal((await fetch(base+'/api/mail-analysis?mailIds='+invalid,{headers})).status,400);
+   assert.equal(mailCalls,0);
+ }finally{
+   await new Promise<void>(resolve=>server.close(()=>resolve()));
+   await pool.query("UPDATE analysis_run SET status='failed' WHERE id=$1",[pending.id]);
+ }
+});

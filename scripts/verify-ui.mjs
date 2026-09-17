@@ -13,6 +13,18 @@ try{
  await page.locator('#workspace:not([hidden])').waitFor();
  await page.locator('#mails .mail').first().waitFor({timeout:30000});
  const count=await page.locator('#mails .mail').count();
+ const summaries=await page.evaluate(async()=>{
+   const ids=[...document.querySelectorAll('.mail-analysis')].map(e=>e.dataset.mailId).join(',');
+   const response=await fetch('/api/mail-analysis?'+new URLSearchParams({mailIds:ids}));
+   if(!response.ok)throw new Error('Analysis summary request failed');return response.json();
+ });
+ await page.waitForFunction(rows=>rows.every(row=>{
+   const item=document.querySelector('.mail-analysis[data-mail-id="'+row.mailId+'"]');
+   return item&&Boolean(item.querySelector('.completed'))===(row.completedCount>0)
+     && Boolean(item.querySelector('.legacy'))===(row.legacyCount>0);
+ }),summaries);
+ const completedMailCount=await page.locator('#mails .analysis-badge.completed').count();
+ assert.equal(completedMailCount,summaries.filter(row=>row.completedCount>0).length);
  const status=await page.evaluate(()=>fetch('/api/status').then(r=>r.json()));
  if(status.sync){const display=await page.locator('#sync-status').textContent();assert.ok(display.includes('저장 '+status.sync.saved+'건'));}
  await page.getByRole('link',{name:'이전 이력',exact:true}).click();
@@ -30,7 +42,7 @@ try{
  await page.screenshot({path:'.runtime/ui-mobile.png',fullPage:true});
  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth);
  if(errors.length||overflow)throw new Error(JSON.stringify({errors,overflow}));
- const result={login:true,mailListCount:count,detail:true,pagination:true,legacyCount:legacyRows.length,syncDisplay:true,mobileOverflow:overflow,pageErrors:errors};
+ const result={login:true,mailListCount:count,analysisBadgesMatch:true,completedMailCount,detail:true,pagination:true,legacyCount:legacyRows.length,syncDisplay:true,mobileOverflow:overflow,pageErrors:errors};
  await writeFile('.runtime/live-ui-validation.json',JSON.stringify(result,null,2));
  console.log(JSON.stringify(result));
 }finally{await browser.close();}

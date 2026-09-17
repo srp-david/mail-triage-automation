@@ -2,6 +2,8 @@ import { attachmentCard, isImageAttachment, loadImageCards } from './attachments
 import { renderMailBody } from './mail-body.js';
 import { attachmentList } from './attachment-list.js';
 import { openOfficePreview, closeOfficePreview } from './office-preview.js';
+import { markdownView } from './markdown/viewer.js';
+import { showMailAnalysis } from './mail-analysis.js';
 const $=id=>document.getElementById(id);
 let storeId='',offset=0,nextOffset=null,detailGeneration=0,activeView='mailbox';
 let mailListGeneration=0,analysisGeneration=0;
@@ -41,12 +43,26 @@ async function mails(){
  for(const mail of result.emails){
    const b=action('',()=>detail(mail.id));b.className='mail';
    b.append(element('strong',mail.subject||'(제목 없음)'),element('span',(mail.from??[]).map(x=>x.name??x.address).join(', ')+' · '+date(mail.sentAt)));
+   const analysis=element('span',null,'mail-analysis');analysis.dataset.mailId=String(mail.id);analysis.hidden=true;b.append(analysis);
    $('mails').append(b);
  }
  if(!result.emails.length)$('mails').append(element('p','검색 결과가 없습니다.'));
  $('previous').disabled=offset===0;$('next').disabled=nextOffset==null;
- 
+ await refreshMailAnalysis();
  return generation===mailListGeneration;
+}
+async function refreshMailAnalysis(){
+ const generation=++analysisGeneration,listGeneration=mailListGeneration;
+ const items=[...$('mails').querySelectorAll('.mail-analysis')];if(!items.length)return;
+ try{
+   const rows=await api('/mail-analysis?'+new URLSearchParams({mailIds:items.map(x=>x.dataset.mailId).join(',')}));
+   if(generation!==analysisGeneration||listGeneration!==mailListGeneration)return;
+   const summaries=new Map(rows.map(row=>[String(row.mailId),row]));
+   for(const item of items)showMailAnalysis(item,summaries.get(item.dataset.mailId));
+ }catch{
+   if(generation!==analysisGeneration||listGeneration!==mailListGeneration)return;
+   for(const item of items)showMailAnalysis(item,null,true);
+ }
 }
 async function detail(id){
  closeHistory();
@@ -58,7 +74,7 @@ async function detail(id){
  d.append(element('h2',m.subject),element('p',(m.from??[]).map(x=>x.address).join(', ')+' · '+date(m.sentAt),'meta'));
  const start=action('이 메일 분석',async()=>{
    start.disabled=true;
-   try{await api('/runs',{storeId,mailId:id,messageId:m.messageId,source:'web',requestId:crypto.randomUUID()});await openMailHistory(id,m.subject);notice('분석 대기열에 등록했습니다.');}finally{start.disabled=false;}
+   try{await api('/runs',{storeId,mailId:id,messageId:m.messageId,source:'web',requestId:crypto.randomUUID()});await openMailHistory(id,m.subject);await refreshMailAnalysis();notice('분석 대기열에 등록했습니다.');}finally{start.disabled=false;}
  });
  const actions=element('div',null,'mail-actions');
  const history=action('이 메일 분석 이력',()=>openMailHistory(id,m.subject));
@@ -172,9 +188,9 @@ async function report(id){
  const box=request.box;box.replaceChildren(element('h2',r.subject+' · '+(labels[r.status]??r.status)));
  if(r.error)box.append(element('p',r.error));
  if(r.result){
-   box.append(element('pre',r.result.report));
-   if(r.result.knowledge)box.append(element('h3','업무 지식 반영 제안'),element('pre',r.result.knowledge));
-   for(const review of r.reviews)box.append(element('h3',review.author+' 리뷰'),element('pre',review.body));
+   box.append(markdownView(r.result.report,'보고서'));
+   if(r.result.knowledge)box.append(element('h3','업무 지식 반영 제안'),markdownView(r.result.knowledge,'업무 지식 제안'));
+   for(const review of r.reviews)box.append(element('h3',review.author+' 리뷰'),markdownView(review.body,review.author+' 리뷰'));
    if(r.status==='needs_input'&&r.identity_kind==='outlook'){
      box.append(element('p',r.result.question),element('p','Outlook 예외 메일은 직접 실행에서 답변을 반영해 다시 분석하세요. 원본 파일과 공용 메일 식별자를 함께 사용합니다.'));
    }else if(r.status==='needs_input'){
@@ -183,7 +199,7 @@ async function report(id){
        if(!answer.value.trim())throw new Error('답변을 입력하세요.');
        submit.disabled=true;
        try{await api('/runs',{storeId:r.store_id,mailId:Number(r.mail_id),messageId:r.message_id,source:'web',requestId:crypto.randomUUID(),parentId:id,answer:answer.value});
-         if(documentActive(request)){await openMailHistory(Number(r.mail_id),r.subject);notice('답변을 반영한 새 분석을 등록했습니다.');}
+         if(documentActive(request)){await openMailHistory(Number(r.mail_id),r.subject);await refreshMailAnalysis();notice('답변을 반영한 새 분석을 등록했습니다.');}
        }finally{submit.disabled=false;}
      });box.append(submit);
    }
@@ -209,7 +225,7 @@ async function legacy(context=mainHistory,append=false){
 }
 async function legacyDocument(id){
  const request=showDocument('legacy',id),document=await api('/legacy/'+id);if(!documentActive(request))return;
- const box=element('div');box.id='legacy-document';box.append(element('h2',document.source_path),element('p','원본 SHA-256: '+document.source_hash,'meta'),element('pre',document.body));
+ const box=element('div');box.id='legacy-document';box.append(element('h2',document.source_path),element('p','원본 SHA-256: '+document.source_hash,'meta'),markdownView(document.body,'이전 문서'));
  request.box.replaceChildren(box);request.box.focus({preventScroll:true});
 }
 async function refreshHistory(){
@@ -223,7 +239,7 @@ async function navigate(){
    $('view-'+name).hidden=name!==activeView;
    const link=document.querySelector('[data-view="'+name+'"]');if(name===activeView)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
  }
- if(activeView==='history')await runs();else if(activeView==='legacy')await legacy();
+ if(activeView==='history')await runs();else if(activeView==='legacy')await legacy();else await refreshMailAnalysis();
 }
 $('history-close').onclick=closeHistory;
 dialog.addEventListener('cancel',event=>{event.preventDefault();closeHistory();});
@@ -246,7 +262,7 @@ let polling=false;
 setInterval(()=>{
  if($('workspace').hidden||polling)return;polling=true;
  void safe(async()=>{
-   const s=await status();if(priorSync==='running'&&s.sync?.status!=='running')await mails();priorSync=s.sync?.status;
+   const s=await status();if(priorSync==='running'&&s.sync?.status!=='running')await mails();else if(activeView==='mailbox')await refreshMailAnalysis();priorSync=s.sync?.status;
    if(dialog.open&&mailHistory&&!openedDocument&&mailHistory.runOffset<=100&&!$('mail-runs').contains(document.activeElement))await runs(mailHistory);
    else if(!dialog.open&&activeView==='history'&&mainHistory.runOffset<=100&&!$('runs').contains(document.activeElement))await runs();
  }).finally(()=>{polling=false;});
