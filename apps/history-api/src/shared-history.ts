@@ -2,7 +2,7 @@ import {randomUUID} from 'node:crypto';
 import type {PoolClient} from 'pg';
 import {z} from 'zod';
 import {transaction} from './db.js';
-import {lock,sourceAccess,digest} from './directory.js';
+import {lockShared,lock,sourceAccess,digest} from './directory.js';
 import {ApiError,uuid,type Principal} from '../../../packages/contracts/src/v1.js';
 
 export async function historyAccess(c:PoolClient,actor:Principal,id:string,write=false){
@@ -19,10 +19,10 @@ const same=(a:any,b:any)=>a.id===b.id&&a.messageId===b.messageId&&a.fetchedAt===
 // Never call the unauthenticated v0 repositories from the v1 boundary.
 export class SharedHistory {
   async get(actor:Principal,id:string){return transaction(async c=>{
-    await lock(c);const r=await historyAccess(c,actor,id);
+    await lockShared(c);const r=await historyAccess(c,actor,id);
     const p=(await c.query('SELECT result FROM report_version WHERE run_id=$1',[id])).rows[0];
     const v=(await c.query('SELECT * FROM v1_run WHERE run_id=$1',[id])).rows[0];
-    const reviews=(await c.query('SELECT id,author,body,created_at FROM review WHERE run_id=$1 ORDER BY created_at,id',[id])).rows;
+    const reviews=(await c.query(`SELECT r.id,r.author,coalesce(u.email,r.author) AS "authorDisplay",r.body,r.created_at FROM review r LEFT JOIN app_user u ON u.id::text=r.author WHERE r.run_id=$1 ORDER BY r.created_at,r.id`,[id])).rows;
     const related=(await c.query('SELECT id,store_id,mail_id,message_id,metadata,linked_at FROM related_mail WHERE mail_key=$1 AND store_id=$2 ORDER BY linked_at,id',[r.mail_key,r.store_id])).rows;
     return {id:r.id,sourceId:r.source_id,storeId:r.store_id,mailId:r.mail_id===null?null:Number(r.mail_id),messageId:r.message_id,subject:r.subject,identityKind:r.identity_kind,
       status:r.status,agent:v?.agent??'unknown',runnerId:v?.target_runner_id??null,requestedBy:v?.requested_by??null,
@@ -31,7 +31,7 @@ export class SharedHistory {
       cancelRequested:!!v?.cancel_requested_at,verifiedBy:v?.verified_by??null,verifiedAt:v?.verified_at??null,parentId:r.parent_id,answer:r.answer};
   });}
   async list(actor:Principal,sourceId:string,offset=0,mailId?:number,query=''){return transaction(async c=>{
-    await lock(c);const s=await sourceAccess(c,actor,sourceId);
+    await lockShared(c);const s=await sourceAccess(c,actor,sourceId);
     return (await c.query(`SELECT r.id,r.status,r.created_at AS "createdAt",r.finished_at AS "finishedAt",r.error,m.mail_id AS "mailId",m.subject,m.handled_at AS "handledAt",v.agent
       FROM analysis_run r JOIN mail_identity m ON m.id=r.mail_key LEFT JOIN v1_run v ON v.run_id=r.id
       WHERE m.store_id=$1 AND ($3::bigint IS NULL OR m.mail_id=$3) AND ($4='' OR strpos(lower(m.subject),lower($4))>0)
@@ -52,11 +52,11 @@ export class SharedHistory {
     return (await c.query('UPDATE mail_identity SET handled_at=CASE WHEN $2 THEN coalesce(handled_at,now()) ELSE NULL END WHERE id=$1 RETURNING handled_at AS "handledAt"',[r.mail_key,completed])).rows[0];
   });}
   async summaries(actor:Principal,sourceId:string,ids:number[]){return transaction(async c=>{
-    await lock(c);const s=await sourceAccess(c,actor,sourceId);
+    await lockShared(c);const s=await sourceAccess(c,actor,sourceId);
     return (await c.query(`SELECT m.mail_id::text AS "mailId",m.handled_at AS "handledAt",a.*,l."legacyCount" FROM mail_identity m
       CROSS JOIN LATERAL (SELECT count(*)::int AS "runCount",count(*) FILTER(WHERE r.status='completed')::int AS "completedCount",(array_agg(r.status ORDER BY r.created_at DESC,r.id DESC))[1] AS "latestStatus" FROM analysis_run r WHERE r.mail_key=m.id) a
       CROSS JOIN LATERAL (SELECT count(*)::int AS "legacyCount" FROM legacy_link ll JOIN legacy_collection_document d ON d.document_id=ll.document_id JOIN legacy_collection lc ON lc.id=d.collection_id
-        JOIN membership own ON own.user_id=lc.owner_user_id AND own.team_id=$4
+        JOIN membership own ON own.user_id=lc.owner_user_id AND own.team_id=$4 AND own.active
         LEFT JOIN legacy_collection_access la ON la.collection_id=lc.id AND la.user_id=$3
         WHERE ll.mail_key=m.id AND (lc.owner_user_id=$3 OR la.user_id IS NOT NULL)) l
       WHERE m.store_id=$1 AND m.mail_id=ANY($2::bigint[])`,[s.store_id,ids,actor.userId,s.team_id])).rows;
@@ -75,7 +75,7 @@ export class SharedHistory {
     await lock(c);const r=await historyAccess(c,actor,id,true);await c.query('DELETE FROM related_mail WHERE id=$1 AND mail_key=$2',[linkId,r.mail_key]);return {ok:true};
   });}
   async threads(actor:Principal,sourceId:string){return transaction(async c=>{
-    await lock(c);const s=await sourceAccess(c,actor,sourceId);return (await c.query('SELECT * FROM manual_thread_link WHERE store_id=$1 ORDER BY created_at DESC,id',[s.store_id])).rows.map(link);
+    await lockShared(c);const s=await sourceAccess(c,actor,sourceId);return (await c.query('SELECT * FROM manual_thread_link WHERE store_id=$1 ORDER BY created_at DESC,id',[s.store_id])).rows.map(link);
   });}
   async addThread(actor:Principal,sourceId:string,input:unknown){
     const b=z.object({source:mailProof,target:mailProof,verifiedAt:freshProof}).strict().parse(input);

@@ -2,14 +2,14 @@ import {randomUUID} from 'node:crypto';
 import type {PoolClient} from 'pg';
 import {z} from 'zod';
 import {transaction} from './db.js';
-import {lock,member,sourceAccess,digest} from './directory.js';
+import {lockShared,lock,member,sourceAccess,digest} from './directory.js';
 import {historyAccess,freshProof} from './shared-history.js';
 import {ApiError,uuid,type Principal} from '../../../packages/contracts/src/v1.js';
 const hash=z.string().regex(/^[a-f0-9]{64}$/);
 const relativePath=z.string().min(1).max(1000).refine(x=>!x.startsWith('/')&&!x.includes('\\')&&!x.includes(':')&&!x.split('/').some(p=>p==='..'||p==='.'||!p));
 export async function collectionAccess(c:PoolClient,actor:Principal,id:string,write=false){
   const m=await member(c,actor);
-  const r=(await c.query(`SELECT lc.*,a.can_write FROM legacy_collection lc JOIN membership own ON own.user_id=lc.owner_user_id AND own.team_id=$3
+  const r=(await c.query(`SELECT lc.*,a.can_write FROM legacy_collection lc JOIN membership own ON own.user_id=lc.owner_user_id AND own.team_id=$3 AND own.active
     LEFT JOIN legacy_collection_access a ON a.collection_id=lc.id AND a.user_id=$2 WHERE lc.id=$1 AND (lc.owner_user_id=$2 OR a.user_id IS NOT NULL)`,[id,actor.userId,m.team_id])).rows[0];
   if(!r||write&&(m.role==='viewer'||r.owner_user_id!==actor.userId&&!r.can_write))throw new ApiError(404,'COLLECTION_NOT_FOUND');return r;
 }
@@ -18,8 +18,8 @@ async function documentAccess(c:PoolClient,actor:Principal,id:string,write=false
   if(!r)throw new ApiError(404,'DOCUMENT_NOT_FOUND');await collectionAccess(c,actor,r.collection_id,write);return r;
 }
 export class SharedArchive {
-  async collections(actor:Principal){return transaction(async c=>{await lock(c);const m=await member(c,actor);
-    return (await c.query(`SELECT lc.id,lc.name,lc.owner_user_id FROM legacy_collection lc JOIN membership own ON own.user_id=lc.owner_user_id AND own.team_id=$2
+  async collections(actor:Principal){return transaction(async c=>{await lockShared(c);const m=await member(c,actor);
+    return (await c.query(`SELECT lc.id,lc.name,lc.owner_user_id FROM legacy_collection lc JOIN membership own ON own.user_id=lc.owner_user_id AND own.team_id=$2 AND own.active
       LEFT JOIN legacy_collection_access a ON a.collection_id=lc.id AND a.user_id=$1 WHERE lc.owner_user_id=$1 OR a.user_id IS NOT NULL ORDER BY lc.name,lc.id`,[actor.userId,m.team_id])).rows;
   });}
   async create(actor:Principal,input:unknown){const b=z.object({name:z.string().trim().min(1).max(200),requestId:uuid}).strict().parse(input);
@@ -48,11 +48,11 @@ export class SharedArchive {
       await c.query('INSERT INTO legacy_collection_document VALUES($1,$2)',[collectionId,id]);return {id,imported:true};
     });
   }
-  async list(actor:Principal,collectionId:string,offset=0,query=''){return transaction(async c=>{await lock(c);await collectionAccess(c,actor,collectionId);
+  async list(actor:Principal,collectionId:string,offset=0,query=''){return transaction(async c=>{await lockShared(c);await collectionAccess(c,actor,collectionId);
     return (await c.query(`SELECT d.id,d.namespace,d.source_path,d.source_hash,d.kind,d.imported_at FROM legacy_document d JOIN legacy_collection_document cd ON cd.document_id=d.id
       WHERE cd.collection_id=$1 AND ($3='' OR strpos(lower(d.source_path),lower($3))>0 OR strpos(lower(d.body),lower($3))>0) ORDER BY d.imported_at DESC,d.id LIMIT 100 OFFSET $2`,[collectionId,offset,query])).rows;
   });}
-  async get(actor:Principal,id:string){return transaction(async c=>{await lock(c);return documentAccess(c,actor,id);});}
+  async get(actor:Principal,id:string){return transaction(async c=>{await lockShared(c);return documentAccess(c,actor,id);});}
   async link(actor:Principal,id:string,input:unknown){
     const b=z.object({sourceId:uuid,hash,mailId:z.number().int().positive().safe(),messageId:z.string().min(1).max(2000),subject:z.string().max(2000),verifiedAt:freshProof}).strict().parse(input);
     return transaction(async c=>{await lock(c);const d=await documentAccess(c,actor,id,true),s=await sourceAccess(c,actor,b.sourceId,true);
@@ -65,9 +65,9 @@ export class SharedArchive {
       await c.query('INSERT INTO legacy_link(document_id,mail_key,proof) VALUES($1,$2,$3)',[id,mail.id,JSON.stringify({...b,verifiedBy:actor.userId})]);return {id,linked:true};
     });
   }
-  async mailDocuments(actor:Principal,sourceId:string,mailId:number){return transaction(async c=>{await lock(c);const s=await sourceAccess(c,actor,sourceId),m=await member(c,actor);
+  async mailDocuments(actor:Principal,sourceId:string,mailId:number){return transaction(async c=>{await lockShared(c);const s=await sourceAccess(c,actor,sourceId),m=await member(c,actor);
     return (await c.query(`SELECT d.id,d.source_path,d.source_hash,d.kind,d.imported_at FROM legacy_document d JOIN legacy_link l ON l.document_id=d.id JOIN mail_identity mi ON mi.id=l.mail_key
-      JOIN legacy_collection_document cd ON cd.document_id=d.id JOIN legacy_collection lc ON lc.id=cd.collection_id JOIN membership own ON own.user_id=lc.owner_user_id AND own.team_id=$4
+      JOIN legacy_collection_document cd ON cd.document_id=d.id JOIN legacy_collection lc ON lc.id=cd.collection_id JOIN membership own ON own.user_id=lc.owner_user_id AND own.team_id=$4 AND own.active
       LEFT JOIN legacy_collection_access a ON a.collection_id=lc.id AND a.user_id=$3
       WHERE mi.store_id=$1 AND mi.mail_id=$2 AND (lc.owner_user_id=$3 OR a.user_id IS NOT NULL) ORDER BY d.imported_at,d.id`,[s.store_id,mailId,actor.userId,m.team_id])).rows;
   });}
@@ -83,5 +83,5 @@ export class SharedArchive {
       const {owner_hash,...safe}=row;return safe;
     });
   }
-  async knowledge(actor:Principal,id:string){return transaction(async c=>{await lock(c);const r=(await c.query('SELECT * FROM knowledge_proposal WHERE id=$1',[id])).rows[0];if(!r)throw new ApiError(404,'KNOWLEDGE_NOT_FOUND');await historyAccess(c,actor,r.run_id);const {owner_hash,...safe}=r;return safe;});}
+  async knowledge(actor:Principal,id:string){return transaction(async c=>{await lockShared(c);const r=(await c.query('SELECT * FROM knowledge_proposal WHERE id=$1',[id])).rows[0];if(!r)throw new ApiError(404,'KNOWLEDGE_NOT_FOUND');await historyAccess(c,actor,r.run_id);const {owner_hash,...safe}=r;return safe;});}
 }

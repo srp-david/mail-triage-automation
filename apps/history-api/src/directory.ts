@@ -7,8 +7,10 @@ import {ApiError,uuid,type Principal} from '../../../packages/contracts/src/v1.j
 export const digest=(s:string)=>createHash('sha256').update(s).digest('hex');
 export const secretMatches=(a:string,b:string)=>timingSafeEqual(Buffer.from(digest(a)),Buffer.from(digest(b)));
 export async function lock(c:PoolClient){await c.query("SELECT pg_advisory_xact_lock(hashtextextended(current_schema()||':v1-write',0))");}
+export async function lockShared(c:PoolClient){await c.query("SELECT pg_advisory_xact_lock_shared(hashtextextended(current_schema()||':v1-write',0))");}
 export async function member(c:PoolClient,actor:Principal){
-  const row=(await c.query('SELECT m.* FROM membership m JOIN app_user u ON u.id=m.user_id WHERE u.id=$1 AND u.active AND m.active',[actor.userId])).rows[0];
+  const rows=(await c.query('SELECT m.* FROM membership m JOIN app_user u ON u.id=m.user_id WHERE u.id=$1 AND u.active AND m.active',[actor.userId])).rows;
+  if(rows.length>1)throw new ApiError(403,'AMBIGUOUS_MEMBERSHIP');const row=rows[0];
   if(!row)throw new ApiError(403,'MEMBERSHIP_DISABLED');return row;
 }
 export async function sourceAccess(c:PoolClient,actor:Principal,id:string,write=false){
@@ -24,8 +26,8 @@ export async function deviceAccess(c:PoolClient,actor:Principal,id:string,secret
 }
 export class Directory {
   constructor(readonly teamId:string,readonly adminSubject?:string){}
-  async members(actor:Principal){return transaction(async c=>{await lock(c);const m=await member(c,actor);return (await c.query('SELECT u.id,u.email,m.role FROM app_user u JOIN membership m ON m.user_id=u.id WHERE m.team_id=$1 AND m.active AND u.active ORDER BY u.email,u.id',[m.team_id])).rows;});}
-  async runners(actor:Principal){return transaction(async c=>{await lock(c);await member(c,actor);return (await c.query('SELECT id,display_name,agents,active,seen_at FROM runner WHERE owner_user_id=$1 ORDER BY created_at,id',[actor.userId])).rows;});}
+  async members(actor:Principal){return transaction(async c=>{await lockShared(c);const m=await member(c,actor);return (await c.query('SELECT u.id,u.email,m.role FROM app_user u JOIN membership m ON m.user_id=u.id WHERE m.team_id=$1 AND m.active AND u.active ORDER BY u.email,u.id',[m.team_id])).rows;});}
+  async runners(actor:Principal){return transaction(async c=>{await lockShared(c);await member(c,actor);return (await c.query('SELECT id,display_name,agents,active,seen_at FROM runner WHERE owner_user_id=$1 ORDER BY created_at,id',[actor.userId])).rows;});}
   async login(identity:VerifiedIdentity):Promise<Principal>{
     return transaction(async c=>{
       await lock(c);

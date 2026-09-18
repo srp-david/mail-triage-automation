@@ -1,7 +1,7 @@
 import {test,after} from 'node:test';
 import assert from 'node:assert/strict';
 import pg from 'pg';
-import {randomUUID} from 'node:crypto';
+import {randomUUID,createHash} from 'node:crypto';
 import {HistoryClient} from '../packages/history-client/src/index.js';
 import {createHistoryApp,errors} from '../apps/history-api/src/app.js';
 import {directoryRoutes} from '../apps/history-api/src/directory-routes.js';
@@ -33,10 +33,24 @@ test('HTTP DB-free client registers, claims, saves and reads same report with AC
     const lease={runnerId:ra.id,leaseToken:claim.leaseToken,generation:claim.generation},requestId=randomUUID();
     await client.complete(job.id,lease,requestId,result,ra.credential);await client.complete(job.id,lease,requestId,result,ra.credential);
     assert.equal((await client.get(job.id)).result.report,result.report);
+    await client.request('/runs/'+job.id+'/reviews',{requestId:randomUUID(),body:'Synthetic review export'});
+    const exported=await fetch(base+'/api/v1/runs/'+job.id+'/export',{headers:{authorization:'Bearer a','x-contract-version':'1'}}),body=await exported.text();
+    assert.equal(exported.status,200);assert.ok(body.includes('a@example.test'));assert.ok(body.includes('Synthetic review export'));assert.equal(exported.headers.get('X-Report-SHA256'),createHash('sha256').update(body).digest('hex'));
     await assert.rejects(new HistoryClient(base,async()=>'b').get(job.id),/SOURCE_NOT_FOUND/);
     await assert.rejects(new HistoryClient(base,async()=>'b').request('/runs/'+job.id+'/export'),/SOURCE_NOT_FOUND/);
     await assert.rejects(client.complete(job.id,lease,requestId,{...result,report:'changed'},ra.credential),/RESULT_CONFLICT/);
   }finally{await new Promise<void>(r=>server.close(()=>r()));}
+});
+
+test('concurrent history readers share ACL lock while revocation waits for both readers',async()=>{
+  const {lockShared}=await import('../apps/history-api/src/directory.js');
+  const first=await pool.connect(),second=await pool.connect(),writer=await pool.connect();
+  try{
+    await first.query('BEGIN');await second.query('BEGIN');await writer.query('BEGIN');
+    await lockShared(first);await second.query("SET LOCAL statement_timeout='1000ms'");await lockShared(second);
+    const available=async()=>(await writer.query("SELECT pg_try_advisory_xact_lock(hashtextextended(current_schema()||':v1-write',0)) AS ok")).rows[0].ok;
+    assert.equal(await available(),false);await first.query('COMMIT');assert.equal(await available(),false);await second.query('COMMIT');assert.equal(await available(),true);
+  }finally{for(const c of [first,second,writer]){await c.query('ROLLBACK');c.release();}}
 });
 
 test('shared history features enforce source ACL, read-only grants and immutable reports',async()=>{

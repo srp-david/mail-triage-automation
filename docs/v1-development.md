@@ -24,3 +24,13 @@ CLI는 `TRIAGE_LOCAL_HOME` 아래 DPAPI `cli-control`로 실행 중인 로컬 �
 Runner는 사용자 token + 장치 credential + 실행 lease/generation을 사용한다. DB 자격은 필요하지 않다. requestId는 같은 논리 작업의 재전송 동안 고정한다. claim 응답 유실은 같은 claim requestId로 회수하며 이전 generation은 무효화된다. 결과 저장 응답이 유실되면 outbox의 같은 requestId/결과를 재전송한다. running receipt로 재시작한 경우 원본 재확인 후 복구가 필요하다. 잠금 파일은 소유 프로세스가 종료된 것을 확인한 뒤에만 별도 정리한다.
 
 새 source와 기존 store/legacy 연결은 아직 자동 이관하지 않는다. 미연결 legacy를 삭제하거나 임의 소유자로 공개하지 않는다. 운영 DB에 migration을 실행하거나 기존 서비스를 교체하는 단계는 아직 수행하지 않았다.
+# 후속 로컬 세션 설정
+
+- `settings.json`의 `auth.refreshMode` 기본값은 `rotating`이다. 이 모드는 갱신 응답에 새 refresh token이 없으면 재로그인을 요구한다. 테넌트에서 회전을 사용하지 않는다고 확인한 경우에만 `static`을 명시하면 성공 응답에 token이 생략될 때 기존 값을 유지한다. 두 모드 모두 교환 응답 유실/저장 실패 시 옛 token을 자동 재사용하지 않는다.
+- 로컬 브라우저는 `TRIAGE_LOCAL_HOME`을 설정한 실행기의 `node scripts/history-v1.mjs open`으로 연다. 직접 URL을 열었는데 로컬 세션이 없으면 실행기를 다시 사용해야 한다. 발급된 ticket은 60초/1회용이며 기록하거나 공유하지 않는다.
+- v1 export의 `X-Report-SHA256`은 리뷰를 포함한 내려받기 본문 전체 hash다. run 조회의 `reportHash`는 변경되지 않은 보고서 본문만 가리킨다.
+# 개인 agent 설정
+
+`settings.json`의 `agents.codex` / `agents.claude`에 `{ "executable": "절대 실행 파일 경로", "prefix": [] }`를 지정하면 분석 Runner를 설정 화면에서 명시적으로 시작할 수 있다. Codex Node 설치는 executable을 node.exe, prefix를 설치된 codex.js 경로로 지정한다. 현재 검증 버전은 Codex 0.154.0, Claude 2.1.276이다. 버전 변경은 합성 adapter 재검증 후 반영한다.
+
+`evidenceRoots`는 `{ "gg": "승인된 ERP 소스 경로" }` 형태다. 지정 경로의 코드 읽기만 허용하며 개인 home/config나 자격 저장 디렉터리를 지정하지 않는다. 설치 기본값은 비어 있다. `query_evidence`는 코드로 주입한 사전 정의 provider만 실행하고 임의 SQL을 받지 않는다. 실제 DB provider를 배치하려면 D5에서 읽기 전용 계정과 도구 구성을 확인해야 한다.

@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import type express from 'express';
 import {z} from 'zod';
 import {ApiError,uuid} from '../../../packages/contracts/src/v1.js';
@@ -8,5 +9,5 @@ export function runRoutes(app:express.Express,runs:Runs){
   for(const action of ['heartbeat','progress','fail'] as const)app.post('/api/v1/runs/:id/'+action,async(req,res)=>res.json(await runs[action](res.locals.actor,uuid.parse(req.params.id),req.body,req.get('x-device-credential')??'')));
   app.post('/api/v1/runs/:id/cancel',async(req,res)=>res.json(await runs.cancel(res.locals.actor,uuid.parse(req.params.id))));
   app.post('/api/v1/runs/:id/recover',async(req,res)=>res.json(await runs.recover(res.locals.actor,uuid.parse(req.params.id),req.body,req.get('x-device-credential')??'')));
-  app.get('/api/v1/runs/:id/export',async(req,res)=>{const r=await runs.get(res.locals.actor,uuid.parse(req.params.id));if(!r.result)throw new ApiError(409,'NO_REPORT');res.set('X-Report-SHA256',r.reportHash!).type('text/markdown').send(r.result.report+r.reviews.map(x=>'\n\n## '+x.author+' 리뷰\n\n'+x.body).join(''));});
+  app.get('/api/v1/runs/:id/export',async(req,res)=>{const r=await runs.get(res.locals.actor,uuid.parse(req.params.id));if(!r.result)throw new ApiError(409,'NO_REPORT');const body=r.result.report+r.reviews.map(x=>'\n\n## '+(x.authorDisplay??x.author)+' 리뷰\n\n'+x.body).join('');res.set('X-Report-SHA256',createHash('sha256').update(body).digest('hex')).type('text/markdown').send(body);});
 }

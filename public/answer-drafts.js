@@ -1,6 +1,10 @@
 // Tab-scoped drafts only: never persist customer input in localStorage.
 const drafts=new Map(),volatile=new Set();
 const key=(store,id)=>'triage-answer:'+JSON.stringify([store,id]);
+export function clearDrafts(){
+  drafts.clear();volatile.clear();
+  try{for(const name of Object.keys(sessionStorage))if(name.startsWith('triage-answer:'))sessionStorage.removeItem(name);}catch{}
+}
 export function readDraft(store,id){
   const name=key(store,id);
   if(!drafts.has(name)){

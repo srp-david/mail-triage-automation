@@ -31,7 +31,7 @@ export const RunReport=forwardRef<ReportHandle,{id:string;onAnalysis:(run:Run)=>
  {r.handled_at&&<p className="meta">처리가 완료된 메일입니다. 아래 보고서와 질문은 당시 분석 기록으로 보존됩니다.</p>}
  {(r.handled_at||!!r.relatedMails?.length)&&<RelatedMails key={JSON.stringify([r.id,r.handled_at,r.relatedMails])} run={r} reload={resource.refresh}/>}
  {r.error&&<p>{r.error}</p>}{resource.error&&!active&&<p role="alert">{resource.error}</p>}
- {r.result&&<><MarkdownView value={r.result.report} label="보고서"/>{r.result.knowledge&&<><h3>업무 지식 반영 제안</h3><MarkdownView value={r.result.knowledge} label="업무 지식 제안"/></>}{r.reviews?.map((review,i)=><div key={i}><h3>{review.author} 리뷰</h3><MarkdownView value={review.body} label={review.author+' 리뷰'}/></div>)}
+ {r.result&&<><MarkdownView value={r.result.report} label="보고서"/>{r.result.knowledge&&<><h3>업무 지식 반영 제안</h3><MarkdownView value={r.result.knowledge} label="업무 지식 제안"/></>}{r.reviews?.map((review,i)=><div key={i}><h3>{(review.authorDisplay??review.author)} 리뷰</h3><MarkdownView value={review.body} label={review.author+' 리뷰'}/></div>)}
  {r.status==='needs_input'&&r.handled_at?<><h3>당시 추가 확인 질문</h3><p>{r.result.question}</p></>:!r.handled_at&&['needs_input','completed'].includes(r.status)?r.identity_kind==='outlook'?<>{r.result.question&&<p>{r.result.question}</p>}<p>Outlook 예외 메일은 직접 실행에서 답변을 반영해 다시 분석하세요. 원본 파일과 공용 메일 식별자를 함께 사용합니다.</p></>:<AnswerForm key={r.id} run={r} onAnalysis={onAnalysis}/>:null}</>}
  {!r.result&&!r.error&&!active&&<p>아직 보고서가 없습니다.</p>}</>;
 });

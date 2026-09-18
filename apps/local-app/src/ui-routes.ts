@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import type express from 'express';
 import {z} from 'zod';
 import {randomUUID} from 'node:crypto';
@@ -44,7 +45,7 @@ export function localUiRoutes(app:express.Express,h:HistoryClient,context:LocalU
     res.status(201).json(await h.start({sourceId:s.sourceId,mailId:b.mailId,messageId:mail.messageId,subject:mail.subject,requestId:b.requestId,runnerId:s.runnerId,agent:s.agent,executorKind:'local',verifiedAt:new Date().toISOString(),parentId:b.parentId,answer:b.answer}));
   });
   for(const action of ['handling','reviews','cancel'])app.post('/api/runs/:id/'+action,async(req,res)=>res.json(await h.request('/runs/'+uuid.parse(req.params.id)+'/'+action,req.body)));
-  app.get('/api/runs/:id/export',async(req,res)=>{const r=await h.get(uuid.parse(req.params.id));if(!r.result)throw new ApiError(409,'NO_REPORT');res.set('X-Report-SHA256',r.reportHash).type('text/markdown').send(r.result.report+r.reviews.map((x:any)=>'\n\n## '+x.author+' 리뷰\n\n'+x.body).join(''));});
+  app.get('/api/runs/:id/export',async(req,res)=>{const r=await h.get(uuid.parse(req.params.id));if(!r.result)throw new ApiError(409,'NO_REPORT');const body=r.result.report+r.reviews.map((x:any)=>'\n\n## '+(x.authorDisplay??x.author)+' 리뷰\n\n'+x.body).join('');res.set('X-Report-SHA256',createHash('sha256').update(body).digest('hex')).type('text/markdown').send(body);});
   app.get('/api/legacy',async(req,res)=>{const s=await context.selection(),q=z.object({mailId:number.optional(),offset:z.coerce.number().int().min(0).default(0)}).parse(req.query);
     if(q.mailId)return res.json(await h.request('/sources/'+uuid.parse(s.sourceId)+'/mails/'+q.mailId+'/legacy'));
     res.json(s.collectionId?await h.request('/collections/'+s.collectionId+'/documents',undefined,undefined,{query:{offset:String(q.offset)}}):[]);
@@ -64,7 +65,7 @@ export function localUiRoutes(app:express.Express,h:HistoryClient,context:LocalU
   app.post('/api/thread-links',async(req,res)=>{const s=await context.selection(),b=z.object({storeId:uuid,source:z.object({id:number,messageId:z.string().nullable(),fetchedAt:z.string()}),target:z.object({id:number,messageId:z.string().nullable(),fetchedAt:z.string()})}).parse(req.body);if(s.sourceId!==b.storeId)throw new ApiError(409,'SOURCE_CHANGED');
     const [source,target]=await Promise.all([b.source,b.target].map(async e=>identity(await original(s).call('get_email',{id:e.id,body_limit:1}),e)));res.json(await h.request('/sources/'+s.sourceId+'/thread-links',{source,target,verifiedAt:new Date().toISOString()}));
   });
-  app.post('/api/thread-links/detach',async(req,res)=>{const s=await context.selection(),{storeId,...body}=req.body;if(storeId!==s.sourceId)throw new ApiError(409,'SOURCE_CHANGED');res.json(await h.request('/sources/'+s.sourceId+'/thread-links/detach',body));});
+  app.post('/api/thread-links/detach',async(req,res)=>{const s=await context.selection(),{storeId,...body}=z.object({storeId:uuid,mail:z.object({id:number,messageId:z.string().nullable(),fetchedAt:z.string()}),linkIds:z.array(uuid).min(1).max(1000)}).strict().parse(req.body);if(storeId!==s.sourceId)throw new ApiError(409,'SOURCE_CHANGED');res.json(await h.request('/sources/'+s.sourceId+'/thread-links/detach',body));});
   app.post('/api/thread-links/:id/unlink',async(req,res)=>{const s=await context.selection();if(req.body.storeId!==s.sourceId)throw new ApiError(409,'SOURCE_CHANGED');res.json(await h.request('/sources/'+s.sourceId+'/thread-links/'+uuid.parse(req.params.id)+'/unlink',{}));});
   app.post('/api/runs/:id/related-mails',async(req,res)=>{const s=await context.selection(),id=uuid.parse(req.params.id),r=await h.get(id),b=z.object({storeId:uuid,mailId:number,messageId:z.string()}).parse(req.body);if(r.sourceId!==s.sourceId||b.storeId!==s.sourceId)throw new ApiError(409,'SOURCE_CHANGED');const mail=identity(await original(s).call('get_email',{id:b.mailId,body_limit:1}),{id:b.mailId,messageId:b.messageId});res.json(await h.request('/runs/'+id+'/related-mails',{mail,verifiedAt:new Date().toISOString()}));});
   app.get('/api/runs/:id/related-mails/:linkId',async(req,res)=>{const s=await context.selection(),r=await h.get(uuid.parse(req.params.id));if(r.sourceId!==s.sourceId)throw new ApiError(409,'ORIGINAL_UNAVAILABLE');const link=r.relatedMails.find((x:any)=>x.id===uuid.parse(req.params.linkId));if(!link)throw new ApiError(404,'LINK_NOT_FOUND');const mail=await original(s).full(Number(link.mail_id));identity(mail,{id:Number(link.mail_id),messageId:link.message_id});res.json(mail);});

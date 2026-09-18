@@ -457,3 +457,26 @@
 - build-compat에 schema/db/history/archive/sync의 기존 dist 경로를 복구하고 모든 shim을 export *로 생성해 server.createApp을 재노출한다.
 - node scripts/build-compat.mjs 및 verify-build-compat.mjs 성공. NODE_ENV=test에서 모듈 exports와 실제 HTTP root를 검증했으며 DB/MCP/운영 복구 명령은 실행하지 않았다.
 - 사용자 draft를 보존한 새 Claude 터미널에 70385c1 snapshot 읽기 전용 P1/P2 리뷰를 전달했다. f7a4fdb0-18ed-44f5-966f-ecef831949d1은 accepted이며 리뷰 완료는 별도 확인 대상이다.
+# 2026-09-18 P4 읽기 전용 증거 broker
+
+- Codex 0.154.0 / Claude 2.1.276 각각 실제 CLI로 지정 스킬·합성 메일·fixture를 MCP로 조회하고 공통 결과의 합계 36 및 스킬 marker를 확인했다. 실제 고객 메일/ERP 접근 없음.
+- broker HTTP 합성 검사: 브라우저 Origin/무인증 차단, 쓰기 도구 부재, 임의 SQL·경로 이탈·비밀 파일·다른 root 거부. 결과의 verified reference는 실제 성공한 도구 기록과 대조한다. CLI에는 수명 한정 broker capability만 전달한다.
+- Codex shell 경로는 Windows sandbox setup marker/1223로 실패했다. read-only sandbox를 유지하고 shell/unified_exec를 끈 MCP 경로가 성공한 것이며, OS sandbox 쓰기 거부나 실제 ERP DB 계정 권한을 검증한 것은 아니다. Claude는 strict MCP와 도구 allowlist를 사용한다.
+- `npm.cmd run check`, `node --import tsx --test test/evidence.test.ts` 통과. 일반 Runner 연결 및 프로세스 취소 검증은 후속 작업이다.
+# 2026-09-18 교차 리뷰 C-1 로컬 진입 권한 수정
+
+- Claude 고정 스냅샷 리뷰 결과의 completion/bytes/SHA-256을 확인했다. 인증 없는 loopback `/api/session` 호출이 cookie/CSRF를 받던 결함을 재현 테스트로 차단했다.
+- DPAPI cli-control을 가진 실행기만 60초 일회용 browser-ticket을 발급한다. 사용/오류 ticket과 잘못된 cookie로 세션을 받을 수 없다. `node scripts/history-v1.mjs open`은 ticket을 콘솔에 출력하지 않고 브라우저로 전달한다.
+- 로그아웃 후 회사 세션과 이전 cookie/CSRF는 폐기하고 같은 브라우저의 로컬 진입 권한만 회전한다. 답변 초안 Map/sessionStorage도 정리한다. callback 교환 실패는 로그인 화면으로 돌린다.
+- check/UI build, local session+CLI 5개, 실제 Chrome Native 합성 로그인·출처 선택·원본 없는 공유 조회·로그아웃 통과. 다른 Windows 사용자 현장 검증은 미실행.
+# 2026-09-18 교차 리뷰 후속 C-2~C-8
+
+- v1 API/로컬 facade export는 리뷰를 포함한 실제 본문 hash를 헤더에 넣는다. 작성자 저장 ID는 유지하고 조회/화면/export는 이메일 표시를 제공한다. 과거 이름형 리뷰는 유지한다.
+- 읽기 이력·collection 조회는 공유 advisory lock을 사용하고 ACL 변경은 같은 key의 배타 lock을 유지한다. 두 동시 reader와 writer 차단/해제 검사를 추가했다. collection 소유자 membership 비활성 상태는 조회에서 제외하고 복수 활성 membership은 임의 선택하지 않고 거부한다.
+- non-rotating refresh는 명시 설정에서만 지원한다. 기본 rotating 정책 및 불확실 응답 시 재로그인은 유지한다. logout 초안 제거는 앞선 C-1 커밋에 포함됐다.
+- 실제 Auth0/팀 부하/다른 Windows 사용자 검증은 별도 대기다.
+# 2026-09-18 P4 Runner 연결과 Windows 취소
+
+- LocalExecutor를 설정된 개인 CLI에 연결했다. 메일 identity를 AI 시작 전/도구 호출마다 다시 확인하고 승인된 코드 root만 제공한다. 일반 결과도 broker 관찰과 대조한 뒤 기존 Runner의 DPAPI outbox로 넘어간다.
+- agent 설정이 없으면 분석 실행은 계속 비활성이다. main에는 DB query provider를 기본 제공하지 않으며 실제 ERP DB 읽기 계정/사전 정의 query 구성은 D5 확인 대상이다. 근거가 부족한 실행은 needs_input을 반환해야 한다.
+- `scripts/verify-agent-cancel.mjs`에서 직접 만든 Windows Node 부모/자식 프로세스를 중단하고 둘 모두 종료됨을 확인했다. 실제 PC 전원 종료 검증과 구분한다. identity 변경 시 AI 미기동/매번 재확인/임시 디렉터리 제거 테스트와 check 통과.
