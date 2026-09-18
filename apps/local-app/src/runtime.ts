@@ -24,11 +24,12 @@ export class LocalRuntime {
       if(user.userId!==actor.userId||current.runnerId!==selected.runnerId||current.sourceId!==sourceId||sourceId!==selected.sourceId)throw new ApiError(409,'SOURCE_CHANGED');
       if(!current.original)throw new ApiError(409,'ORIGINAL_UNAVAILABLE');return current.original;
     };
-    this.runner=new Runner(this.history,this.receipts,{execute:async(run,signal)=>{
+    this.runner=new Runner(this.history,this.receipts,{execute:async(run,signal,progress)=>{
       if(!this.executor)throw new ApiError(409,'ADAPTER_NOT_RELEASE_APPROVED');const source=await check(run.sourceId);signal.throwIfAborted();
       const mail=await source.call('get_email',{id:run.mailId,body_limit:1});signal.throwIfAborted();
       if(Number(mail.id)!==Number(run.mailId)||(mail.messageId??null)!==run.messageId)throw new ApiError(409,'SOURCE_CHANGED');
-      return this.executor.execute(run,signal);
+      let parentResult=null;if(run.parentId){const parent=await this.history.get(run.parentId);if(parent.sourceId!==run.sourceId||parent.mailId!==run.mailId||parent.messageId!==run.messageId)throw new ApiError(409,'SOURCE_CHANGED');parentResult=parent.result;}
+      return this.executor.execute({...run,parentResult},signal,progress);
     }},selected.runnerId,device.credential);
     this.sync=new SyncRunner(this.history,this.receipts,selected.runnerId,device.credential,async(sourceId,limit,signal)=>{
       const source=await check(sourceId);signal.throwIfAborted();return source.sync(limit,signal);

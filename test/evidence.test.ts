@@ -15,7 +15,7 @@ test('evidence MCP permits bounded reads and refuses writes, arbitrary SQL, trav
     assert.equal((await fetch(server.url,{method:'POST'})).status,403);
     assert.equal((await fetch(server.url,{method:'POST',headers:{Authorization:'Bearer '+server.token,Origin:'https://other.invalid'}})).status,403);
     await client.connect(new StreamableHTTPClientTransport(new URL(server.url),{requestInit:{headers:{Authorization:'Bearer '+server.token}}}));
-    assert.deepEqual((await client.listTools()).tools.map(t=>t.name).sort(),['list_code','query_evidence','read_code','read_mail']);
+    assert.deepEqual((await client.listTools()).tools.map(t=>t.name).sort(),['list_code','query_evidence','read_code','read_context','read_mail']);
     assert.equal((await client.callTool({name:'read_mail',arguments:{}})).isError,undefined);
     assert.equal((await client.callTool({name:'read_code',arguments:{root:'erp',path:'sample.sql'}})).isError,undefined);
     assert.equal((await client.callTool({name:'query_evidence',arguments:{queryId:'quantity',parameters:{style:'synthetic'}}})).isError,undefined);

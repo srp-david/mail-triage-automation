@@ -33,6 +33,8 @@ const shutdown=()=>stopping??=(async()=>{await runtime.stop();await new Promise<
 const server=createBrowserApp(session,{port,controlToken,shutdown,beforeLogout:()=>runtime.stop(),features:app=>{
   localUiRoutes(app,history,{selection:()=>profile.selection(),registerSource:b=>profile.registerSource(b),registerRunner:b=>profile.registerRunner(b),configure:async b=>{await runtime.stop();return profile.configure(b);},status:async()=>({...await profile.status() as object,runtime:runtime.status()})});
   app.get('/api/runtime',async(_req,res)=>res.json(runtime.status()));
+  app.post('/api/settings/reconnect/preview',async(req,res)=>{await runtime.stop();res.json(await profile.previewReconnect(req.body));});
+  app.post('/api/settings/reconnect/apply',async(req,res)=>{await runtime.stop();res.json(await profile.applyReconnect(req.body));});
   app.post('/api/runtime/start',async(req,res)=>res.json(await runtime.start(z.object({kind:z.enum(['analysis','sync'])}).strict().parse(req.body).kind)));
   app.post('/api/runtime/stop',async(_req,res)=>res.json(await runtime.stop()));
   app.get('/api/runtime/recovery',async(_req,res)=>res.json(await runtime.recovery()));

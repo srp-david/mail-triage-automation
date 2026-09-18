@@ -492,3 +492,20 @@
 - 후보3 실행은 기존 v0의 3080 점유를 정확히 거부했다. 기존 서비스를 중지하지 않고 `localPort`와 정확한 PKCE callback 결합을 구현했다. 기본3080 유지, 외부/비정상 callback 거부 회귀 포함.
 - 후보4(3,717파일) 실제 설치를 별도 한글 경로+빈 loopback 포트에서 수행했다. 미승인 일반 실행 차단, packaged main 시작, 무인증401·일회용 진입, .lnk 생성, 정상 중지 후 lock 제거, 앱 제거 후 설정 보존 통과. 실인증/메일/ERP 연결 없음.
 - check/build 및 전체 backend90/90 통과. 최신 package.json mount의 concurrency4 적용 확인. 최신 진단 추가분은 최종 후보를 다시 빌드할 때 포함한다.
+# 2026-09-18 P2 기존 원본 연결 복구
+
+- 설정 화면에 원본 저장소 대조/확인/복구를 추가했다. 접근 가능한 기존 이력 최대10개의 mail ID·Message-ID·제목을 대조하고, 같은 저장소/복원본이라는 사용자의 명시 확인 후에만 해당 source instance를 로컬 DPAPI에 연결한다. 적용 직전 다시 대조하고 5분 ticket을 소모한다. 이전 binding은 DPAPI 보관한다.
+- 일치 표본이 없거나 달라지면 거부하며 표본 일치를 전체 저장소 동일성 증명으로 표시하지 않는다. upstream MCP가 동일 endpoint에서 바뀐 저장소의 안정적 instance ID를 제공하는지는 D5 현장 확인이 필요하다. 중앙 이력/source/store ID는 변경하지 않는다.
+- MCP 주소 변경 시 원본 없는 이력/설정 화면은 계속 열 수 있다. 명시적 새 출처 등록은 새 로컬 instance를 만들어 옛 이력과 자동 병합하지 않는다.
+- check 및 합성 재연결 테스트(확인 없음/대조 불일치/적용/재사용 거부) 통과.
+# 2026-09-18 Windows DPAPI 반복 저장 회귀
+
+- 실제 Runner 종단 검사에서 두 번째 receipt 저장 시 fresh descriptor를 사용한 PowerShell Set-Acl이 `SeSecurityPrivilege`를 요구해 실패했다. 기존 첫 저장만 검사한 결과로는 발견하지 못했던 회귀다.
+- Directory.GetAccessControl(Access)/SetAccessControl로 DACL만 변경한다. 상속을 차단하고 현재 사용자 FullControl만 유지하며 SACL/소유자 권한을 요구하지 않는다. 보호 강도를 낮추지 않았다.
+- 같은 폴더에서 DPAPI write/read 3회 성공 후 두 CLI의 실제 Runner 종단이 성공했다. 시스템 관리자 권한을 추가하거나 다른 Windows 사용자에게 권한을 부여하지 않았다. [Microsoft Directory.SetAccessControl](https://learn.microsoft.com/en-us/dotnet/api/system.io.directory.setaccesscontrol?view=netframework-4.8.1)의 변경된 접근 제어 영역만 반영하는 동작을 따른다.
+# 2026-09-18 실제 개인 CLI → Runner → HTTP API → DB 합성 종단
+
+- `verify-agent-e2e.mjs`가 전용 일시 컨테이너·무작위 DB schema·합성 bearer·합성 메일/fixture만 사용했다. Windows DPAPI receipt를 쓰는 실제 Runner와 LocalExecutor에서 Codex/Claude 개인 CLI를 각각 실행하고 공용 API에서 완료 결과/합계36/실제 읽기 evidence/진행 범주를 조회했다.
+- Codex0.154.0: 34,442ms, Claude2.1.276: 42,012ms. 두 결과 모두 completed. 실메일·ERP DB·실Auth0 실행은 아니다. 종료 시 전용 schema와 컨테이너를 정리했다.
+- 추가 답변 실행은 parent가 같은 source/mail identity인지 확인한 후 기존 보고서와 사용자 답변을 `read_context`로 제공한다. 과거 분석을 새 ERP 증거로 표현하지 않도록 구분했다.
+- 최신 원본 DB 복제 리허설 `triage-v1-restore-33f4ef3b`: 기존11테이블의 건수/hash가 migration 후와 재복원 후 일치, 총9,494ms/재복원 검증2,028ms. 실제 source/collection 귀속 변경 및 서비스 전환 없음.

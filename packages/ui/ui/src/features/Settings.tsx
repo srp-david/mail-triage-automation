@@ -4,6 +4,7 @@ import {Action} from '../components/Common';
 export function Settings({changed}:{changed:()=>Promise<void>}){
  const {api,notice}=useSession(),[sources,setSources]=useState<any[]>([]),[collections,setCollections]=useState<any[]>([]),[runners,setRunners]=useState<any[]>([]),[members,setMembers]=useState<any[]>([]),[value,setValue]=useState<any>({sourceId:'',agent:'codex'}),[name,setName]=useState(''),[member,setMember]=useState('');
  const [runtime,setRuntime]=useState<any>(null),[recovery,setRecovery]=useState<any>(null);
+ const [reconnect,setReconnect]=useState<any>(null),[sameStore,setSameStore]=useState(false);
  async function load(){const [s,c,r,m,v]=await Promise.all([api<any[]>('/sources'),api<any[]>('/collections'),api<any[]>('/runners'),api<any[]>('/members'),api<any>('/settings')]);setSources(s);setCollections(c);setRunners(r);setMembers(m);setValue(v);}
  useEffect(()=>{void load().catch(e=>notice(errorText(e)));},[]);
  return <section><h2>출처와 실행 설정</h2><p>원본이 없는 출처도 공유 이력을 조회할 수 있습니다. 분석은 원본과 실행 장치가 연결된 출처에서 시작하세요.</p>
@@ -13,6 +14,10 @@ export function Settings({changed}:{changed:()=>Promise<void>}){
  <label>실행 장치 <select aria-label="실행 장치" value={value.runnerId??''} onChange={e=>setValue({...value,runnerId:e.target.value||undefined})}><option value="">선택 안 함</option>{runners.filter(r=>r.active&&r.agents.includes(value.agent)).map(r=><option key={r.id} value={r.id}>{r.display_name}</option>)}</select></label>
  <Action onAction={async()=>{await api('/settings',{sourceId:value.sourceId,collectionId:value.collectionId,runnerId:value.runnerId,agent:value.agent});await changed();notice('출처와 실행 설정을 저장했습니다.');}}>선택 저장</Action>
  <p>{value.originalAvailable?'이 PC에 원본 연결이 있습니다.':'선택된 출처의 원본이 이 PC에 연결되어 있지 않습니다.'}</p>
+ <details><summary>기존 원본 저장소 다시 연결</summary><p>같은 MCP 저장소의 복원본이거나 같은 저장소를 공유하는 PC에서만 사용하세요. 새 저장소는 새 출처로 등록해야 합니다. 이력의 최대 10개 메일을 대조하며 일부 일치만으로 저장소 전체가 같다고 보장하지 않습니다.</p>
+ <Action disabled={!value.sourceId} onAction={async()=>{setSameStore(false);setReconnect(await api('/settings/reconnect/preview',{sourceId:value.sourceId}));}}>기존 이력과 원본 대조</Action>
+ {reconnect&&<><p>메일 {reconnect.matchedMails}개의 번호·Message-ID·제목이 일치했습니다.</p><label><input type="checkbox" checked={sameStore} onChange={e=>setSameStore(e.target.checked)}/>이 PC의 MCP가 기존과 같은 저장소 또는 그 복원본임을 확인했습니다.</label><Action disabled={!sameStore} onAction={async()=>{await api('/settings/reconnect/apply',{ticket:reconnect.ticket,confirmedSameStore:true});setReconnect(null);await load();await changed();notice('기존 출처의 원본 연결을 복구했습니다.');}}>원본 연결 복구</Action></>}
+ </details>
  <h3>등록</h3><input aria-label="등록 이름" value={name} maxLength={200} onChange={e=>setName(e.target.value)} placeholder="출처·문서 모음·장치 이름"/>
  <Action onAction={async()=>{await api('/sources',{displayName:name});await load();notice('이 PC의 메일 출처를 등록했습니다.');}}>현재 MCP 출처 등록</Action>
  <Action onAction={async()=>{await api('/collections',{name,requestId:crypto.randomUUID()});await load();}}>문서 모음 만들기</Action>
@@ -22,7 +27,7 @@ export function Settings({changed}:{changed:()=>Promise<void>}){
  <h3>등록 장치</h3>{runners.map(r=><div key={r.id}>{r.display_name} · {r.active?'등록됨':'폐기됨'}{r.active&&<Action onAction={async()=>{await api('/runners/'+r.id+'/revoke',{});await load();}}>장치 폐기</Action>}</div>)}
  <h3>로컬 실행과 복구</h3><p>실행은 이 앱이 켜져 있는 동안만 유지됩니다. 설정 변경이나 로그아웃은 실행을 중지합니다.</p>
  <Action onAction={async()=>{setRuntime(await api('/runtime'));}}>실행 상태 확인</Action>
- {runtime&&<p>분석: {runtime.analysis} · 동기화: {runtime.sync}{!runtime.analysisAvailable?' · 현재 후보 버전의 일반 분석 실행은 검증 전입니다.':''}</p>}
+ {runtime&&<p>분석: {runtime.analysis} · 동기화: {runtime.sync}{!runtime.analysisAvailable?' · 로컬 설정에 개인 분석 도구가 등록되지 않았습니다.':''}</p>}
  <Action disabled={!value.runnerId} onAction={async()=>{await api('/runtime/start',{kind:'sync'});setRuntime(await api('/runtime'));notice('동기화 실행을 켰습니다. 메일함에서 동기화를 시작하세요.');}}>동기화 실행 켜기</Action>
  <Action disabled={!value.runnerId||!runtime?.analysisAvailable} onAction={async()=>{await api('/runtime/start',{kind:'analysis'});setRuntime(await api('/runtime'));}}>분석 실행 켜기</Action>
  <Action onAction={async()=>{await api('/runtime/stop',{});setRuntime(await api('/runtime'));}}>로컬 실행 중지</Action>

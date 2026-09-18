@@ -32,7 +32,9 @@ export class ProtectedStore {
   async read(key:string){return JSON.parse((await dpapi('unprotect',await readFile(this.path(key)))).toString('utf8'));}
 }
 async function restrictDirectory(path:string){
-  const code=`$p=[Console]::In.ReadToEnd();$a=New-Object System.Security.AccessControl.DirectorySecurity;$a.SetAccessRuleProtection($true,$false);$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User;$a.SetOwner($sid);$r=New-Object System.Security.AccessControl.FileSystemAccessRule($sid,'FullControl','ContainerInherit,ObjectInherit','None','Allow');$a.AddAccessRule($r);Set-Acl -LiteralPath $p -AclObject $a -ErrorAction Stop`;
+  // Modify only the DACL. Set-Acl with a fresh descriptor can request SACL privileges
+  // on a subsequent write, even when the current user already owns the directory.
+  const code=`$ErrorActionPreference='Stop';$p=[Console]::In.ReadToEnd();$a=[IO.Directory]::GetAccessControl($p,[Security.AccessControl.AccessControlSections]::Access);$a.SetAccessRuleProtection($true,$false);foreach($old in @($a.Access)){$a.RemoveAccessRuleSpecific($old)};$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User;$r=New-Object System.Security.AccessControl.FileSystemAccessRule($sid,'FullControl','ContainerInherit,ObjectInherit','None','Allow');$a.AddAccessRule($r);[IO.Directory]::SetAccessControl($p,$a)`;
   await new Promise<void>((resolve,reject)=>{
     const child=spawn('powershell.exe',['-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(code,'utf16le').toString('base64')],{windowsHide:true,stdio:['pipe','ignore','ignore']});
     const timer=setTimeout(()=>{child.kill();reject(new Error('ACL_TIMEOUT'));},15000);

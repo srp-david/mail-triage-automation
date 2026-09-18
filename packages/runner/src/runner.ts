@@ -2,7 +2,8 @@ import {randomUUID} from 'node:crypto';
 import type {HistoryClient} from '../../history-client/src/index.js';
 import {resultSchema} from '../../contracts/src/v1.js';
 export interface ReceiptStore {read(key:string):Promise<any>;write(key:string,value:unknown):Promise<void>}
-export interface Executor {execute(run:any,signal:AbortSignal):Promise<unknown>}
+export type RunnerProgress={kind:'analysis_started'|'mail_read'|'local_tool'|'db_tool'|'result_saving';outcome:'completed'|'failed'};
+export interface Executor {execute(run:any,signal:AbortSignal,progress?:(event:RunnerProgress)=>Promise<void>):Promise<unknown>}
 // One instance per device. Caller must hold the app instance lock.
 export class Runner {
   private busy=false;
@@ -37,8 +38,11 @@ export class Runner {
     },this.heartbeatMs);
     try{
       const run=await this.client.get(claim.id);controller.signal.throwIfAborted();
-      const result=resultSchema.parse(await this.executor.execute(run,controller.signal));controller.signal.throwIfAborted();
+      const progress=async(event:RunnerProgress)=>{controller.signal.throwIfAborted();await this.client.request('/runs/'+claim.id+'/progress',{...lease,event},this.device);};
+      await progress({kind:'analysis_started',outcome:'completed'});
+      const result=resultSchema.parse(await this.executor.execute(run,controller.signal,progress));controller.signal.throwIfAborted();
       receipt={...receipt,state:'outbox',result};await this.store.write(this.runnerId,receipt);
+      await progress({kind:'result_saving',outcome:'completed'}).catch(()=>{});
     }catch(error){
       const reason=controller.signal.aborted?'INTERRUPTED':'EXECUTION_FAILED';
       await this.store.write(this.runnerId,{...receipt,state:receipt.result?'outbox':'interrupted',reason});
