@@ -13,6 +13,8 @@
     "src/**/*.ts",
     "apps/**/*.ts",
     "packages/contracts/**/*.ts",
-    "packages/history-client/**/*.ts"
+    "packages/history-client/**/*.ts",
+    "packages/runner/**/*.ts",
+    "packages/agent-adapters/**/*.ts"
   ]
 }

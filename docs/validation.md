@@ -345,3 +345,20 @@
 - Auth0 실계정·실메일 인증, 로컬 로그인 화면/세션·refresh rotation·로그아웃·재설정의 전체 연결은 아직 미완료다. 모듈 단위 성공을 P2 전체 완료로 표시하지 않는다.
 - 공식 근거: [Auth0 PKCE](https://auth0.com/docs/api/authentication/authorization-code-flow-with-pkce/authorize-with-pkce), [jose JWKS](https://github.com/panva/jose/blob/main/docs/jwks/remote/functions/createRemoteJWKSet.md).
 - `node --import tsx scripts/verify-dpapi.mjs` 통과: Windows DPAPI CurrentUser 왕복, 암호문에 합성 토큰 평문 없음, 사용자 전용 디렉터리 ACL 적용. 다른 Windows 사용자 복호화 거부는 별도 PC/사용자 검증 대기.
+
+## 2026-09-18 P3 큐·Runner·출처별 sync 기반
+
+- 기존 mail_identity/analysis_run/report_version에 v1 메타데이터를 연결했다. 사용자/source/Runner 권한 재검사, 지정 Runner·메일·팀 동시성 제한, claim generation 회전, 120초 lease/30분 상한, 취소·진행 20건·불변 결과 멱등 저장을 구현했다.
+- DB 자격 없이 HTTP 클라이언트가 실제 격리 PostgreSQL에 실행 등록→claim→결과 저장→조회했다. 기존 저장소 ID를 새 설치 식별자로 재사용하지 않는다.
+- 보호 저장소 인터페이스 기반 Runner/outbox, 앱 단일 인스턴스 잠금, v1 직접 CLI 초안을 추가했다. 완료 응답 유실 후 동일 결과만 재전송하고 중단된 running receipt는 자동 재분석하지 않는다.
+- 출처별 sync 등록/claim/heartbeat/배치 시작·저장/중지, 불확실 배치 보존을 추가했다. 100건×32회 및 배치 재전송 시 3,200건만 집계됨을 확인했다. 구 sync의 실패 지연 재시도·UI 재개를 새 로컬 실행 경로까지 통합하는 작업은 남았다.
+- `npm run check`, 전체 빌드, 격리 DB 백엔드 64개 통과. 동시 등록/claim, 서로 다른 source의 같은 숫자/Message-ID, 타인 export 거부, generation fencing, cancel/lease 만료/ACL 회수, outbox 재시작 검증 포함.
+- 실제 PC 절전·프로세스 트리 종료·두 agent 실행 및 기존 전체 UI의 v1 연결은 미검증/미완료다. P1/P2/P3 전체 완료로 표시하지 않는다.
+
+## 2026-09-18 P4 adapter·공통 스킬 합성 검증
+
+- `probe/prepare/execute/cancel/normalizeEvent/validateResult` adapter, 공통 skill SHA-256 manifest, 자식 프로세스 환경 allowlist, 180초 합성 실행 제한, Windows process-tree 취소를 추가했다. 현재 adapter는 synthetic=true만 허용하며 releaseApproved=false다. DB/API/device 자격은 자식 환경에서 제외한다.
+- 설치된 Codex 0.154.0, Claude Code 2.1.276 도움말과 공식 [Codex noninteractive](https://developers.openai.com/codex/noninteractive), [Claude headless](https://code.claude.com/docs/en/headless)를 대조했다. 개인 인증/설정을 수정하거나 중앙으로 복사하지 않았다.
+- Claude 실제 합성 실행: 제한된 Read/Glob/Grep/Skill, 빈 MCP 설정, shell/write 도구 제외. 읽기 이벤트, 스킬 표식, 12×3=36 구조화 결과와 원본 파일 보존 검증 통과(강화 재검증 약 18.5초).
+- Codex 실제 합성 실행: read-only/approval never/개인 config 제외. 3회 모두 파일을 읽지 못했다는 needs_input, evidence 없음으로 반환하여 검증 실패. 마지막 약 15.1초. 모델 응답만으로 OS 차단 원인이나 스킬 적용을 확정하지 않는다. sandbox를 완화해 통과시키지 않았다.
+- 두 agent의 실제 ERP/MCP 도구 조회·쓰기 시도 거부, Windows process-tree 취소, Runner 전체 연결은 미완료다. Claude의 합성 읽기 성공은 이 항목의 대체 증거가 아니다.

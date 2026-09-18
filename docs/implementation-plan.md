@@ -1,6 +1,6 @@
 # mail-triage-web 통합 구현 계획
 
-문서 버전: 1.5 · 갱신일: 2026-09-18 · 상태: P0, React R0~R6 및 조회 개선 완료. P1 서비스 경계/UI 이동·v1 계약, P2 인증/ACL 모듈·migration 합성 검증 완료. P1/P2 전체 기능 연결 진행 중, 실인증 미검증. [검증 기록](validation.md).
+문서 버전: 1.5 · 갱신일: 2026-09-18 · 상태: P0, React R0~R6 및 조회 개선 완료. P1 경계/UI 이동, P2 인증/ACL, P3 v1 DB 종단·큐/Runner/sync 기반 구현·합성 검증. 전체 UI·세션 연결과 실인증·팀 PC 검증은 미완료. [검증 기록](validation.md), [v1 개발 경계](v1-development.md).
 
 이 문서는 앞으로의 범위·기술 선택·실행 순서의 단일 기준이다. 최신 사용자 결정은 **회사 이메일 인증 가입 + 공용 이력 API·PostgreSQL + 팀원 PC의 웹 앱·개인 AI agent·MCP**이다. 향후 웹·Worker·MCP를 필요한 순서대로 공용화한다. 문서 통합과 P1 전 UI·UX 보완은 인증 구현, DB 이관, 외부 서비스 가입, GitHub 게시, 실제 팀 배포를 수행한 기록이 아니다.
 

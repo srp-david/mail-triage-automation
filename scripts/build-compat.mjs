@@ -4,3 +4,4 @@ for(const name of ['server','worker','diagnose'])await writeFile(`dist/${name}.j
 await mkdir('dist/src',{recursive:true});
 await copyFile('src/migration.sql','dist/src/migration.sql');
 await cp('apps/history-api/migrations','dist/apps/history-api/migrations',{recursive:true});
+await cp('packages/skills','dist/packages/skills',{recursive:true});
