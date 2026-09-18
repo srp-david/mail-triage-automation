@@ -12,7 +12,7 @@
     "start": "node dist/server.js",
     "worker": "node dist/worker.js",
     "check": "tsc --noEmit && tsc -p packages/ui/viewer/tsconfig.json && tsc -p packages/ui/ui/tsconfig.json",
-    "test": "tsx --test test/*.test.ts",
+    "test": "tsx --test --test-concurrency=4 test/*.test.ts",
     "diagnose": "tsx src/diagnose.ts"
   },
   "dependencies": {

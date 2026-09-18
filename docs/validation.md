@@ -480,3 +480,9 @@
 - LocalExecutor를 설정된 개인 CLI에 연결했다. 메일 identity를 AI 시작 전/도구 호출마다 다시 확인하고 승인된 코드 root만 제공한다. 일반 결과도 broker 관찰과 대조한 뒤 기존 Runner의 DPAPI outbox로 넘어간다.
 - agent 설정이 없으면 분석 실행은 계속 비활성이다. main에는 DB query provider를 기본 제공하지 않으며 실제 ERP DB 읽기 계정/사전 정의 query 구성은 D5 확인 대상이다. 근거가 부족한 실행은 needs_input을 반환해야 한다.
 - `scripts/verify-agent-cancel.mjs`에서 직접 만든 Windows Node 부모/자식 프로세스를 중단하고 둘 모두 종료됨을 확인했다. 실제 PC 전원 종료 검증과 구분한다. identity 변경 시 AI 미기동/매번 재확인/임시 디렉터리 제거 테스트와 check 통과.
+# 2026-09-18 P5 명시적 매핑과 DML 권한
+
+- 운영자 전용 `map-v1-legacy.mjs`의 preview/hash/apply를 구현했다. 초기 비공개 source와 collection에 명시한 store/document ID만 연결하며, 원래 메일/run/report/리뷰/관계/처리 상태는 수정하지 않는다. 중간 데이터 변경·타 출처 귀속·공유된 대상·활성 writer가 있으면 거부한다.
+- 격리 합성 DB에서 미리보기 후 변경 시 거부, 명시 매핑 적용 및 역사 데이터 hash 보존, 미연결 문서 유지 검증을 통과했다. 실제 이력의 소유자를 임의로 정하거나 실제 전환을 수행하지 않았다.
+- 임시 NOLOGIN runtime 역할에 배포 GRANT를 적용해 DML 성공/DDL·ledger 변경 거부를 확인했다. 실제 배포 계정 적용과 외부 백업/TLS는 대기다.
+- check 및 전체 backend88/88 통과. 첫 병렬 실행은 Docker scandir ENOMEM으로 실패했고 재실행 성공했다. 이후 검사 안정성을 위해 파일 동시성4와 최신 package.json read-only mount를 명시했다.
