@@ -145,3 +145,43 @@ test('legacy collections isolate search, bodies, links and counts; knowledge req
   await d.grant(a,s.id,{userId:b.userId,permission:'none'});await assert.rejects(archive.knowledge(b,k.id),/SOURCE_NOT_FOUND/);
   await archive.grant(a,col.id,{userId:b.userId,permission:'none'});await assert.rejects(archive.get(b,imported.id),/COLLECTION_NOT_FOUND/);
 });
+
+test('expired result recovery creates one new immutable version after identity revalidation',async()=>{
+  const s=await d.registerSource(a,{instanceId:randomUUID(),displayName:'Recovery fixture'}),runner=await d.registerRunner(a,{requestId:randomUUID(),displayName:'Recovery',agents:['codex'],sourceIds:[s.id]});
+  const old=await runs.start(a,{...input(100),sourceId:s.id,runnerId:runner.id});const claim=(await runs.claim(a,runner.id,randomUUID(),runner.credential))!;
+  const body={runnerId:runner.id,leaseToken:claim.leaseToken,generation:claim.generation,requestId:randomUUID(),result,verifiedAt:new Date().toISOString(),messageId:'<same@example.test>'};
+  await assert.rejects(runs.recover(a,old.id,body,runner.credential),/ORIGINAL_RUN_NOT_RECOVERABLE/);
+  await pool.query("UPDATE analysis_run SET lease_until=now()-interval '1 second' WHERE id=$1",[old.id]);
+  await assert.rejects(runs.recover(a,old.id,{...body,messageId:'changed'},runner.credential),/MAIL_REVALIDATION_REQUIRED/);
+  const restored=await runs.recover(a,old.id,body,runner.credential);assert.notEqual(restored.id,old.id);assert.equal((await runs.recover(a,old.id,body,runner.credential)).id,restored.id);
+  assert.equal((await runs.get(a,old.id)).result,null);assert.equal((await runs.get(a,restored.id)).result.report,result.report);assert.equal((await runs.get(a,restored.id)).parentId,old.id);
+  await assert.rejects(runs.recover(a,old.id,{...body,result:{...result,report:'different'}},runner.credential),/REQUEST_CONFLICT/);
+});
+
+test('v1 sync retries only confirmed transient responses with bounded delays and enforces one source',async()=>{
+  const {SourceSync}=await import('../apps/history-api/src/source-sync.js');const sync=new SourceSync();
+  const s=await d.registerSource(a,{instanceId:randomUUID(),displayName:'Retry fixture'}),runner=await d.registerRunner(a,{requestId:randomUUID(),displayName:'Retry',agents:['codex'],sourceIds:[s.id]});
+  const job=await sync.start(a,{sourceId:s.id,runnerId:runner.id,requestId:randomUUID()});assert.equal((await sync.next(a,runner.id,runner.credential)).id,job.id);
+  const claim=await sync.claim(a,job.id,randomUUID(),runner.credential),lease={runnerId:runner.id,leaseToken:claim.leaseToken,generation:claim.generation};
+  for(let i=0;i<4;i++){
+    const batchId=randomUUID();await sync.beginBatch(a,job.id,{...lease,batchId},runner.credential);
+    const outcome=await sync.batch(a,job.id,{...lease,batchId,response:{status:'error',saved:0,failed:0,remaining:null,errors:['POP3_TIMEOUT']}},runner.credential);
+    assert.equal(outcome.status,i<3?'retrying':'failed');
+    if(i<3){assert.ok(outcome.nextAttemptAt);await assert.rejects(sync.beginBatch(a,job.id,{...lease,batchId:randomUUID()},runner.credential),/RETRY_NOT_DUE/);await assert.rejects(sync.start(a,{sourceId:s.id,runnerId:runner.id,requestId:randomUUID()}),/SYNC_BUSY/);await pool.query("UPDATE sync_run SET next_attempt_at=now()-interval '1 second' WHERE id=$1",[job.id]);}
+  }
+  assert.equal((await sync.get(a,job.id)).retry_count,3);
+});
+
+test('HTTP sync runner processes 3200 synthetic mails without DB credentials or duplicate batches',async()=>{
+  const {SourceSync}=await import('../apps/history-api/src/source-sync.js'),{syncRoutes}=await import('../apps/history-api/src/sync-routes.js'),{SyncRunner}=await import('../packages/runner/src/sync-runner.js');const sync=new SourceSync();
+  const s=await d.registerSource(a,{instanceId:randomUUID(),displayName:'Sync loop'}),r=await d.registerRunner(a,{requestId:randomUUID(),displayName:'Loop',agents:['codex'],sourceIds:[s.id]});
+  const job=await sync.start(a,{sourceId:s.id,runnerId:r.id,requestId:randomUUID()});
+  const app=createHistoryApp(runs,async()=>a);syncRoutes(app,sync);const server=errors(app).listen(0,'127.0.0.1');await new Promise<void>(resolve=>server.once('listening',resolve));
+  const records=new Map<string,any>(),store={async read(key:string){if(!records.has(key))throw Object.assign(new Error(),{code:'ENOENT'});return structuredClone(records.get(key));},async write(key:string,v:any){records.set(key,structuredClone(v));}};let count=0;
+  try{
+    const client=new HistoryClient('http://127.0.0.1:'+(server.address() as any).port,async()=>'a');
+    const driver=new SyncRunner(client,store,r.id,r.credential,async(source,limit)=>{assert.equal(source,s.id);assert.equal(limit,100);count++;return {status:count===32?'success':'partial',saved:100,failed:0,remaining:3200-count*100,errors:[]};});
+    for(let i=0;i<32;i++)await driver.tick(new AbortController().signal);
+    assert.equal(await driver.tick(new AbortController().signal),null);assert.equal(count,32);assert.equal((await sync.get(a,job.id)).saved,3200);assert.equal((await sync.get(a,job.id)).status,'completed');
+  }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
+});

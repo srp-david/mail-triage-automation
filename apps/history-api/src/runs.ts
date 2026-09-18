@@ -94,6 +94,23 @@ export class Runs {
       await c.query('UPDATE analysis_run SET status=$2,finished_at=now(),lease_until=NULL WHERE id=$1',[id,b.result.outcome]);return {id,status:b.result.outcome};
     });
   }
+  async recover(actor:Principal,id:string,input:unknown,device:string){
+    const b=completionSchema.extend({verifiedAt:z.string().datetime(),messageId:z.string().max(2000).nullable()}).strict().parse(input);
+    return transaction(async c=>{await lock(c);const old=await owned(c,actor,id,b,device);
+      const requestHash=digest(JSON.stringify({from:id,result:b.result,messageId:b.messageId}));
+      const previous=(await c.query('SELECT r.id,r.status,r.request_hash,v.requested_by FROM analysis_run r JOIN v1_run v ON v.run_id=r.id WHERE r.request_id=$1',[b.requestId])).rows[0];
+      if(previous){if(previous.request_hash!==requestHash||previous.requested_by!==actor.userId)throw new ApiError(409,'REQUEST_CONFLICT');return {id:previous.id,status:previous.status,recoveredFrom:id};}
+      if(old.result_hash||old.status==='running'&&old.valid)throw new ApiError(409,'ORIGINAL_RUN_NOT_RECOVERABLE');
+      if(Math.abs(Date.now()-Date.parse(b.verifiedAt))>300000||b.messageId!==old.message_id)throw new ApiError(409,'MAIL_REVALIDATION_REQUIRED');
+      if(old.handled_at)throw new ApiError(409,'MAIL_HANDLED');await expire(c);
+      if((await c.query("SELECT 1 FROM analysis_run WHERE mail_key=$1 AND status IN ('queued','running')",[old.mail_key])).rowCount)throw new ApiError(409,'RUN_ACTIVE');
+      const nextId=randomUUID();
+      await c.query(`INSERT INTO analysis_run(id,mail_key,source,request_id,request_hash,status,parent_id,started_at,finished_at) VALUES($1,$2,'direct',$3,$4,$5,$6,now(),now())`,[nextId,old.mail_key,b.requestId,requestHash,b.result.outcome,id]);
+      await c.query(`INSERT INTO v1_run(run_id,source_id,requested_by,target_runner_id,agent,executor_kind,verified_at,verified_by,result_hash,result_request_id) VALUES($1,$2,$3,$4,$5,'local',$6,$4,$7,$8)`,[nextId,old.source_id,actor.userId,b.runnerId,old.agent,b.verifiedAt,digest(JSON.stringify(b.result)),b.requestId]);
+      await c.query('INSERT INTO report_version(run_id,result) VALUES($1,$2)',[nextId,JSON.stringify(b.result)]);
+      await c.query("INSERT INTO audit_event(actor_id,action,target_id) VALUES($1,'run.recover',$2)",[actor.userId,nextId]);return {id:nextId,status:b.result.outcome,recoveredFrom:id};
+    });
+  }
   async cancel(actor:Principal,id:string){return transaction(async c=>{
     await lock(c);const r=await row(c,actor,id,true);
     if(!['queued','running'].includes(r.status))return {id,status:r.status};

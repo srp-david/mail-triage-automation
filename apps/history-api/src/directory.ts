@@ -24,6 +24,8 @@ export async function deviceAccess(c:PoolClient,actor:Principal,id:string,secret
 }
 export class Directory {
   constructor(readonly teamId:string,readonly adminSubject?:string){}
+  async members(actor:Principal){return transaction(async c=>{await lock(c);const m=await member(c,actor);return (await c.query('SELECT u.id,u.email,m.role FROM app_user u JOIN membership m ON m.user_id=u.id WHERE m.team_id=$1 AND m.active AND u.active ORDER BY u.email,u.id',[m.team_id])).rows;});}
+  async runners(actor:Principal){return transaction(async c=>{await lock(c);await member(c,actor);return (await c.query('SELECT id,display_name,agents,active,seen_at FROM runner WHERE owner_user_id=$1 ORDER BY created_at,id',[actor.userId])).rows;});}
   async login(identity:VerifiedIdentity):Promise<Principal>{
     return transaction(async c=>{
       await lock(c);

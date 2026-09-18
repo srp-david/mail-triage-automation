@@ -418,3 +418,42 @@
 - collection 목록/본문/검색/메일 연결/메일별 legacy 목록과 집계가 collection 및 source 권한을 각각 확인한다. grant 회수 즉시 차단한다.
 - 지식 제안은 인증된 source 쓰기 사용자만 생성, 읽기 사용자만 조회한다. 원본 보고서 hash 및 제안 멱등성을 유지하고 owner credential을 반환하지 않는다. ERP 파일 쓰기 실행 경로는 제공하지 않는다.
 - check 성공, 격리 백엔드 전체 71/71 통과. 실데이터 자동 매핑/이관/운영 migration 없음.
+
+### 2026-09-18 P2 로컬 Native 세션 경계
+
+- PKCE 결과는 /me로 사용자 확인 후 보호 저장에 성공해야 세션으로 공개한다. 브라우저에는 access/refresh/device 토큰을 반환하지 않고 HttpOnly SameSite cookie와 별도 CSRF 값을 사용한다.
+- 동시 refresh는 직렬화하고 교체 전 intent를 저장한다. 응답 유실/재시작 시 과거 rotating token을 자동 재사용하지 않는다. logout은 로컬 저장을 먼저 비우고 제공자 revoke를 시도한다. 로그인 도중 logout은 epoch로 새 세션 발행을 차단한다.
+- Host/Origin 검증, PKCE callback 전용 Lax 일회용 cookie, cookie/CSRF rotation, 안전한 오류를 구현했다. 앱 main/UI 연결은 다음 작업이다.
+- npm run check 성공, local-session + v1-auth 합성 5/5 통과. 실제 Auth0 발급·refresh·메일 가입 검증은 D1/D3 대기.
+
+### 2026-09-18 P1/P2 local-app와 React 통합
+
+- main은 DB 없는 HistoryClient+NativeLogin+LocalSession+LocalProfile로 기동한다. 브라우저에는 장치/AI/OIDC 토큰을 보내지 않는다. 설정에 실제 Auth0/API 값이 있어야 실행 가능하며 기본 v0 서비스는 유지했다.
+- React의 Native 로그인/로그아웃, source·collection·장치 선택/등록/공유/폐기와 사용자별 답변 초안을 연결했다. 기존 v0 모드는 서버가 Native 표식을 주지 않으면 그대로 사용한다.
+- local facade는 메일/첨부를 명시적으로 바인딩된 MCP에서만 조회하며 분석/연결 직전 Message-ID·fetchedAt을 재확인한다. 원본 없는 경우 공유 보고서는 계속 조회하고 원본 조회만 제한한다.
+- check/build 성공. 격리 backend 75/75, 기존 Playwright UI 회귀 15/15 통과. 실제 Chrome Native 합성에서 로그인/출처 선택/원본 없는 이력/사용자 A→B 초안 격리/로그아웃 통과. 외부 Auth0와 실제 메일은 사용하지 않았다.
+- PowerShell→Python 파이프의 비ASCII 손상은 커밋 전 확인하고 apply_patch로 수정했으며 빌드와 실제 UI를 다시 확인했다.
+- 지속 Runner/sync loop는 아직 연결 전이며 status는 등록만으로 online을 표시하지 않는다. 팀 배포 승인 후보로 승격하지 않았다.
+
+### 2026-09-18 P3 지속 실행·sync 및 명시적 복구
+
+- 직렬 polling Scheduler와 로컬 Runtime을 연결했다. 설정 변경/로그아웃/정상 종료는 진행 중 작업에 중지 신호를 전달한다. 중단 receipt는 자동 재실행하지 않으며 미전송 결과와 복구 동작을 설정 화면에서 구분한다.
+- 만료 result는 동일 장치·이전 lease/generation·현재 ACL 및 원본 재확인을 확인한 뒤 새 불변 이력으로 복구한다. 재전송 requestId는 유지하며 과거 보고서를 덮어쓰지 않는다.
+- sync는 지정 Runner가 HTTP로 claim 후 순차 100개 batch를 수행한다. 확정된 transient 응답만 5/15/30초 최대 3회 지연 재시도한다. 응답 유실은 outbox 재전송, MCP 응답 불확실은 자동 재수집 금지다. 시작/중지/복구 UI가 있다.
+- 백엔드 80/80 통과: 실제 HTTP SyncRunner 3,200건, source 동시 실행 차단, bounded retry, 결과 복구, 중지 신호, 응답 유실 포함. check/build 및 Native Chrome 합성 재확인 성공.
+- 일반 agent adapter는 아직 synthetic-only이므로 분석 Runtime start를 차단한다. 실제 PC 강제 종료·agent 프로세스 트리 검사와 직접 CLI 연결은 후속 작업이다. 실메일 sync/분석·운영 배포 없음.
+- Claude 후속 리뷰 초안은 .runtime/continuation/review-p2-brief.md에 보존. dry-run이 spawn orca ENOENT로 실패해 새 요청을 전송하지 않았다.
+
+### 2026-09-18 P3 직접 CLI 연결
+
+- history-v1 CLI는 OIDC token을 직접 읽지 않고 DPAPI 로컬 제어 자격으로 실행 중 앱을 호출한다. refresh rotation 소유자는 앱 하나다. localhost Host와 브라우저 Origin/CSRF 경계는 유지하며 CLI capability는 브라우저에 반환하지 않는다.
+- get/progress/export/begin/cancel/review/handling, 설정 조회·변경, Runner 실행·중지, 결과 복구와 sync 명령 연결. 실제 agent 실행 gate는 동일하게 유지한다.
+- 처음 합성 검사는 Node fetch가 자동 부착하는 Sec-Fetch-Mode: cors로 401을 반환하여 실패했다. Origin/Fetch-Site 없는 인증된 Node 호출의 cors만 허용하고 브라우저 Origin과 잘못된 토큰 차단을 다시 검증했다.
+- check 성공, local-cli/local-session 5/5 통과. 실제 개인 세션/실메일 명령은 실행하지 않았다.
+
+### 2026-09-18 P1 빌드 호환 회귀 수정
+
+- 동일 orca 명령이 승인된 접근에서는 실행됨을 확인했다. 기본 샌드박스의 ENOENT만으로 설치 부재를 판단하지 않는다. 기존 Claude terminal read에서 P1 리뷰 완료/대기 및 미제출 draft를 확인했고 실제 build-compat 구현은 시작되지 않았다.
+- build-compat에 schema/db/history/archive/sync의 기존 dist 경로를 복구하고 모든 shim을 export *로 생성해 server.createApp을 재노출한다.
+- node scripts/build-compat.mjs 및 verify-build-compat.mjs 성공. NODE_ENV=test에서 모듈 exports와 실제 HTTP root를 검증했으며 DB/MCP/운영 복구 명령은 실행하지 않았다.
+- 사용자 draft를 보존한 새 Claude 터미널에 70385c1 snapshot 읽기 전용 P1/P2 리뷰를 전달했다. f7a4fdb0-18ed-44f5-966f-ecef831949d1은 accepted이며 리뷰 완료는 별도 확인 대상이다.

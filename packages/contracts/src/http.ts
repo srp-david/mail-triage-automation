@@ -27,7 +27,8 @@ export const jsonError:ErrorRequestHandler=(error,_req,res,next)=>{
   else if(error?.type==='entity.too.large' && error?.status===413){status=413;code='PAYLOAD_TOO_LARGE';}
   else if(error?.type==='charset.unsupported' && error?.status===415){status=415;code='UNSUPPORTED_CHARSET';}
   else if(error?.code==='23505'){status=409;code='CONFLICT';}
-  res.status(status).json({code,message:message(status),requestId:res.locals.requestId});
+  const specific:Record<string,string>={ORIGINAL_UNAVAILABLE:'이 PC에 원본 메일 연결이 없습니다. 공용 이력은 계속 조회할 수 있습니다.',RUNNER_REQUIRED:'설정에서 실행 장치를 선택하세요.',LOCAL_MCP_NOT_CONFIGURED:'로컬 설정에 메일 MCP 주소가 필요합니다.',SOURCE_CHANGED:'출처가 변경되었습니다. 메일을 다시 조회하세요.',LOCAL_MCP_UNAVAILABLE:'이 PC의 메일 MCP에 연결하지 못했습니다.',LOGIN_REQUIRED:'다시 로그인하세요.',SOURCE_CONFIGURATION_CHANGED:'메일 MCP 주소가 변경되었습니다. 출처 연결을 다시 확인하세요.'};
+  res.status(status).json({code,message:specific[code]??message(status),requestId:res.locals.requestId});
 };
 // Call only after all feature routes have been registered.
 export function finishRoutes(app:Express){

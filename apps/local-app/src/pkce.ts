@@ -4,7 +4,8 @@ export class NativeLogin {
   private pending?:{state:string;nonce:string;verifier:string;expires:number};
   constructor(readonly issuer:string,readonly clientId:string,readonly audience:string,
     readonly redirectUri='http://127.0.0.1:3080/auth/callback',private transport:typeof fetch=fetch,private key?:JWTVerifyGetKey){
-    if(new URL(issuer).protocol!=='https:'||redirectUri!=='http://127.0.0.1:3080/auth/callback')throw new Error('INVALID_OIDC_CONFIGURATION');
+    const parsed=new URL(issuer);
+    if(parsed.protocol!=='https:'||parsed.username||parsed.password||parsed.search||parsed.hash||!issuer.endsWith('/')||redirectUri!=='http://127.0.0.1:3080/auth/callback')throw new Error('INVALID_OIDC_CONFIGURATION');
   }
   begin(){
     const random=()=>randomBytes(32).toString('base64url');
@@ -20,6 +21,17 @@ export class NativeLogin {
     if(!r.ok)throw new Error('TOKEN_EXCHANGE_FAILED');const tokens=await r.json();
     const {payload}=await jwtVerify(tokens.id_token,this.key??createRemoteJWKSet(new URL('.well-known/jwks.json',this.issuer)),{issuer:this.issuer,audience:this.clientId,algorithms:['RS256'],requiredClaims:['sub','exp','iat','nonce']});
     if(payload.nonce!==p.nonce||typeof tokens.access_token!=='string'||tokens.token_type!=='Bearer')throw new Error('INVALID_OIDC_TOKEN');
-    return tokens; // Backend only. Persist refresh token using the protected store before exposing a session.
+    return {...tokens,subject:payload.sub}; // Backend only. Never serialize to browser.
+  }
+  cancel(){this.pending=undefined;}
+  async refresh(refreshToken:string,subject:string){
+    const r=await this.transport(new URL('oauth/token',this.issuer),{method:'POST',redirect:'error',signal:AbortSignal.timeout(15000),headers:{'content-type':'application/json'},body:JSON.stringify({grant_type:'refresh_token',client_id:this.clientId,refresh_token:refreshToken})});
+    if(!r.ok)throw new Error('TOKEN_REFRESH_FAILED');const tokens=await r.json();
+    if(tokens.id_token){const {payload}=await jwtVerify(tokens.id_token,this.key??createRemoteJWKSet(new URL('.well-known/jwks.json',this.issuer)),{issuer:this.issuer,audience:this.clientId,algorithms:['RS256'],requiredClaims:['sub','exp','iat']});if(payload.sub!==subject)throw new Error('IDENTITY_CHANGED');}
+    return {...tokens,subject};
+  }
+  async revoke(refreshToken:string){
+    const r=await this.transport(new URL('oauth/revoke',this.issuer),{method:'POST',redirect:'error',signal:AbortSignal.timeout(15000),headers:{'content-type':'application/json'},body:JSON.stringify({client_id:this.clientId,token:refreshToken,token_type_hint:'refresh_token'})});
+    return r.ok;
   }
 }

@@ -6,15 +6,19 @@ export interface Executor {execute(run:any,signal:AbortSignal):Promise<unknown>}
 // One instance per device. Caller must hold the app instance lock.
 export class Runner {
   private busy=false;
+  private controller?:AbortController;
   constructor(private client:HistoryClient,private store:ReceiptStore,private executor:Executor,readonly runnerId:string,private device:string,private heartbeatMs=30000){}
-  async tick(){
+  async tick(signal?:AbortSignal){
     if(this.busy)throw new Error('RUNNER_BUSY');this.busy=true;
-    try{return await this.advance();}finally{this.busy=false;}
+    this.controller=new AbortController();const stop=()=>this.controller?.abort(new Error('APP_STOPPED'));signal?.addEventListener('abort',stop,{once:true});if(signal?.aborted)stop();
+    try{return await this.advance(this.controller);}finally{signal?.removeEventListener('abort',stop);this.controller=undefined;this.busy=false;}
   }
-  private async advance(){
+  stop(){this.controller?.abort(new Error('APP_STOPPED'));}
+  private async advance(controller:AbortController){
+    controller.signal.throwIfAborted();
     let receipt:any;
     try{receipt=await this.store.read(this.runnerId);}catch(e:any){if(e.code!=='ENOENT')throw e;}
-    if(receipt?.state==='running')throw new Error('RECOVERY_REQUIRES_REVALIDATION');
+    if(['running','interrupted','recovering'].includes(receipt?.state))throw new Error('RECOVERY_REQUIRES_REVALIDATION');
     if(receipt?.state==='outbox')return this.flush(receipt);
     if(receipt?.state!=='claiming'){
       receipt={state:'claiming',requestId:randomUUID()};await this.store.write(this.runnerId,receipt);
@@ -23,7 +27,7 @@ export class Runner {
     if(!claim){await this.store.write(this.runnerId,{state:'idle'});return null;}
     receipt={state:'running',claim,resultRequestId:randomUUID()};await this.store.write(this.runnerId,receipt);
     const lease={runnerId:this.runnerId,leaseToken:claim.leaseToken,generation:claim.generation};
-    const controller=new AbortController();let deadline:ReturnType<typeof setTimeout>;
+    let deadline:ReturnType<typeof setTimeout>;
     const arm=(until:string)=>{clearTimeout(deadline);deadline=setTimeout(()=>controller.abort(new Error('LEASE_EXPIRED')),Math.max(0,Date.parse(until)-Date.now()-1000));};
     arm(claim.leaseUntil);let checking=false;
     const pulse=setInterval(async()=>{
@@ -35,8 +39,30 @@ export class Runner {
       const run=await this.client.get(claim.id);controller.signal.throwIfAborted();
       const result=resultSchema.parse(await this.executor.execute(run,controller.signal));controller.signal.throwIfAborted();
       receipt={...receipt,state:'outbox',result};await this.store.write(this.runnerId,receipt);
+    }catch(error){
+      const reason=controller.signal.aborted?'INTERRUPTED':'EXECUTION_FAILED';
+      await this.store.write(this.runnerId,{...receipt,state:receipt.result?'outbox':'interrupted',reason});
+      await this.client.request('/runs/'+claim.id+'/fail',{...lease,code:controller.signal.aborted?'CANCELLED':'AGENT_FAILED'},this.device).catch(()=>{});
+      throw error;
     }finally{clearInterval(pulse);clearTimeout(deadline!);}
     return this.flush(receipt);
+  }
+  async recovery(){let r:any;try{r=await this.store.read(this.runnerId);}catch(e:any){if(e.code!=='ENOENT')throw e;}return r?{state:r.state,runId:r.claim?.id,hasResult:!!r.result,reason:r.reason}:null;}
+  async archiveInterrupted(){
+    if(this.busy)throw new Error('RUNNER_BUSY');
+    this.busy=true;try{const r=await this.store.read(this.runnerId);if(!['running','interrupted'].includes(r.state)||r.result)throw new Error('RECOVERY_ACTION_INVALID');
+    const run=await this.client.get(r.claim.id);if(['queued','running'].includes(run.status))throw new Error('RUN_STILL_ACTIVE');
+    await this.store.write(r.claim.id,{...r,state:'interrupted-archived'});await this.store.write(this.runnerId,{state:'idle'});return {ok:true};}finally{this.busy=false;}
+  }
+  async recoverResult(revalidate:(run:any)=>Promise<{messageId:string|null;verifiedAt:string}>){
+    if(this.busy)throw new Error('RUNNER_BUSY');this.busy=true;
+    try{
+      const r=await this.store.read(this.runnerId);if(!r.result||!['outbox','recovering'].includes(r.state))throw new Error('NO_RECOVERABLE_RESULT');
+      const run=await this.client.get(r.claim.id),proof=await revalidate(run);
+      const receipt={...r,state:'recovering',recoveryRequestId:r.recoveryRequestId??randomUUID()};await this.store.write(this.runnerId,receipt);
+      const response=await this.client.request('/runs/'+r.claim.id+'/recover',{runnerId:this.runnerId,leaseToken:r.claim.leaseToken,generation:r.claim.generation,requestId:receipt.recoveryRequestId,result:r.result,...proof},this.device);
+      await this.store.write(response.id,{...receipt,state:'saved',response});await this.store.write(this.runnerId,{state:'idle'});return response;
+    }finally{this.busy=false;}
   }
   private async flush(receipt:any){
     const {claim}=receipt;

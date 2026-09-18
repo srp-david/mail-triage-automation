@@ -516,9 +516,9 @@ schema는 추가→채움→검증→사용 전환→후속 정리 순서로 바
 
 | 단계 | 2026-09-18 현재 검증된 범위 | 남은 구현·검증 |
 |---|---|---|
-| P1 | workspace/모듈·UI 이동, DB 없는 HTTP 클라이언트→PostgreSQL 등록·저장·조회, 기존 UI 15개 회귀 | 기존 전체 화면과 legacy/리뷰/처리/관련 메일/검색/수동 링크/지식 기능의 v1 ACL 라우팅 연결 |
-| P2 | JWT/PKCE 모듈·Auth0 Action, 사용자/source/ACL/Runner, DPAPI/ACL, migration/checksum 합성 검증 | 로그인 화면·cookie/CSRF 세션·refresh rotation/로그아웃 연결, 실Auth0/메일·재설정·재발송, 팀 source 공유 관리 UI |
-| P3 | 지정 Runner 큐/lease/generation/progress/cancel/outbox, 출처 sync/3,200건·응답 유실·만료 정리 | 지속 Runner 스케줄러·원본 재확인/복구 UI·직접 CLI 전체 명령, sync 지연 재시도/자동 loop, PC 종료/프로세스 트리 검증 |
+| P1 | workspace/모듈·UI 이동, DB 없는 API 클라이언트, legacy/리뷰/처리/관련 메일/검색/수동 링크/지식 제안 ACL 및 React facade, 기존 UI 15개 회귀 | 빌드 호환 shim 리뷰 수정, 전체 DB+local UI 종단 및 일부 직접 CLI 기능 연결 |
+| P2 | JWT/PKCE·Auth0 Action, 사용자/source/collection/Runner, DPAPI, Native cookie/CSRF/refresh/logout, source 공유 설정 UI, 사용자별 초안 합성 검증 | 실Auth0/메일·재설정·재발송, 기존 공유 source 원본 재연결 절차와 실계정·다른 Windows 사용자 검사 |
+| P3 | 지정 Runner 큐/lease/outbox, 지속 loop·중지·복구 UI, 원본 재확인/만료 결과 새 버전 복구, 로컬 CLI, HTTP sync 3,200건·지연 재시도·응답 유실 | P4 일반 agent 실행 연결, 실제 PC 종료/프로세스 트리 및 다중 API/장치 현장 검증 |
 | P4 | 공통 스킬 manifest·adapter·환경 분리, Claude 실제 합성 읽기/구조화 결과 | Codex 합성 읽기 실패 해결, 두 agent ERP/MCP 읽기 전용·금지 쓰기 거부, 일반 업무 adapter와 Runner 연결 |
 | P5 | 공용 API 이미지/Compose·Caddy/SMTP 템플릿, 기존 DB 복제 migration·재복원 11테이블 hash 보존 | D1~D4, 기존 source/legacy ACL 매핑·운영 DML 계정 실적용, 외부 접근/TLS/메일·외부 암호화 백업·실전환 |
 | P6 | 고정 Node Windows 후보 ZIP/3,702파일 hash, 한글 경로 설치·설정 보존·롤백·후보 실행 차단 | 전체 앱 연결 후 릴리스 승인, 바로가기/중지·완전 제거 UX/CLI·MCP 진단, 깨끗한 팀 PC·서명·게시 |

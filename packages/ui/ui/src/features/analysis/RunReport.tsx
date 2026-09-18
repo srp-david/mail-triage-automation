@@ -9,14 +9,14 @@ import {RelatedMails} from './RelatedMails';
 import {readDraft,saveDraft} from '../../../../../../public/answer-drafts.js';
 export interface ReportHandle {refresh:()=>Promise<unknown>}
 function AnswerForm({run,onAnalysis}:{run:Run;onAnalysis:(run:Run)=>void}){
- const {api}=useSession(),[answer,setAnswer]=useState(()=>readDraft(run.store_id,run.id) as string),[busy,setBusy]=useState(false),[volatile,setVolatile]=useState(false),input=useRef<HTMLTextAreaElement>(null),alive=useRef(true);
+ const {api,userId}=useSession(),draftStore=userId?JSON.stringify([userId,run.store_id]):run.store_id,[answer,setAnswer]=useState(()=>readDraft(draftStore,run.id) as string),[busy,setBusy]=useState(false),[volatile,setVolatile]=useState(false),input=useRef<HTMLTextAreaElement>(null),alive=useRef(true);
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
- function update(value:string){setAnswer(value);setVolatile(!saveDraft(run.store_id,run.id,value));}
- useEffect(()=>{if(answer)setVolatile(!saveDraft(run.store_id,run.id,answer));},[]);
+ function update(value:string){setAnswer(value);setVolatile(!saveDraft(draftStore,run.id,value));}
+ useEffect(()=>{if(answer)setVolatile(!saveDraft(draftStore,run.id,answer));},[]);
  return <><h3>추가 답변 · 재분석</h3>{run.result?.question&&<p>{run.result.question}</p>}{run.status==='completed'&&<p className="meta">분석이 완료되었습니다. 추가 조건이나 의견을 입력하면 기존 보고서와 함께 다시 분석합니다.</p>}
  <textarea ref={input} aria-label="추가 답변" aria-describedby="answer-draft-hint" maxLength={20000} disabled={busy} value={answer} onChange={e=>update(e.target.value)}/><p id="answer-draft-hint" className="meta">{volatile?'임시 저장소를 사용할 수 없습니다. 화면 이동 시에는 유지되지만 브라우저 새로고침 전 답변을 복사해 주세요.':'작성 중인 답변은 이 탭에서 임시 보관됩니다. 새로고침 후에도 같은 분석을 열면 복원됩니다.'}</p>
  <button className="secondary-button" disabled={busy} onClick={()=>{update('');input.current?.focus();}}>초안 지우기</button><Action disabled={busy} onAction={async()=>{if(!answer.trim())throw Error('답변을 입력하세요.');const submitted=answer;setBusy(true);
-  try{const next=await api<Run>('/runs',{storeId:run.store_id,mailId:Number(run.mail_id),messageId:run.message_id,source:'web',requestId:crypto.randomUUID(),parentId:run.id,answer:submitted});if(readDraft(run.store_id,run.id)===submitted)saveDraft(run.store_id,run.id,'');if(alive.current)onAnalysis({...next,mail_id:run.mail_id,subject:run.subject});}finally{setBusy(false);}}}>답변하고 다시 분석</Action></>;
+  try{const next=await api<Run>('/runs',{storeId:run.store_id,mailId:Number(run.mail_id),messageId:run.message_id,source:'web',requestId:crypto.randomUUID(),parentId:run.id,answer:submitted});if(readDraft(draftStore,run.id)===submitted)saveDraft(draftStore,run.id,'');if(alive.current)onAnalysis({...next,mail_id:run.mail_id,subject:run.subject});}finally{setBusy(false);}}}>답변하고 다시 분석</Action></>;
 }
 export const RunReport=forwardRef<ReportHandle,{id:string;onAnalysis:(run:Run)=>void;onChanged:()=>Promise<unknown>;onTitle:(title:string)=>void}>(function RunReport({id,onAnalysis,onChanged,onTitle},ref){
  const {api,notice}=useSession(),resource=useResource(s=>api<Run>('/runs/'+id,undefined,s),id),lastStatus=useRef('');
