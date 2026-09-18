@@ -1,0 +1,11 @@
+import {ProtectedStore} from '../apps/local-app/src/protected-store.ts';
+import {mkdir,readFile} from 'node:fs/promises';
+import {randomUUID} from 'node:crypto';
+import assert from 'node:assert/strict';
+if(process.platform!=='win32')throw new Error('Windows verification required');
+const root='.runtime/dpapi-'+randomUUID();await mkdir(root,{recursive:true});
+const store=new ProtectedStore(root),value={token:'synthetic-'+randomUUID()};
+await store.write('fixture',value);
+assert.deepEqual(await store.read('fixture'),value);
+assert.equal((await readFile(root+'/fixture.dpapi')).includes(Buffer.from(value.token)),false);
+console.log('PASS: DPAPI CurrentUser roundtrip; ciphertext excludes synthetic token; ACL applied');

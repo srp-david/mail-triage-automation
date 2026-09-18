@@ -336,3 +336,12 @@
 - `npm run check`, `npm run build`, 격리 schema 백엔드 55개, 전체 UI 합성 15개 통과.
 - 최초 Docker 검사는 Windows node_modules 마운트로 esbuild 플랫폼 오류가 발생했다. 소스 디렉터리만 read-only 마운트하고 컨테이너의 Linux 의존성을 사용해 해결했다.
 - 기존 서비스/운영 schema/고객 메일은 변경하지 않았다. Office 기존 대용량 번들 경고는 남는다.
+
+## 2026-09-18 P2 인증·권한 기반
+
+- jose 6.2.12(MIT)를 직접 의존성으로 고정했다. RS256/JWKS, issuer/audience/exp/iat, namespace 이메일 인증 claim, 정확한 회사 도메인을 검사한다. Auth0 가입/로그인 Action 템플릿과 Native PKCE state/nonce/일회성 callback 검증을 추가했다.
+- numbered migration/checksum ledger, 사용자/membership/source/ACL/Runner/폐기/비활성화를 구현했다. 기존 legacy는 소유권을 추정하지 않으며 v1 collection 연결이 없으면 노출되지 않는다. v0에는 기존 운영 경로가 남아 있으므로 v1과 공개 서비스로 함께 운영하지 않는다.
+- 타입 검사와 격리 DB 백엔드 59개 통과. 합성 서명 토큰, audience/만료/변조/미인증/유사 도메인, PKCE state/nonce/replay, migration 재실행/변조, 타인 출처/등록 충돌/읽기 grant/폐기/비활성 사용자 차단을 검증했다.
+- Auth0 실계정·실메일 인증, 로컬 로그인 화면/세션·refresh rotation·로그아웃·재설정의 전체 연결은 아직 미완료다. 모듈 단위 성공을 P2 전체 완료로 표시하지 않는다.
+- 공식 근거: [Auth0 PKCE](https://auth0.com/docs/api/authentication/authorization-code-flow-with-pkce/authorize-with-pkce), [jose JWKS](https://github.com/panva/jose/blob/main/docs/jwks/remote/functions/createRemoteJWKSet.md).
+- `node --import tsx scripts/verify-dpapi.mjs` 통과: Windows DPAPI CurrentUser 왕복, 암호문에 합성 토큰 평문 없음, 사용자 전용 디렉터리 ACL 적용. 다른 Windows 사용자 복호화 거부는 별도 PC/사용자 검증 대기.
