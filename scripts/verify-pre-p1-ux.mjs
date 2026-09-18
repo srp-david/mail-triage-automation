@@ -85,7 +85,7 @@ try{
  await page.screenshot({path:'.runtime/pre-p1-mobile.png'});await button('메일 목록으로').click();
  assert.equal(await page.locator('#query').inputValue(),'유지할 검색어');assert.equal(await page.locator('#mails').evaluate(e=>e.scrollTop),scroll);
  assert.equal(await page.locator('#mails .is-selected').evaluate(e=>e===document.activeElement),true);
- await page.getByRole('link',{name:'이전 이력',exact:true}).click();await button('report.md').click();await page.locator('#legacy-document').waitFor();
+ await page.locator('#menu-toggle').click();await page.getByRole('link',{name:'이전 이력',exact:true}).click();await button('report.md').click();await page.locator('#legacy-document').waitFor();
  assert.equal(await page.locator('#legacy-document h2').textContent(),'report.md');assert.equal(await page.locator('.document-info').getAttribute('open'),null);
  await page.getByText('문서 정보',{exact:true}).click();assert.equal(await page.getByText('파일 경로: synthetic/archive/report.md',{exact:true}).isVisible(),true);
  assert.deepEqual(errors,[]);

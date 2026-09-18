@@ -10,7 +10,9 @@ import { startSchema } from './schema.js';
 import { startSync, stopSync, recoverSync, startSyncScheduler } from './sync.js';
 import { addRelatedMail, getRelatedMail, unlinkRelatedMail, relatedSource } from './related.js';
 import { analysisStatus, searchByAnalysis } from './mail-search.js';
-export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRead = callAttachment) {
+import { searchThreads } from './mail-threads.js';
+import {threadLinkStore,threadMailIdentity,verifyThreadMail} from './thread-links.js';
+export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRead = callAttachment, links = threadLinkStore) {
   if(config.token.length<32) throw new Error('TRIAGE_TOKEN must have at least 32 characters');
   const app=express(); app.disable('x-powered-by');
   app.use((req,res,next)=>{
@@ -54,7 +56,27 @@ export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRe
       sent_after:z.string().datetime({offset:true}).optional(),sent_before:z.string().datetime({offset:true}).optional(),
       limit:z.coerce.number().int().min(1).max(100).default(30),offset:z.coerce.number().int().min(0).default(0)}).parse(req.query);
     const status=analysisStatus.default('all').parse(req.query.analysis_status);
-    res.json(await searchByAnalysis(args,status,args=>mailCall('search_emails',args),ids=>mailAnalysis(config.store,ids)));
+    const view=z.enum(['individual','threads']).default('individual').parse(req.query.view);
+    const search=(args:any)=>mailCall('search_emails',args),summaries=(ids:number[])=>mailAnalysis(config.store,ids);
+    res.json(view==='threads'?await searchThreads(args,status,search,summaries,await links.list(config.store)):await searchByAnalysis(args,status,search,summaries));
+  });
+  app.get('/api/thread-links',async(_req,res)=>res.json(await links.list(config.store)));
+  app.post('/api/thread-links',async(req,res)=>{
+    const input=z.object({storeId:z.string().min(1).max(200),source:threadMailIdentity,target:threadMailIdentity}).strict().parse(req.body);
+    if(input.storeId!==config.store)throw new HttpError(409,'현재 메일 저장소가 아닙니다. 목록을 다시 조회하세요.');
+    if(input.source.id===input.target.id)throw new HttpError(400,'같은 메일에 연결할 수 없습니다.');
+    const [source,target]=await Promise.all([input.source,input.target].map(async identity=>verifyThreadMail(identity,await mailCall('get_email',{id:identity.id,body_limit:1}))));
+    res.json(await links.add(config.store,source,target));
+  });
+  app.post('/api/thread-links/detach',async(req,res)=>{
+    const input=z.object({storeId:z.string().min(1).max(200),mail:threadMailIdentity,linkIds:z.array(z.string().uuid()).min(1).max(1000)}).strict().parse(req.body);
+    if(input.storeId!==config.store)throw new HttpError(409,'현재 메일 저장소가 아닙니다.');
+    res.json(await links.detach(config.store,input.mail,[...new Set(input.linkIds)]));
+  });
+  app.post('/api/thread-links/:id/unlink',async(req,res)=>{
+    const id=z.string().uuid().parse(req.params.id),input=z.object({storeId:z.string().min(1).max(200)}).strict().parse(req.body);
+    if(input.storeId!==config.store)throw new HttpError(409,'현재 메일 저장소가 아닙니다.');
+    res.json(await links.remove(config.store,id));
   });
   app.get('/api/mail-analysis',async(req,res)=>{
     const ids=z.string().max(2000).regex(/^\d+(,\d+)*$/).transform(value=>value.split(',').map(Number))

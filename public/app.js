@@ -7,7 +7,23 @@ import { showMailAnalysis } from './mail-analysis.js';
 import { relatedMails } from './related-mails.js';
 import { analysisProgress } from './analysis-progress.js';
 import { readDraft, saveDraft } from './answer-drafts.js';
+import { renderThreads } from './mail-threads.js';
+import { manualThreadControls } from './manual-threads.js';
+import { captureMailPosition, restoreMailPosition, hasMailPaneScroll } from './mail-scroll.js';
 const $=id=>document.getElementById(id);
+const narrowMenu=matchMedia('(max-width:900px)');
+function closeMenu(focus=false){
+  $('workspace').classList.remove('menu-open');$('menu-toggle').setAttribute('aria-expanded','false');
+  if(focus&&narrowMenu.matches)$('menu-toggle').focus();
+}
+$('menu-toggle').onclick=()=>{
+  const open=$('workspace').classList.toggle('menu-open');$('menu-toggle').setAttribute('aria-expanded',String(open));
+  if(open)$('workspace-nav').querySelector('[aria-current="page"]')?.focus();
+};
+$('workspace-nav').addEventListener('click',event=>{if(event.target.closest('a'))closeMenu(narrowMenu.matches);});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&$('workspace').classList.contains('menu-open')){event.preventDefault();closeMenu(true);}});
+document.addEventListener('click',event=>{if(!event.target.closest('#workspace-nav,#menu-toggle'))closeMenu();});
+narrowMenu.addEventListener('change',()=>closeMenu($('workspace-nav').contains(document.activeElement)));
 let storeId='',offset=0,nextOffset=null,detailGeneration=0,activeView='mailbox';
 let mailListGeneration=0,analysisGeneration=0;
 let lastSyncRevision=null,syncRefresh=null,syncStarting=false,syncRunning=false;
@@ -17,6 +33,10 @@ const mainHistory={prefix:'',mailId:null,runOffset:0,legacyOffset:0,runVersion:0
 let mailHistory=null,dialogGeneration=0,reportGeneration=0,previousFocus=null,listFocus=null,openedDocument=null;
 let stopProgress=()=>{};
 let selectedMail=null,mailboxScroll=0;
+const readingPositions=new Map();
+let lastMailQuery='';
+const expandedThreads=new Map();
+let manualThreads;
 const activeRun=status=>['queued','running'].includes(status);
 const dialog=$('history-dialog');
 const labels={queued:'대기',running:'분석 중',completed:'분석 완료',needs_input:'확인 필요',failed:'실패',partial:'일부 미완료'};
@@ -54,6 +74,7 @@ async function status(){
  const reasons={interrupted:'서버 재시작으로 중지되었습니다. 이어서 동기화하면 저장된 메일은 건너뜁니다.',retry_exhausted:'자동 재시도 3회를 마쳤습니다. 연결 상태를 확인한 뒤 이어서 동기화하세요.',no_progress:'새로 저장된 메일 없이 남은 메일이 있어 중지했습니다.',invalid_response:'수집 결과를 확인할 수 없어 중지했습니다.',error:'수집 오류가 있어 중지했습니다. 연결·메일 서버·저장 공간을 확인하세요.'};
  const message=sync?.status==='stopping'?'현재 처리 중인 최대 100개 묶음이 끝나면 중지합니다.':sync?.status==='retrying'?'일시적인 연결 오류로 '+sync.retry_count+'/3회 재시도를 기다립니다. '+date(sync.next_attempt_at):reasons[sync?.detail?.reason]??(sync?.status==='paused'?'저장된 메일은 유지됩니다. 이어서 동기화하면 미수집 메일부터 받습니다.':'100개씩 순서대로 수집합니다. 수집 중에도 메일 조회·분석이 가능합니다.');
  $('sync-message').textContent=message+(sync?.uncertain?' 응답이 끊긴 묶음의 저장 건수는 이번 실행 집계에서 빠질 수 있습니다.':'')+(sync?.failed>0?' 실패 시도는 누적 횟수이며 남음에는 해당 묶음의 실패 메일이 포함되지 않습니다.':'');
+ $('sync-message').hidden=!sync||(sync.status==='completed'&&!sync.uncertain&&!sync.failed);
  return s;
 }
 function syncRevision(sync){
@@ -80,8 +101,10 @@ async function refreshAfterSync(sync){
  try{return await syncRefresh;}finally{syncRefresh=null;}
 }
 async function mails(){
+ manualThreads?.setView($('mail-view').value==='threads');
  const generation=++mailListGeneration;++analysisGeneration;
  const q=new URLSearchParams({limit:'30',offset:String(offset)});
+ q.set('view',$('mail-view').value);
  if($('query').value)q.set('query',$('query').value);
  if($('from').value)q.set('from_address',$('from').value);
  if($('after').value)q.set('sent_after',new Date($('after').value+'T00:00:00').toISOString());
@@ -95,22 +118,32 @@ async function mails(){
    $('mails').replaceChildren(element('p','메일을 불러오지 못했습니다. '+error.message),action('다시 조회',()=>{notice('');return mails();}));
    throw error;
  }finally{if(generation===mailListGeneration)$('mails').removeAttribute('aria-busy');}
- if(generation!==mailListGeneration)return false;nextOffset=result.nextOffset;
+ if(generation!==mailListGeneration)return false;
+ if(offset>0&&offset>=result.total){offset=Math.max(0,Math.floor((result.total-1)/30)*30);return mails();}
+ const position=lastMailQuery===q.toString()?captureMailPosition():null;
+ lastMailQuery=q.toString();nextOffset=result.nextOffset;
  $('applied-filters').textContent=filters.length?'적용된 조건 · '+filters.join(' · '):'전체 메일';
- $('total').textContent=result.total+'건';$('mails').replaceChildren();
- for(const mail of result.emails){
+ $('applied-filters').title=$('applied-filters').textContent;
+ $('total').textContent=result.threads?result.total+'개 대화 · '+result.mailTotal+'개 메일':result.total+'건';$('mails').replaceChildren();
+ const mailButton=mail=>{
    const b=action('',()=>detail(mail.id));b.className='mail';b.dataset.mailId=String(mail.id);
    b.append(element('strong',mail.subject||'(제목 없음)'),element('span',(mail.from??[]).map(x=>x.name??x.address).join(', ')+' · '+date(mail.sentAt)));
    const analysis=element('span',null,'mail-analysis');analysis.dataset.mailId=String(mail.id);analysis.hidden=true;b.append(analysis);
-   $('mails').append(b);
- }
- if(!result.emails.length){
+   return b;
+ };
+ if(result.threads)renderThreads($('mails'),result.threads,mailButton,expandedThreads,selectedMail?.id,manualThreads);
+ else for(const mail of result.emails)$('mails').append(mailButton(mail));
+ if(result.threads?!result.threads.length:!result.emails.length){
    $('mails').append(element('p',filters.length?'조건에 맞는 메일이 없습니다. 검색 조건을 줄이거나 초기화해 보세요.':'저장된 메일이 없습니다. 메일 동기화로 가져올 수 있습니다.'));
    if(filters.length)$('mails').append(action('검색 조건 초기화',resetSearch));
  }
  markSelectedMail();
+ manualThreads?.afterRender();
  $('previous').disabled=offset===0;$('next').disabled=nextOffset==null;
  await refreshMailAnalysis();
+ if(generation===mailListGeneration){
+   if(position)restoreMailPosition(position);else if(hasMailPaneScroll())$('mails').scrollTop=0;
+ }
  return generation===mailListGeneration;
 }
 async function refreshMailAnalysis(){
@@ -118,7 +151,11 @@ async function refreshMailAnalysis(){
  const items=[...$('mails').querySelectorAll('.mail-analysis')];
  const ids=[...new Set([...items.map(x=>x.dataset.mailId),...(selectedMail?[String(selectedMail.id)]:[])])];if(!ids.length)return;
  try{
-   const rows=await api('/mail-analysis?'+new URLSearchParams({mailIds:ids.join(',')}));
+   const rows=[];
+   for(let start=0;start<ids.length;start+=100){
+     rows.push(...await api('/mail-analysis?'+new URLSearchParams({mailIds:ids.slice(start,start+100).join(',')})));
+     if(generation!==analysisGeneration||listGeneration!==mailListGeneration)return;
+   }
    if(generation!==analysisGeneration||listGeneration!==mailListGeneration)return;
    const summaries=new Map(rows.map(row=>[String(row.mailId),row]));
    for(const item of items)showMailAnalysis(item,summaries.get(item.dataset.mailId));
@@ -130,15 +167,19 @@ async function refreshMailAnalysis(){
  }
 }
 function markSelectedMail(){
+ for(const thread of $('mails').querySelectorAll('.mail-thread'))thread.classList.remove('has-selected-mail');
  for(const button of $('mails').querySelectorAll('.mail')){
    const selected=button.dataset.mailId===String(selectedMail?.id);
    button.classList.toggle('is-selected',selected);
+   if(selected)button.closest('.mail-thread')?.classList.add('has-selected-mail');
    if(selected)button.setAttribute('aria-current','true');else button.removeAttribute('aria-current');
  }
 }
 function backToMailbox(){
+ if(selectedMail&&!hasMailPaneScroll())readingPositions.set(selectedMail.id,{pane:false,scroll:window.scrollY});
  $('view-mailbox').classList.remove('show-detail');
  const selected=$('mails').querySelector('.is-selected');
+ const thread=selected?.closest('details');if(thread)thread.open=true;
  (selected??$('mail-list')).focus({preventScroll:true});window.scrollTo(0,mailboxScroll);
 }
 function updateMailActions(summary,unavailable=false){
@@ -155,6 +196,9 @@ async function resetSearch(){
  $('search-form').reset();offset=0;notice('');await mails();
 }
 async function detail(id){
+ if(selectedMail&&(!$('view-mailbox').classList.contains('show-detail')?hasMailPaneScroll():true)){
+   readingPositions.set(selectedMail.id,{pane:hasMailPaneScroll(),scroll:hasMailPaneScroll()?$('detail').scrollTop:window.scrollY});
+ }
  closeHistory();
  closeOfficePreview();
  const generation=++detailGeneration;
@@ -228,7 +272,9 @@ async function detail(id){
 
  void loadImageCards(cards);
  markSelectedMail();$('view-mailbox').classList.add('show-detail');
- if(matchMedia('(max-width:900px)').matches){d.focus({preventScroll:true});window.scrollTo(0,0);}
+ const reading=readingPositions.get(id),pane=hasMailPaneScroll(),saved=reading?.pane===pane?reading.scroll:0;
+ if(pane)d.scrollTop=saved;
+ else if(matchMedia('(max-width:900px)').matches){d.focus({preventScroll:true});window.scrollTo(0,saved);}
  notice('');
  await refreshMailAnalysis();
 }
@@ -408,6 +454,7 @@ $('legacy-more').onclick=()=>safe(()=>legacy(mainHistory,true));
 $('login-form').onsubmit=e=>{e.preventDefault();safe(async()=>{await api('/login',{token:$('token').value});$('token').value='';await boot();});};
 $('search-form').onsubmit=e=>{e.preventDefault();offset=0;notice('');safe(mails);};
 $('reset-search').onclick=()=>safe(resetSearch);
+$('mail-view').onchange=()=>{offset=0;notice('');safe(mails);};
 $('sync').onclick=()=>safe(async()=>{
  if(syncStarting||syncRunning)return;syncStarting=true;$('sync').disabled=true;
  try{await api('/sync',{});notice('동기화를 시작했습니다.');const s=await status();await refreshAfterSync(s.sync);}
@@ -423,6 +470,7 @@ $('next').onclick=()=>{if(nextOffset!=null){offset=nextOffset;safe(mails);}};
 $('refresh').onclick=()=>safe(()=>runs());
 $('more-runs').onclick=()=>safe(()=>runs(mainHistory,true));
 window.addEventListener('hashchange',()=>{if(!$('workspace').hidden)safe(navigate);});
+manualThreads=manualThreadControls({api,getStoreId:()=>storeId,refresh:()=>mails()});
 async function boot(){const s=await status();lastSyncRevision=syncRevision(s.sync);$('login').hidden=true;$('workspace').hidden=false;await Promise.all([mails(),navigate()]);notice('');}
 safe(boot);
 let polling=false;

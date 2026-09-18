@@ -25,16 +25,25 @@ test('API combines MCP search with latest DB state, legacy links and store-scope
  let calls=0;
  const server=createApp(async(name,args)=>{
   calls++;assert.equal(name,'search_emails');assert.equal(args.query,'Synthetic');assert.equal(args.from_address,'sender@example.test');assert.equal(args.analysis_status,undefined);
-  const rows=Array.from({length:105},(_,i)=>({id:i+1,subject:'Synthetic'})),offset=Number(args.offset),limit=Number(args.limit);
+  const rows=Array.from({length:105},(_,i)=>({id:i+1,subject:'Synthetic',messageId:`<fixture-${i+1}@example.test>`,
+   inReplyTo:i===101||i===102?[`<fixture-${i}@example.test>`]:[],references:[]})),offset=Number(args.offset),limit=Number(args.limit);
   return {emails:rows.slice(offset,offset+limit),total:rows.length,nextOffset:offset+limit<rows.length?offset+limit:null};
  }).listen(0,'127.0.0.1');await new Promise<void>(r=>server.once('listening',r));
  const address=server.address();assert.ok(address&&typeof address!=='string');
  const url='http://127.0.0.1:'+address.port+'/api/mails?query=Synthetic&from_address=sender%40example.test';
- const get=async(status:string)=>{const r=await fetch(url+'&analysis_status='+status,{headers:{Authorization:'Bearer '+config.token}});assert.equal(r.status,200);return r.json();};
+ const get=async(status:string,view='individual')=>{const r=await fetch(url+'&analysis_status='+status+'&view='+view,{headers:{Authorization:'Bearer '+config.token}});assert.equal(r.status,200);return r.json();};
  try{
   const expected={completed:[102],failed:[101],handled:[102],legacy:[103],running:[],queued:[],needs_input:[]};
   for(const [status,ids] of Object.entries(expected)){const r=await get(status);assert.deepEqual(r.emails.map((x:any)=>x.id),ids);assert.equal(r.total,ids.length);}
   const fresh=await get('unanalysed');assert.equal(fresh.total,102);assert.equal(fresh.emails[0].id,1);assert.equal(fresh.nextOffset,30);
+  const threads=await get('all','threads');assert.equal(threads.total,103);assert.equal(threads.mailTotal,105);assert.equal(threads.nextOffset,30);
+  assert.deepEqual(threads.threads.find((thread:any)=>thread.emails.length>1).emails.map((mail:any)=>mail.id),[103,102,101]);
+  for(const [status,ids] of Object.entries(expected)){
+   const page=await get(status,'threads');assert.deepEqual(page.threads.flatMap((thread:any)=>thread.emails.map((mail:any)=>mail.id)),ids);
+   assert.equal(page.mailTotal,ids.length);
+  }
+  const unanalysedThreads=await get('unanalysed','threads');assert.equal(unanalysedThreads.total,102);
+  assert.ok(unanalysedThreads.threads.every((thread:any)=>thread.emails.every((mail:any)=>![101,102,103].includes(mail.id))));
   const before=calls;const invalid=await fetch(url+'&analysis_status=bad',{headers:{Authorization:'Bearer '+config.token}});assert.equal(invalid.status,400);assert.equal(calls,before);
  }finally{await new Promise<void>(r=>server.close(()=>r()));}
 });

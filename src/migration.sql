@@ -67,3 +67,14 @@ CREATE TABLE IF NOT EXISTS knowledge_proposal (
   UNIQUE(run_id,namespace,target_path,base_hash)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS one_knowledge_writer ON knowledge_proposal(namespace,target_path) WHERE status='applying';
+
+-- Display-only conversation links. Never merge mail_identity or analysis history.
+CREATE TABLE IF NOT EXISTS manual_thread_link (
+  id uuid PRIMARY KEY, store_id text NOT NULL,
+  source_id bigint NOT NULL CHECK(source_id>0), source_message_id text,
+  source_fetched_at text NOT NULL, source_subject text NOT NULL,
+  target_id bigint NOT NULL CHECK(target_id>0), target_message_id text,
+  target_fetched_at text NOT NULL, target_subject text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CHECK(source_id<target_id), UNIQUE(store_id,source_id,target_id)
+);
