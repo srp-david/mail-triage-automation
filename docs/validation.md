@@ -509,3 +509,24 @@
 - Codex0.154.0: 34,442ms, Claude2.1.276: 42,012ms. 두 결과 모두 completed. 실메일·ERP DB·실Auth0 실행은 아니다. 종료 시 전용 schema와 컨테이너를 정리했다.
 - 추가 답변 실행은 parent가 같은 source/mail identity인지 확인한 후 기존 보고서와 사용자 답변을 `read_context`로 제공한다. 과거 분석을 새 ERP 증거로 표현하지 않도록 구분했다.
 - 최신 원본 DB 복제 리허설 `triage-v1-restore-33f4ef3b`: 기존11테이블의 건수/hash가 migration 후와 재복원 후 일치, 총9,494ms/재복원 검증2,028ms. 실제 source/collection 귀속 변경 및 서비스 전환 없음.
+# 2026-09-18 P456 교차 리뷰 H1/L2/L3
+
+- 완료 파일 ID3479b686·25,834bytes·SHA256 a2bcc12f70d2883ee2d3bda124be19c0846fcb210a22d0a20f2f5502bf9f699b를 확인했다. 고정82d91ab의 리뷰이며 이후 커밋과 대조해 반영한다.
+- 기본 증거 확장자에서 json/yaml/yml/properties를 제외했다. 예외는 root별 정확한 파일명에만 허용하고 설정 파일명/민감 키 할당/실제 경로/링크 검사를 추가했다. appsettings·application·context·평문 credential 코드·안쪽 alias 우회를 거부하는 회귀 검사 통과.
+- evidenceRoots는 절대 실디렉터리만 허용하고 home 또는 설치 데이터와 겹치는 경로를 거부한다. agent scratch와 DPAPI work를 분리했다. 검사로 임의 비밀을 모두 식별한다고 주장하지 않으며 운영자는 비밀 없는 root를 승인해야 한다.
+# 2026-09-18 교차 리뷰 H2/H3/H4/H7/H8 및 L1/L8
+
+- SyncRunner archive에도 배타 실행을 적용하고, 명시적 재시작은 해당 recovery loop만 중지/재개한다. 동기화는 분석 복구 때문에 함께 중지하지 않는다. outbox 일시 저장 실패 뒤 결과가 있으면 원격 run을 실패 확정하지 않는다.
+- mapping은 queued sync도 정지 조건으로 검사한다. 감사/보고서/리뷰/legacy 원문은 runtime role에서 SELECT/INSERT만 허용하고 기존 UPDATE/DELETE 권한을 회수한다. 상태 테이블 DELETE도 제외했다.
+- sync가 일부 저장/실패 수량을 반환했다면 자동 재시도하지 않는다. 개별 mail receipt 없이 같은 실패 수량을 중복 집계하는 것을 방지한다. 처리 건수가 없는 명확한 transient 응답만 제한 재시도한다.
+- 직접 CLI는 안전한 고정 오류 코드와 사용법을 표시한다. callback URI는 userinfo나 정규화 전 우회 경로 없이 정확한 loopback 문자열만 허용한다.
+# 2026-09-18 교차 리뷰 H5/L6: 종료 실패와 로컬 listener 검증
+
+- 종료 시 Worker·HTTP 중지와 자격 정리·lock 해제를 독립적으로 시도한다. 자격 정리 실패만으로 종료된 앱의 lock을 남기지 않는다. Worker나 서버가 중지되지 않았다면 lock을 보존하며 고정 오류 코드로 표시한다. 비동기 종료 rejection을 처리한다.
+- cli-control에 PID를 저장하고 제어 토큰을 보내기 전에 무작위 challenge의 HMAC으로 listener를 확인한다. 이전 포트를 다른 프로세스가 점유해도 capability를 보내지 않는 합성 검사를 추가했다. 실제 브라우저 ticket/CSRF 경계는 유지한다.
+- 로컬 CLI/session 8개 검사 통과. DPAPI timeout/임의 프로세스에 토큰 전달을 실제 고객 환경에서 유발하지 않았다.
+# 2026-09-18 교차 리뷰 H6 및 L4/L5
+
+- 설치는 고유 staging에 복사·hash·진단을 마친 뒤 원자 rename으로 공개한다. 복사 중 실패·diagnostics 실패 뒤 같은 버전 재시도, hard-exit 잔여 staging이 있을 때 재설치, 이전 불완전 비활성 버전의 정확한 경로 확인 후 제거 검사가 통과했다. 개인 상태와 활성·직전 버전 보호를 유지한다.
+- Codex `windows.sandbox="elevated"`는 Windows sandbox 구현 선택이다. 별도의 `--sandbox read-only`와 `approval_policy="never"`를 유지하며 실제 evidence 경로에서는 shell/unified_exec를 끈다. 관리자가 sandbox 설정을 완료했다거나 OS 파일 쓰기 거부를 검증했다고 주장하지 않는다. [공식 Windows sandbox 설명](https://learn.chatgpt.com/docs/windows/windows-sandbox)을 따른다.
+- manifest 파일 hash는 전송/파일 집합 검증이다. manifest 자체를 신뢰하는 사용자 배포 경로·코드 서명은 D6 결정/실검증 대상으로 남긴다.

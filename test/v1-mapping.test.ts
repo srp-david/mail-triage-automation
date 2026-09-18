@@ -20,6 +20,7 @@ test('explicit mapping requires unchanged preview and preserves all historical c
   const plan={actorId:actor.userId,teamId:team,sources:[{sourceId:source.id,storeId:'old-store'}],documents:[{documentId:doc,collectionId:collection.id,sourceHash:hash}]};
   const c=await pool.connect();try{
     const preview=await mapLegacy(c,plan);assert.equal(preview.applied,false);assert.equal((await pool.query('SELECT store_id FROM source WHERE id=$1',[source.id])).rows[0].store_id,source.id);
+    const syncId=randomUUID();await pool.query("INSERT INTO sync_run(id,status) VALUES($1,'queued')",[syncId]);await assert.rejects(mapLegacy(c,plan),/WRITERS_NOT_QUIESCENT/);await pool.query('DELETE FROM sync_run WHERE id=$1',[syncId]);
     await pool.query("UPDATE mail_identity SET subject='Changed preview' WHERE id=$1",[mail]);await assert.rejects(mapLegacy(c,plan,preview.previewHash),/MAPPING_PREVIEW_CHANGED/);
     const current=await mapLegacy(c,plan),applied=await mapLegacy(c,plan,current.previewHash);assert.deepEqual(applied.historical,current.historical);
     assert.equal((await pool.query('SELECT store_id FROM source WHERE id=$1',[source.id])).rows[0].store_id,'old-store');assert.equal((await pool.query('SELECT * FROM legacy_link WHERE document_id=$1',[doc])).rowCount,0);
@@ -37,5 +38,8 @@ test('runtime grants allow application DML but reject DDL and migration ledger w
     await assert.rejects(c.query('CREATE TABLE prohibited(id int)'),/permission denied/);
     await assert.rejects(c.query("UPDATE schema_migration SET checksum='changed'"),/permission denied/);
     await assert.rejects(c.query('ALTER TABLE source ADD COLUMN prohibited text'),/must be owner/);
+    await assert.rejects(c.query('DELETE FROM audit_event'),/permission denied/);
+    await assert.rejects(c.query('UPDATE report_version SET result=result'),/permission denied/);
+    await assert.rejects(c.query('DELETE FROM analysis_run'),/permission denied/);
   }finally{await c.query('RESET ROLE');c.release();}
 });

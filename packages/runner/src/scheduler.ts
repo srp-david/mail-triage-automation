@@ -7,7 +7,7 @@ export class Scheduler {
   state:LoopState='stopped';
   lastError?:string;
   constructor(private tick:(signal:AbortSignal)=>Promise<unknown>,private intervalMs=3000,private maxBackoffMs=30000){}
-  start(){if(this.task)return;this.controller=new AbortController();const signal=this.controller.signal;this.task=this.run(signal).finally(()=>{this.task=undefined;this.controller=undefined;this.state='stopped';});}
+  start(){if(this.task)return false;this.controller=new AbortController();const signal=this.controller.signal;this.task=this.run(signal).finally(()=>{this.task=undefined;this.controller=undefined;this.state='stopped';});return true;}
   async stop(){this.controller?.abort();await this.task;}
   private async run(signal:AbortSignal){let failures=0;
     while(!signal.aborted){let wait=this.intervalMs;

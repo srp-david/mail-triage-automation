@@ -25,7 +25,7 @@ try{
     mailId++;const messageId='<synthetic-'+mailId+'@example.test>',device=await history.request('/runners',{requestId:randomUUID(),displayName:'Synthetic '+agent,agents:[agent],sourceIds:[source.id]});
     const run=await history.start({sourceId:source.id,mailId,messageId,subject:'Synthetic quantity verification',requestId:randomUUID(),runnerId:device.id,agent,executorKind:'local',verifiedAt:new Date().toISOString()});
     const selection=async()=>({sourceId:source.id,agent,original:{full:async()=>({id:mailId,messageId,subject:'Synthetic quantity verification',body:'Synthetic task: read fixture.json under root fixture. Calculate quantity times unitPrice. Explain the total and include the skill marker. No real mail or ERP data is involved.'})}});
-    const executor=new LocalExecutor(work,profiles,selection,{fixture:root}),runner=new Runner(history,new ProtectedStore(work),executor,device.id,device.credential);const since=Date.now();await runner.tick(AbortSignal.timeout(240000));
+    const executor=new LocalExecutor(work,profiles,selection,{fixture:{path:root,files:['fixture.json']}}),runner=new Runner(history,new ProtectedStore(work),executor,device.id,device.credential);const since=Date.now();await runner.tick(AbortSignal.timeout(240000));
     const saved=await history.get(run.id);assert.equal(saved.status,'completed');assert.ok(saved.result.report.includes('36'));assert.ok(saved.result.evidence.some(e=>e.reference==='fixture/fixture.json'&&e.verified));assert.ok(saved.progress.some(e=>e.kind==='mail_read'));
     results.push({agent,runId:run.id,ms:Date.now()-since,reportHash:saved.reportHash,progress:saved.progress.map(e=>e.kind),status:saved.status});
   }

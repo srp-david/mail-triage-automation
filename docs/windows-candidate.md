@@ -14,6 +14,8 @@ node installer/windows/manage.mjs remove "$env:LOCALAPPDATA/MailTriage" "참조�
 
 파일 목록/hash/계약 검증 후 새 버전 폴더에 복사하고 진단 성공 시에만 active.json을 원자적으로 바꾼다. app.lock이 있으면 업데이트/제거를 거부한다. 앱 종료를 확인하기 전 잠금 파일을 지우지 않는다. config/secrets/work/logs, 개인 Codex/Claude/MCP 설정은 보존한다. 직전 버전은 rollback에 남기며 제거 도구는 active/previous 버전을 삭제하지 않는다.
 
+복사/진단은 고유 staging 폴더에서 끝낸 뒤 검증된 버전 폴더로 rename한다. 중단된 staging은 같은 버전의 재설치를 막지 않는다. 이전 형식의 불완전한 비활성 버전만 지우려면 `manage.mjs discard-incomplete HOME VERSION --confirm-root "정확한 절대 HOME"`을 사용한다. 유효한 버전/활성·직전 버전/링크는 이 명령으로 삭제하지 않는다. 서명 없는 manifest의 `releaseApproved`는 배포 절차상의 승인 표시이며, 같은 Windows 사용자의 파일 변조까지 막는 신뢰 서명을 대신하지 않는다(D6 대기).
+
 설치 후 `installer/lifecycle.mjs start|open|stop|recover-lock HOME`으로 실행·브라우저 열기·정상 중지·명시적 오래된 잠금 복구를 수행한다. 후보 합성 실행은 `start HOME --candidate --no-open`을 명시해야 한다. `shortcut HOME 새바로가기.lnk`는 기존 바로가기를 덮어쓰지 않는다. 설치 홈의 `launch.ps1`은 활성 버전을 따라간다.
 
 기본 포트는 3080이다. 충돌하면 기존 서비스를 종료하지 않고 실패한다. `settings.json.localPort`에 1024~65535의 명시 포트를 설정할 수 있으며 실제 인증에서는 Auth0 Allowed Callback URLs에 정확한 `http://127.0.0.1:PORT/auth/callback`을 등록해야 한다. 임의 hostname/외부 callback은 거부한다.

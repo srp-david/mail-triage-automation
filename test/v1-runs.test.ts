@@ -184,6 +184,9 @@ test('v1 sync retries only confirmed transient responses with bounded delays and
     if(i<3){assert.ok(outcome.nextAttemptAt);await assert.rejects(sync.beginBatch(a,job.id,{...lease,batchId:randomUUID()},runner.credential),/RETRY_NOT_DUE/);await assert.rejects(sync.start(a,{sourceId:s.id,runnerId:runner.id,requestId:randomUUID()}),/SYNC_BUSY/);await pool.query("UPDATE sync_run SET next_attempt_at=now()-interval '1 second' WHERE id=$1",[job.id]);}
   }
   assert.equal((await sync.get(a,job.id)).retry_count,3);
+  const partial=await sync.start(a,{sourceId:s.id,runnerId:runner.id,requestId:randomUUID()}),partialClaim=await sync.claim(a,partial.id,randomUUID(),runner.credential),batchId=randomUUID(),partialLease={runnerId:runner.id,leaseToken:partialClaim.leaseToken,generation:partialClaim.generation};
+  await sync.beginBatch(a,partial.id,{...partialLease,batchId},runner.credential);
+  assert.equal((await sync.batch(a,partial.id,{...partialLease,batchId,response:{status:'error',saved:1,failed:1,remaining:10,errors:['POP3_TIMEOUT']}},runner.credential)).status,'failed');assert.equal((await sync.get(a,partial.id)).retry_count,0);
 });
 
 test('HTTP sync runner processes 3200 synthetic mails without DB credentials or duplicate batches',async()=>{

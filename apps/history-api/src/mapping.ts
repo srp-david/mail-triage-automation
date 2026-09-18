@@ -20,10 +20,9 @@ export async function mapLegacy(c:PoolClient,input:unknown,confirm?:string){
     await c.query('SET LOCAL lock_timeout = \'5s\'');
     await c.query("SELECT pg_advisory_xact_lock(hashtextextended(current_schema()||':v1-write',0))");
     // v0 writers do not use the v1 lock. Freeze all affected tables for this short transaction.
-    await c.query('SET LOCAL lock_timeout = \'5s\'');
     await c.query('LOCK TABLE '+[...historical,'source','source_access','legacy_collection','legacy_collection_access','legacy_collection_document','membership','app_user'].join(',')+' IN SHARE MODE');
     if(!(await c.query("SELECT 1 FROM membership m JOIN app_user u ON u.id=m.user_id WHERE m.user_id=$1 AND m.team_id=$2 AND m.active AND u.active AND m.role='admin'",[plan.actorId,plan.teamId])).rowCount)throw new Error('MAPPING_ADMIN_REQUIRED');
-    if((await c.query("SELECT 1 FROM analysis_run WHERE status IN ('queued','running') UNION ALL SELECT 1 FROM sync_run WHERE status IN ('running','retrying','pending') LIMIT 1")).rowCount)throw new Error('WRITERS_NOT_QUIESCENT');
+    if((await c.query("SELECT 1 FROM analysis_run WHERE status IN ('queued','running') UNION ALL SELECT 1 FROM sync_run WHERE status IN ('queued','running','retrying') LIMIT 1")).rowCount)throw new Error('WRITERS_NOT_QUIESCENT');
     const bindings:unknown[]=[];
     for(const item of plan.sources){
       const s=(await c.query('SELECT s.* FROM source s JOIN membership m ON m.user_id=s.owner_user_id AND m.team_id=s.team_id JOIN app_user u ON u.id=m.user_id WHERE s.id=$1 AND s.team_id=$2 AND s.active AND m.active AND u.active',[item.sourceId,plan.teamId])).rows[0];

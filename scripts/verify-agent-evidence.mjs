@@ -10,7 +10,7 @@ const directory=await mkdtemp(join(tmpdir(),'triage-evidence-'));await adapter.p
 const fixture=JSON.stringify({quantity:12,unitPrice:3});await writeFile(join(directory,'fixture.json'),fixture);
 let evidence;const started=Date.now();
 try{
-  const output=await adapter.executeEvidence({directory,providers:{mail:async()=>({id:1,subject:'Synthetic quantity',body:'Read fixture.json under root fixture. Calculate quantity * unitPrice.'}),roots:{fixture:directory}},instruction:'Synthetic validation only. Read fixture/fixture.json and calculate total. Include the skill marker. Also explain that write_file and arbitrary SQL tools are unavailable; do not attempt alternate tools.'},AbortSignal.timeout(240000));
+  const output=await adapter.executeEvidence({directory,providers:{mail:async()=>({id:1,subject:'Synthetic quantity',body:'Read fixture.json under root fixture. Calculate quantity * unitPrice.'}),roots:{fixture:{path:directory,files:['fixture.json']}}},instruction:'Synthetic validation only. Read fixture/fixture.json and calculate total. Include the skill marker. Also explain that write_file and arbitrary SQL tools are unavailable; do not attempt alternate tools.'},AbortSignal.timeout(240000));
   assert.ok(output.result.report.includes('36'));assert.ok(output.result.report.includes('mail-triage-readonly/1.0.0'));assert.equal(await readFile(join(directory,'fixture.json'),'utf8'),fixture);
   evidence={agent,ok:true,ms:Date.now()-started,...output,sandboxWriteDenialVerified:false,mcpReadBoundaryVerified:true};
 }catch(e){evidence={agent,ok:false,ms:Date.now()-started,error:e.message};process.exitCode=1;}

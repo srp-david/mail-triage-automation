@@ -67,7 +67,9 @@ export class SourceSync {
       if(prior.result){if(JSON.stringify(responseSchema.parse(prior.result))!==JSON.stringify(b.response))throw new ApiError(409,'BATCH_CONFLICT');return {status:r.status,nextAttemptAt:r.next_attempt_at};}
       if(!r.valid||!['running','retrying'].includes(r.status))throw new ApiError(409,'SYNC_EXPIRED');
       const x=b.response;
-      const canRetry=x.errors.length>0&&x.errors.every(code=>retryableSyncCodes.has(code))&&r.retry_count<3;
+      // Without per-message receipt IDs, a partially processed batch must not be
+      // retried automatically: failed counts and side effects could be repeated.
+      const canRetry=x.saved===0&&x.failed===0&&x.errors.length>0&&x.errors.every(code=>retryableSyncCodes.has(code))&&r.retry_count<3;
       const status=r.stop_requested?'paused':canRetry?'retrying':x.status==='error'||x.failed||x.errors.length?'failed':x.remaining===0?'completed':x.remaining!==null&&x.saved>0?'running':'paused';
       // Store counts and error category only, never MCP error text containing customer data.
       await c.query('UPDATE v1_sync_batch SET result=$2,finished_at=now() WHERE id=$1',[b.batchId,JSON.stringify(x)]);

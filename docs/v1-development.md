@@ -33,7 +33,9 @@ Runner는 사용자 token + 장치 credential + 실행 lease/generation을 사�
 
 `settings.json`의 `agents.codex` / `agents.claude`에 `{ "executable": "절대 실행 파일 경로", "prefix": [] }`를 지정하면 분석 Runner를 설정 화면에서 명시적으로 시작할 수 있다. Codex Node 설치는 executable을 node.exe, prefix를 설치된 codex.js 경로로 지정한다. 현재 검증 버전은 Codex 0.154.0, Claude 2.1.276이다. 버전 변경은 합성 adapter 재검증 후 반영한다.
 
-`evidenceRoots`는 `{ "gg": "승인된 ERP 소스 경로" }` 형태다. 지정 경로의 코드 읽기만 허용하며 개인 home/config나 자격 저장 디렉터리를 지정하지 않는다. 설치 기본값은 비어 있다. `query_evidence`는 코드로 주입한 사전 정의 provider만 실행하고 임의 SQL을 받지 않는다. 실제 DB provider를 배치하려면 D5에서 읽기 전용 계정과 도구 구성을 확인해야 한다.
+`evidenceRoots`는 `{ "gg": "승인된 ERP 소스의 절대 경로" }` 형태다. 개인 home/설치 데이터와 겹치는 경로를 시작 시 거부한다. 기본 허용은 java/jsp/xml/sql/md/txt/ts/js이며 설정·자격 파일명, symlink 및 일반적인 자격 지정 구문은 거부한다. 예외 자료는 `{ "path": "절대 경로", "files": ["검토한 비밀 없는 fixture.json"] }`처럼 정확한 상대 파일명으로만 추가한다. 명시해도 자격 파일명/내용 검사는 유지된다. 이 검사는 임의 비밀의 완전한 탐지를 보장하지 않으므로 배포 담당자는 비밀 없는 증거 경로만 승인해야 한다. 설치 기본값은 비어 있다.
+
+`query_evidence`는 코드로 주입한 사전 정의 provider만 실행하고 임의 SQL을 받지 않는다. 실제 DB provider를 배치하려면 D5에서 읽기 전용 계정과 도구 구성을 확인해야 한다. agent scratch는 DPAPI receipt 폴더와 분리되어 있다.
 # 기존 이력의 명시적 매핑
 
 실전환 전 writer 중지·백업·복제 리허설을 먼저 수행한다. 운영자가 migration 자격의 `MIGRATION_DATABASE_URL`을 설정하고 `node scripts/map-v1-legacy.mjs .runtime/mapping-plan.json`으로 미리보기한다. 검토한 `previewHash`를 `--confirm HASH`로 전달해야 적용된다. 이 명령은 runtime HTTP에 노출하지 않는다.

@@ -1,8 +1,9 @@
 import {ProtectedStore} from '../dist/apps/local-app/src/protected-store.js';
 import {readFile} from 'node:fs/promises';
 import {join} from 'node:path';
-import {runCommand} from '../dist/apps/local-app/src/cli.js';
+import {runCommand,usage} from '../dist/apps/local-app/src/cli.js';
 import {spawn} from 'node:child_process';
+import {controlRequest} from '../dist/apps/local-app/src/control-client.js';
 // The running local app owns OIDC rotation. CLI never races its refresh token.
 const root=process.env.TRIAGE_LOCAL_HOME;
 if(!root)throw new Error('TRIAGE_LOCAL_HOME required; start the local app and sign in first');
@@ -10,8 +11,7 @@ try{
   const store=new ProtectedStore(join(root,'secrets')),control=await store.read('cli-control');
   if(!Number.isInteger(control.port)||control.port<1024||control.port>65535||typeof control.token!=='string'||control.token.length<32)throw new Error('INVALID_LOCAL_CONTROL');
   const call=async(path,body)=>{
-    const response=await fetch('http://127.0.0.1:'+control.port+'/api'+path,{method:body===undefined?'GET':'POST',redirect:'error',signal:AbortSignal.timeout(30000),headers:{authorization:'Bearer '+control.token,'x-local-client':'1','content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
-    if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.code??'LOCAL_REQUEST_FAILED');}
+    const response=await controlRequest(control,'/api'+path,body);
     return response.headers.get('content-type')?.includes('application/json')?response.json():response.text();
   };
   if(process.argv[2]==='open'){
@@ -23,4 +23,4 @@ try{
   const result=await runCommand(process.argv.slice(2),call,path=>readFile(path,'utf8'));
   process.stdout.write(typeof result==='string'?result+'\n':JSON.stringify(result)+'\n');
   }
-}catch{process.stderr.write('로컬 명령을 처리하지 못했습니다. 앱 실행·로그인·설정과 명령 인수를 확인하세요.\n');process.exitCode=1;}
+}catch(error){const code=/^[A-Z_]{1,80}$/.test(error.message)?error.message:'LOCAL_COMMAND_FAILED';process.stderr.write(code+'\n사용법: open | '+usage+'\n');process.exitCode=1;}

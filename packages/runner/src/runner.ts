@@ -46,7 +46,7 @@ export class Runner {
     }catch(error){
       const reason=controller.signal.aborted?'INTERRUPTED':'EXECUTION_FAILED';
       await this.store.write(this.runnerId,{...receipt,state:receipt.result?'outbox':'interrupted',reason});
-      await this.client.request('/runs/'+claim.id+'/fail',{...lease,code:controller.signal.aborted?'CANCELLED':'AGENT_FAILED'},this.device).catch(()=>{});
+      if(!receipt.result)await this.client.request('/runs/'+claim.id+'/fail',{...lease,code:controller.signal.aborted?'CANCELLED':'AGENT_FAILED'},this.device).catch(()=>{});
       throw error;
     }finally{clearInterval(pulse);clearTimeout(deadline!);}
     return this.flush(receipt);

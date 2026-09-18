@@ -1,7 +1,7 @@
 import express from 'express';
 import {readFile} from 'node:fs/promises';
 import {join} from 'node:path';
-import {randomBytes,timingSafeEqual} from 'node:crypto';
+import {randomBytes,timingSafeEqual,createHmac} from 'node:crypto';
 import {ApiError} from '../../../packages/contracts/src/v1.js';
 import {requestContext,finishRoutes} from '../../../packages/contracts/src/http.js';
 import type {LocalSession} from './session.js';
@@ -27,6 +27,10 @@ export function createBrowserApp(session:LocalSession,options:{port:number;featu
   });
   app.use(express.json({limit:'2mb'}));
   const cli=(req:express.Request)=>!!options.controlToken&&!req.get('origin')&&!req.get('sec-fetch-site')&&(!req.get('sec-fetch-mode')||req.get('sec-fetch-mode')==='cors')&&req.get('x-local-client')==='1'&&same(req.get('authorization')??'','Bearer '+options.controlToken);
+  app.get('/api/local-challenge',(req,res)=>{
+    if(!options.controlToken||typeof req.query.nonce!=='string'||!/^[a-f0-9]{64}$/.test(req.query.nonce))throw new ApiError(401,'LOCAL_SESSION_REQUIRED');
+    res.json({proof:createHmac('sha256',options.controlToken).update(req.query.nonce).digest('hex')});
+  });
   // The DPAPI-authorized launcher can bootstrap before company login. Loopback alone is not an identity.
   app.post('/api/browser-ticket',(req,res)=>{
     if(!cli(req))throw new ApiError(401,'LOCAL_SESSION_REQUIRED');
@@ -34,7 +38,7 @@ export function createBrowserApp(session:LocalSession,options:{port:number;featu
   });
   app.post('/api/app-stop',(req,res)=>{
     if(!cli(req)||!options.shutdown)throw new ApiError(401,'LOCAL_SESSION_REQUIRED');
-    res.once('finish',()=>{void options.shutdown!();});res.json({ok:true});
+    res.once('finish',()=>{void options.shutdown!().catch(()=>{});});res.json({ok:true});
   });
   app.get('/auth/bootstrap',(req,res)=>{
     const presented=typeof req.query.ticket==='string'?req.query.ticket:'';

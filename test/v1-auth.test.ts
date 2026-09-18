@@ -30,5 +30,5 @@ test('Native PKCE binds state, nonce, exact callback and consumes transaction on
 });
 test('configured callback remains exact and loopback-only on an alternate port',()=>{
   const login=new NativeLogin(settings.issuer,'native',settings.audience,'http://127.0.0.1:43180/auth/callback');assert.equal(new URL(login.begin()).searchParams.get('redirect_uri'),login.redirectUri);
-  for(const uri of ['http://localhost:43180/auth/callback','http://127.0.0.1:80/auth/callback','https://evil.test:43180/auth/callback','http://127.0.0.1:43180/auth/callback?x=1'])assert.throws(()=>new NativeLogin(settings.issuer,'native',settings.audience,uri),/INVALID_OIDC/);
+  for(const uri of ['http://localhost:43180/auth/callback','http://127.0.0.1:80/auth/callback','https://evil.test:43180/auth/callback','http://127.0.0.1:43180/auth/callback?x=1','http://user@127.0.0.1:43180/auth/callback','http://127.0.0.1:43180/old/../auth/callback'])assert.throws(()=>new NativeLogin(settings.issuer,'native',settings.audience,uri),/INVALID_OIDC/);
 });

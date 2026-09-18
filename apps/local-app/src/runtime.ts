@@ -38,13 +38,13 @@ export class LocalRuntime {
     this.loops.set('sync',new Scheduler(signal=>this.sync!.tick(signal)));
     this.key=key;
   }
-  async start(kind:'analysis'|'sync'){return this.serial(async()=>{if(kind==='analysis'&&!this.executor)throw new ApiError(409,'ADAPTER_NOT_RELEASE_APPROVED');await this.initialize();this.loops.get(kind)!.start();return {ok:true};});}
+  async start(kind:'analysis'|'sync'){return this.serial(async()=>{if(kind==='analysis'&&!this.executor)throw new ApiError(409,'ADAPTER_NOT_RELEASE_APPROVED');await this.initialize();const loop=this.loops.get(kind)!;if(loop.state==='recovery_required')await loop.stop();return {ok:true,started:loop.start(),state:loop.state};});}
   private async stopLoops(){await Promise.all([...this.loops.values()].map(s=>s.stop()));}
   async stop(){return this.serial(async()=>{await this.stopLoops();return {ok:true};});}
   status(){return {analysis:this.loops.get('analysis')?.state??'stopped',sync:this.loops.get('sync')?.state??'stopped',analysisAvailable:!!this.executor};}
   async recovery(){return this.serial(async()=>{await this.initialize();return {analysis:await this.runner!.recovery(),sync:await this.sync!.recovery()};});}
   async resolve(action:'archive-analysis'|'archive-sync'|'deliver'|'deliver-sync'|'recover'){return this.serial(async()=>{
-    await this.initialize();await this.stopLoops();
+    await this.initialize();await this.loops.get(action.includes('sync')?'sync':'analysis')!.stop();
     if(action==='archive-analysis')return this.runner!.archiveInterrupted();
     if(action==='archive-sync')return this.sync!.archiveInterrupted();
     if(action==='deliver-sync')return this.sync!.deliverOutbox();

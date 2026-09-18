@@ -6,7 +6,7 @@ import type {LocalSelection} from './ui-routes.js';
 import {ApiError} from '../../../packages/contracts/src/v1.js';
 import type {EvidenceProviders} from '../../../packages/agent-adapters/src/evidence.js';
 export class LocalExecutor implements Executor {
-  constructor(private workRoot:string,private profiles:Partial<Record<'codex'|'claude',Profile>>,private selection:()=>Promise<LocalSelection>,private roots:Record<string,string>,private queries:EvidenceProviders['queries']={},private make=(p:Profile)=>new AgentAdapter(p)){}
+  constructor(private workRoot:string,private profiles:Partial<Record<'codex'|'claude',Profile>>,private selection:()=>Promise<LocalSelection>,private roots:EvidenceProviders['roots'],private queries:EvidenceProviders['queries']={},private make=(p:Profile)=>new AgentAdapter(p)){}
   async execute(run:any,signal:AbortSignal,progress?:(event:RunnerProgress)=>Promise<void>){
     const profile=this.profiles[run.agent as 'codex'|'claude'];if(!profile||profile.agent!==run.agent)throw new ApiError(409,'AGENT_NOT_CONFIGURED');
     const source=async()=>{signal.throwIfAborted();const selected=await this.selection();if(selected.sourceId!==run.sourceId||!selected.original)throw new ApiError(409,'SOURCE_CHANGED');return selected.original;};

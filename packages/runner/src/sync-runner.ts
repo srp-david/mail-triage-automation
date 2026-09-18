@@ -32,8 +32,8 @@ export class SyncRunner {
     if(['running','retrying'].includes(result.status)){await this.client.request('/sync-runs/'+claim.id+'/stop',{});await this.client.request('/sync-runs/'+claim.id+'/heartbeat',lease,this.device);}
     await this.store.write(key,{state:'idle'});this.activeId=undefined;return result;
   }finally{this.busy=false;}}
-  async archiveInterrupted(){if(this.busy)throw new Error('SYNC_BUSY');const key='sync-device-'+this.runnerId,r=await this.store.read(key);if(!r.claim?.id)throw new Error('SYNC_RECOVERY_REQUIRED');
+  async archiveInterrupted(){if(this.busy)throw new Error('SYNC_BUSY');this.busy=true;try{const key='sync-device-'+this.runnerId,r=await this.store.read(key);if(!r.claim?.id)throw new Error('SYNC_RECOVERY_REQUIRED');
     const remote=await this.client.request('/sync-runs/'+r.claim.id);if(['queued','running','retrying'].includes(remote.status))throw new Error('SYNC_STILL_ACTIVE');
     await this.store.write('sync-archive-'+r.claim.id,r);await this.store.write(key,{state:'idle'});this.activeId=undefined;return {ok:true};
-  }
+  }finally{this.busy=false;}}
 }

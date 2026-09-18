@@ -34,12 +34,14 @@ export class ProtectedStore {
 async function restrictDirectory(path:string){
   // Modify only the DACL. Set-Acl with a fresh descriptor can request SACL privileges
   // on a subsequent write, even when the current user already owns the directory.
-  const code=`$ErrorActionPreference='Stop';$p=[Console]::In.ReadToEnd();$a=[IO.Directory]::GetAccessControl($p,[Security.AccessControl.AccessControlSections]::Access);$a.SetAccessRuleProtection($true,$false);foreach($old in @($a.Access)){$a.RemoveAccessRuleSpecific($old)};$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User;$r=New-Object System.Security.AccessControl.FileSystemAccessRule($sid,'FullControl','ContainerInherit,ObjectInherit','None','Allow');$a.AddAccessRule($r);[IO.Directory]::SetAccessControl($p,$a)`;
+  // Console input uses the Windows code page. Send ASCII base64 so non-ASCII
+  // install paths survive even when PowerShell's input encoding is not UTF-8.
+  const code=`$ErrorActionPreference='Stop';$p=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String([Console]::In.ReadToEnd()));$a=[IO.Directory]::GetAccessControl($p,[Security.AccessControl.AccessControlSections]::Access);$a.SetAccessRuleProtection($true,$false);foreach($old in @($a.Access)){$a.RemoveAccessRuleSpecific($old)};$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User;$r=New-Object System.Security.AccessControl.FileSystemAccessRule($sid,'FullControl','ContainerInherit,ObjectInherit','None','Allow');$a.AddAccessRule($r);[IO.Directory]::SetAccessControl($p,$a)`;
   await new Promise<void>((resolve,reject)=>{
     const child=spawn('powershell.exe',['-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(code,'utf16le').toString('base64')],{windowsHide:true,stdio:['pipe','ignore','ignore']});
     const timer=setTimeout(()=>{child.kill();reject(new Error('ACL_TIMEOUT'));},15000);
     child.on('error',()=>{clearTimeout(timer);reject(new Error('ACL_FAILED'));});
-    child.on('close',code=>{clearTimeout(timer);code===0?resolve():reject(new Error('ACL_FAILED'));});child.stdin.end(resolvePath(path));
+    child.on('close',code=>{clearTimeout(timer);code===0?resolve():reject(new Error('ACL_FAILED'));});child.stdin.end(Buffer.from(resolvePath(path),'utf8').toString('base64'));
   });
 }
 const resolvePath=(path:string)=>resolve(path);

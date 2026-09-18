@@ -4,6 +4,8 @@ import {randomUUID} from 'node:crypto';
 import {Runner} from '../packages/runner/src/runner.js';
 import {Scheduler} from '../packages/runner/src/scheduler.js';
 import {syncBatch} from '../packages/runner/src/sync.js';
+import {SyncRunner} from '../packages/runner/src/sync-runner.js';
+import {LocalRuntime} from '../apps/local-app/src/runtime.js';
 test('result outbox survives lost completion response without executing agent twice',async()=>{
   const records=new Map<string,any>();const store={async read(k:string){if(!records.has(k))throw Object.assign(new Error(),{code:'ENOENT'});return structuredClone(records.get(k));},async write(k:string,v:any){records.set(k,structuredClone(v));}};
   const id=randomUUID(),runnerId=randomUUID();let executions=0,completed=0;const events:any[]=[];
@@ -34,4 +36,24 @@ test('sync response-loss retries its outbox without collecting again; interrupte
   const controller=new AbortController(),uncertain=randomUUID();let entered!:()=>void;const started=new Promise<void>(r=>entered=r);
   const pending=syncBatch(client,store,uncertain,lease,'device',async(_n,signal)=>{entered();return new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(new Error('cancelled')),{once:true}));},controller.signal);
   await started;controller.abort();await assert.rejects(pending);assert.equal(records.get('sync-'+uncertain).state,'started');await assert.rejects(syncBatch(client,store,uncertain,lease,'device',collect),/SYNC_OUTCOME_UNCERTAIN/);
+});
+test('sync archive owns the same mutex as tick while remote status is pending',async()=>{
+  let release!:(v:any)=>void;const remote=new Promise(r=>release=r),records=new Map<string,any>(),runnerId=randomUUID(),id=randomUUID();records.set('sync-device-'+runnerId,{state:'running',claim:{id}});
+  const store={async read(k:string){return records.get(k);},async write(k:string,v:any){records.set(k,v);}},client:any={request:async()=>remote};
+  const runner=new SyncRunner(client,store,runnerId,'synthetic',async()=>({})),archiving=runner.archiveInterrupted();
+  await assert.rejects(runner.tick(new AbortController().signal),/SYNC_BUSY/);await assert.rejects(runner.archiveInterrupted(),/SYNC_BUSY/);release({status:'paused'});await archiving;assert.equal(records.get('sync-device-'+runnerId).state,'idle');
+});
+test('a saved result survives a transient outbox write failure without failing the remote run',async()=>{
+  const records=new Map<string,any>(),runnerId=randomUUID(),id=randomUUID();let failWrite=true,failed=0;
+  const store={async read(k:string){if(!records.has(k))throw Object.assign(new Error(),{code:'ENOENT'});return records.get(k);},async write(k:string,v:any){if(v.state==='outbox'&&failWrite){failWrite=false;throw new Error('disk transient');}records.set(k,v);}};
+  const client:any={async request(path:string){if(path.endsWith('/fail'))failed++;return {id,leaseToken:'x'.repeat(32),generation:1,leaseUntil:new Date(Date.now()+60000).toISOString()};},async get(){return {id};},async complete(){return {id};}};
+  const runner=new Runner(client,store,{execute:async()=>({outcome:'completed',project:'unknown',report:'Synthetic',question:'',knowledge:'',evidence:[]})},runnerId,'synthetic');
+  await assert.rejects(runner.tick(),/disk transient/);assert.equal(failed,0);assert.equal(records.get(runnerId).state,'outbox');await runner.tick();assert.equal(records.get(runnerId).state,'idle');
+});
+test('explicit analysis restart resumes its parked loop without stopping sync',async()=>{
+  const runnerId=randomUUID(),userId=randomUUID(),sourceId=randomUUID(),records=new Map<string,any>();let claims=0;
+  const store={async read(k:string){if(k==='device-'+runnerId)return {id:runnerId,userId,credential:'synthetic'};if(!records.has(k))throw Object.assign(new Error(),{code:'ENOENT'});return records.get(k);},async write(k:string,v:any){records.set(k,v);}};
+  const history:any={async request(path:string){if(path.endsWith('/claim')&&++claims===1)throw new Error('SOURCE_CHANGED');return null;}};
+  const runtime=new LocalRuntime(history,{selection:async()=>({sourceId,runnerId})} as any,{identity:async()=>({userId})} as any,store,store,{execute:async()=>null});
+  try{await runtime.start('analysis');await runtime.start('sync');for(let n=0;n<100&&runtime.status().analysis!=='recovery_required';n++)await new Promise(r=>setTimeout(r,1));assert.equal(runtime.status().analysis,'recovery_required');const restarted=await runtime.start('analysis');assert.equal(restarted.started,true);await new Promise(r=>setTimeout(r,5));assert.ok(claims>=2);assert.equal(runtime.status().sync,'idle');}finally{await runtime.stop();}
 });
