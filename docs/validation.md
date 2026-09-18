@@ -328,3 +328,11 @@
 - `.runtime/query-cache/before.json`, `after.json`, `browser.json`과 `.runtime/react-validation/`에 결과를 보존했다. 원문·실제 화면 캡처는 커밋하지 않는다.
 - 유휴 상태를 확인하고 API만 `--no-build --no-deps --wait`로 적용했다. `/health`, 배포 자산 해시, 실제 로그인·메일 목록/상세·기존 보고서·390px 모바일·pageerror 0건 확인. 분석 6건·이전 문서 33건·리뷰·처리·관련 메일·수동 연결 해시 및 DB/Worker 컨테이너 ID 유지, Worker online.
 - 적용 이미지 `mail-triage-web:query-cache-20260918`, ID `sha256:2482a5f984e040b4bd41edd494130dc529989d347194119bf4dcc1f59a7f6e3a`. 직전 React 이미지 `mail-triage-web:react-r6-20260918`를 보존했다. 필요 시 해당 이미지를 local 태그로 지정한 후 API만 `--no-build --no-deps`로 교체한다. 새 실메일 분석·sync·ERP 변경은 실행하지 않았다.
+
+## 2026-09-18 P1 서비스 경계 분리
+
+- `apps/history-api`, `apps/local-app`, `packages/contracts`, `packages/history-client`, `packages/ui` npm workspace 추가. 이력/DB와 로컬 메일 구현을 이동하고 `src` re-export와 기존 실행 경로를 유지했다.
+- 인증 주입형 `/api/v1` HTTP 계약과 DB 자격이 없는 클라이언트 구현. 계약 검사는 메모리 repository 합성이며 실제 PostgreSQL v1 종단 검증과 v0 화면 전체의 v1 전환은 후속 작업이다.
+- `npm run check`, `npm run build`, 격리 schema 백엔드 55개, 전체 UI 합성 15개 통과.
+- 최초 Docker 검사는 Windows node_modules 마운트로 esbuild 플랫폼 오류가 발생했다. 소스 디렉터리만 read-only 마운트하고 컨테이너의 Linux 의존성을 사용해 해결했다.
+- 기존 서비스/운영 schema/고객 메일은 변경하지 않았다. Office 기존 대용량 번들 경고는 남는다.

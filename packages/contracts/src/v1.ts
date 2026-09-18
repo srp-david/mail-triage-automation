@@ -1,0 +1,17 @@
+import {z} from 'zod';
+export {resultSchema} from './schema.js';
+export const contractVersion='1' as const;
+export const uuid=z.string().uuid();
+export const runInput=z.object({
+  sourceId:uuid,mailId:z.number().int().positive().safe(),messageId:z.string().max(2000).nullable(),
+  subject:z.string().max(2000),requestId:uuid,runnerId:uuid,
+  agent:z.enum(['codex','claude']),executorKind:z.literal('local').default('local'),
+  verifiedAt:z.string().datetime(),parentId:uuid.optional(),answer:z.string().max(20000).optional(),
+}).strict();
+export type RunInput=z.infer<typeof runInput>;
+export type Principal={userId:string};
+export type Lease={runnerId:string;leaseToken:string;generation:number};
+export const leaseSchema=z.object({runnerId:uuid,leaseToken:z.string().min(32).max(200),generation:z.number().int().positive()});
+export class ApiError extends Error {
+  constructor(public status:number,public code:string){super(code);}
+}

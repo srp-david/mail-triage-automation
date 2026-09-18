@@ -4,7 +4,7 @@ import {activeRun,date,labels,type Attachment,type Body,type Mail,type Run,type 
 import {useResource} from '../../hooks/async';
 import {Action} from '../../components/Common';
 import {MailBody,PreviewDialog} from '../../components/Documents';
-import {previewFormat} from '../../../../public/office-preview.js';
+import {previewFormat} from '../../../../../../public/office-preview.js';
 const LIMIT=5*1024*1024;
 const emptyAttachments:Attachment[]=[];
 function fileSize(size:number){return !Number.isFinite(size)||size<0?'크기 미확인':size<1024?size+' B':size<1024*1024?(size/1024).toFixed(1)+' KiB':(size/1024/1024).toFixed(1)+' MiB';}

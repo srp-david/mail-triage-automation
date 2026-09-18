@@ -1,9 +1,9 @@
 import {useCallback,useEffect} from 'react';
 import {DomLeaf} from './Common';
 import {markdownView} from '../../../viewer/markdown.js';
-import {renderMailBody} from '../../../public/mail-body.js';
-import {loadImageCards} from '../../../public/attachments.js';
-import {openOfficePreview,closeOfficePreview} from '../../../public/office-preview.js';
+import {renderMailBody} from '../../../../../public/mail-body.js';
+import {loadImageCards} from '../../../../../public/attachments.js';
+import {openOfficePreview,closeOfficePreview} from '../../../../../public/office-preview.js';
 import type {Attachment,Body} from '../api/types';
 export function MarkdownView({value='',label='문서'}:{value?:string;label?:string}){
  return <DomLeaf create={useCallback(()=>markdownView(value,label),[value,label])}/>;

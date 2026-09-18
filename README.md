@@ -72,7 +72,7 @@ Outlook 예외 등록, 원본 해시 기반 이관, 지식 제안의 단일 반�
 
 ## 검증
 
-React 개발은 `ui/`에서 진행한다. `npm run build`로 서버·Office·Markdown·메인 UI를 빌드하고 `npm start`로 동일 origin에서 확인한다. UI만 수정할 때는 `npm run build:ui -- --watch`를 별도 터미널에서 실행한다. Vite 개발 서버용 인증 완화나 CORS 변경은 사용하지 않는다. `public/react/`, `public/preview/`, `public/markdown/`은 생성물이며 Git에 추가하지 않는다.
+React 개발은 `packages/ui/ui/`에서 진행한다. `npm run build`로 서버·Office·Markdown·메인 UI를 빌드하고 `npm start`로 동일 origin에서 확인한다. UI만 수정할 때는 `npm run build:ui -- --watch`를 별도 터미널에서 실행한다. Vite 개발 서버용 인증 완화나 CORS 변경은 사용하지 않는다. `public/react/`, `public/preview/`, `public/markdown/`은 생성물이며 Git에 추가하지 않는다.
 
 메인 UI 전체 회귀는 `python scripts/create-preview-fixtures.py` 후 `npm run verify:ui`(15개 합성 브라우저 검사), 요청 경합·재인증 검사는 `node --import tsx scripts/verify-react-state.mjs`로 실행한다. 로컬 Chrome 설치가 필요하며 DB·MCP·고객 메일 대신 임시 서버와 모의 API를 사용한다.
 
@@ -95,7 +95,7 @@ docker compose exec -T api npm run diagnose
 docker compose exec -T worker codex login status
 ```
 통합 테스트는 이미 실행 중인 DB의 임의 이름 전용 PostgreSQL schema를 만들고 종료 시 해당 schema만 제거한다. `--no-deps`로 기존 DB의 Compose 설정 반영/재생성을 막는다. recovery 검증은 별도 Docker 프로젝트와 합성 데이터로 백업·복원, 프로세스 강제 종료, DB 재시작을 검사한다.
-미리보기 검증은 합성 OOXML 파일과 임시 로컬 서버/모의 API를 사용하며 DB·MCP·고객 메일에 접근하지 않는다. `viewer/`의 React 코드는 Vite로 `public/preview/`에 빌드하며 생성물은 Git에서 제외한다. Docker 빌드에도 이 과정이 포함된다. 사용 패키지는 [react-docx](https://github.com/extend-hq/react-docx), [react-pptx](https://github.com/extend-hq/react-pptx), [react-xlsx](https://github.com/extend-hq/react-xlsx)이다.
+미리보기 검증은 합성 OOXML 파일과 임시 로컬 서버/모의 API를 사용하며 DB·MCP·고객 메일에 접근하지 않는다. `packages/ui/viewer/`의 React 코드는 Vite로 `public/preview/`에 빌드하며 생성물은 Git에서 제외한다. Docker 빌드에도 이 과정이 포함된다. 사용 패키지는 [react-docx](https://github.com/extend-hq/react-docx), [react-pptx](https://github.com/extend-hq/react-pptx), [react-xlsx](https://github.com/extend-hq/react-xlsx)이다.
 운영 이력 테이블을 초기화하지 않는다. diagnose는 메일 한 건과 SR DB SELECT 1만 읽는다.
 실제 동기화 버튼으로 신규 3건 수집/실패 0건/남음 0건을 확인했다. 2026-09-17 사용자 지정 메일 한 건으로 실제 Worker 분석·저장·웹/직접 CLI 동일 결과 조회도 확인했다. 업무 문제 해결이나 모든 메일 유형의 분석 품질을 검증했다는 의미는 아니다.
 
@@ -106,7 +106,7 @@ docker compose exec -T worker codex login status
 
 분석 이력의 보고서·업무 지식 제안·리뷰와 이전 Markdown 문서는 서식을 적용해 표시한다. 각 문서의 **원문 보기 / 문서 보기**로 전환할 수 있고 기존 Markdown export를 유지한다. 제목·강조·표·목록·체크 목록·인용·코드 블록을 지원하며 표와 코드는 좁은 화면에서 가로 스크롤한다. 문서 안의 HTML은 문자로 표시하고 이미지는 설명만 표시한다. 링크는 HTTP(S)만 새 창으로 열며 코드 실행·구문 강조·Mermaid 렌더링은 제공하지 않는다.
 
-`viewer/markdown.js`는 [marked](https://marked.js.org/)와 [DOMPurify](https://github.com/cure53/DOMPurify)로 Markdown을 변환·정제한다. `npm run build:markdown`으로 `public/markdown/viewer.js`에 번들하며 전체/Docker 빌드에도 포함한다. CDN이나 외부 변환 서버는 사용하지 않는다.
+`packages/ui/viewer/markdown.js`는 [marked](https://marked.js.org/)와 [DOMPurify](https://github.com/cure53/DOMPurify)로 Markdown을 변환·정제한다. `npm run build:markdown`으로 `public/markdown/viewer.js`에 번들하며 전체/Docker 빌드에도 포함한다. CDN이나 외부 변환 서버는 사용하지 않는다.
 
 history 볼륨은 DB/보고서/리뷰, work 볼륨은 Worker 산출물/실패 로그, codex 볼륨은 인증과 실행 정보를 보존한다.
 일반 종료에는 `docker compose down`을 사용한다. `down -v`는 데이터를 삭제하므로 사용하지 않는다.

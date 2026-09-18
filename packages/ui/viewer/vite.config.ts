@@ -6,7 +6,7 @@ export default defineConfig({
   base: '/preview/',
   publicDir: false,
   build: {
-    outDir: '../public/preview',
+    outDir: '../../../public/preview',
     emptyOutDir: true,
     assetsInlineLimit: 0,
   },

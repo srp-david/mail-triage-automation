@@ -5,11 +5,14 @@
     "moduleResolution": "NodeNext",
     "strict": true,
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "esModuleInterop": true,
     "skipLibCheck": true
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "apps/**/*.ts",
+    "packages/contracts/**/*.ts",
+    "packages/history-client/**/*.ts"
   ]
 }

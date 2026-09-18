@@ -8,7 +8,7 @@ import {Action} from '../../components/Common';
 import {ThreadList,useThreads} from './ThreadList';
 import {MailDetail} from './MailDetail';
 import {SyncStatus} from './SyncStatus';
-import {captureMailPosition,restoreMailPosition,hasMailPaneScroll} from '../../../../public/mail-scroll.js';
+import {captureMailPosition,restoreMailPosition,hasMailPaneScroll} from '../../../../../../public/mail-scroll.js';
 export interface MailboxHandle {reload:(reset?:boolean)=>Promise<void>;summaries:()=>Promise<void>;analysisChanged:()=>Promise<void>}
 interface Props {visible:boolean;enabled:boolean;sync:Sync|null;startSync:()=>Promise<unknown>;stopSync:()=>Promise<unknown>;onHistory:(id:number,subject:string)=>void;onAnalysis:(id:string,mailId:number,subject:string)=>void;onSelect:()=>void}
 const initial={query:'',from:'',after:'',status:'all'};

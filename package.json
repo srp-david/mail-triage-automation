@@ -4,14 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc && npm run build:viewer && npm run build:markdown && npm run build:ui",
-    "build:ui": "vite build --config ui/vite.config.ts",
+    "build": "tsc && node scripts/build-compat.mjs && npm run build:viewer && npm run build:markdown && npm run build:ui",
+    "build:ui": "vite build --config packages/ui/ui/vite.config.ts",
     "verify:ui": "node scripts/verify-react-suite.mjs",
     "build:markdown": "node scripts/build-markdown.mjs",
-    "build:viewer": "vite build --config viewer/vite.config.ts",
+    "build:viewer": "vite build --config packages/ui/viewer/vite.config.ts",
     "start": "node dist/server.js",
     "worker": "node dist/worker.js",
-    "check": "tsc --noEmit && tsc -p viewer/tsconfig.json && tsc -p ui/tsconfig.json",
+    "check": "tsc --noEmit && tsc -p packages/ui/viewer/tsconfig.json && tsc -p packages/ui/ui/tsconfig.json",
     "test": "tsx --test test/*.test.ts",
     "diagnose": "tsx src/diagnose.ts"
   },
@@ -39,5 +39,9 @@
     "tsx": "^4.0.0",
     "typescript": "7.0.2",
     "vite": "8.3.0"
-  }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }

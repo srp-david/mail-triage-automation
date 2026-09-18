@@ -6,7 +6,7 @@ import {MailboxPage,type MailboxHandle} from '../features/mailbox/MailboxPage';
 import {HistoryDialog,HistoryList,type HistoryState,type ListHandle} from '../features/history/History';
 import {Action} from '../components/Common';
 import {useQueryClient} from '@tanstack/react-query';
-import {closeOfficePreview} from '../../../public/office-preview.js';
+import {closeOfficePreview} from '../../../../../public/office-preview.js';
 const viewFromHash=()=>['mailbox','history','legacy'].includes(location.hash.slice(1))?location.hash.slice(1):'mailbox';
 const revision=(sync:Sync|null)=>!sync||activeSync(sync)&&!sync.saved?null:JSON.stringify([sync.id,activeSync(sync)?'active':sync.status,sync.saved,sync.batch_count??0,sync.finished_at]);
 export function App(){

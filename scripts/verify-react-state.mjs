@@ -5,7 +5,7 @@ import {chromium} from 'playwright-core';
 process.env.NODE_ENV='test';process.env.TRIAGE_TOKEN='synthetic-react-state-'.repeat(3);
 const strictDev=process.argv.includes('--strict-dev'),devDirectory=resolve('.runtime/react-strict');
 if(strictDev){
- const {build}=await import('vite');await build({configFile:'ui/vite.config.ts',define:{'process.env.NODE_ENV':JSON.stringify('development')},build:{outDir:devDirectory,minify:false}});
+ const {build}=await import('vite');await build({configFile:'packages/ui/ui/vite.config.ts',define:{'process.env.NODE_ENV':JSON.stringify('development')},build:{outDir:devDirectory,minify:false}});
 }
 const {createApp}=await import('../src/server.ts');
 const server=createApp().listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
