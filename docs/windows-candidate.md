@@ -1,6 +1,6 @@
 # Windows 후보 패키지
 
-P6 개발 후보이며 팀 배포용 완성본이 아니다. P1/P2 전체 UI·인증 연결, P3 지속 Runner, P4 두 agent 읽기 전용 검증, P5 실서버가 남아 manifest는 releaseApproved=false다. 시작 스크립트는 미승인 후보의 일반 실행을 거부한다. 값을 임의로 true로 바꿔 배포하지 않는다.
+P6 개발 후보이며 팀 배포용 완성본이 아니다. Native UI·세션·Runner와 두 agent MCP 합성 실행은 연결됐고, 실인증·ERP 읽기 계정·공용 호스트·팀 PC 검증은 남아 manifest는 releaseApproved=false다. 시작 스크립트는 미승인 후보의 일반 실행을 거부한다. 값을 임의로 true로 바꿔 배포하지 않는다.
 
 빌드 PC의 Windows x64 Node v24.16.0을 고정한다. `npm run build` 후 `.runtime/packages` 디렉터리를 만들고 `node scripts/package-windows.mjs 0.2.0-candidate.1`을 실행한다. portable node.exe·Node 라이선스·정확한 의존성/lockfile·로컬 앱/Runner/adapter·공통 스킬·UI 자산·설치 관리 도구와 모든 파일 SHA-256 manifest/ZIP checksum을 만든다. DB 드라이버·history-api·개인 설정·ERP 자료·인증·outbox는 넣지 않는다.
 
@@ -14,4 +14,12 @@ node installer/windows/manage.mjs remove "$env:LOCALAPPDATA/MailTriage" "참조�
 
 파일 목록/hash/계약 검증 후 새 버전 폴더에 복사하고 진단 성공 시에만 active.json을 원자적으로 바꾼다. app.lock이 있으면 업데이트/제거를 거부한다. 앱 종료를 확인하기 전 잠금 파일을 지우지 않는다. config/secrets/work/logs, 개인 Codex/Claude/MCP 설정은 보존한다. 직전 버전은 rollback에 남기며 제거 도구는 active/previous 버전을 삭제하지 않는다.
 
-깨끗한 팀 PC 설치, 자동 바로가기/중지·복구 UI, 코드 서명/PowerShell 정책, 실제 CLI 없음·로그인 만료·MCP 진단과 외부 GitHub 게시(D5/D6)는 아직 미완료다. `.workflow.example.yml`은 비활성 초안이며 Actions 실행이나 Release 게시를 수행하지 않았다.
+설치 후 `installer/lifecycle.mjs start|open|stop|recover-lock HOME`으로 실행·브라우저 열기·정상 중지·명시적 오래된 잠금 복구를 수행한다. 후보 합성 실행은 `start HOME --candidate --no-open`을 명시해야 한다. `shortcut HOME 새바로가기.lnk`는 기존 바로가기를 덮어쓰지 않는다. 설치 홈의 `launch.ps1`은 활성 버전을 따라간다.
+
+기본 포트는 3080이다. 충돌하면 기존 서비스를 종료하지 않고 실패한다. `settings.json.localPort`에 1024~65535의 명시 포트를 설정할 수 있으며 실제 인증에서는 Auth0 Allowed Callback URLs에 정확한 `http://127.0.0.1:PORT/auth/callback`을 등록해야 한다. 임의 hostname/외부 callback은 거부한다.
+
+`manage.mjs uninstall HOME`은 앱 버전만 제거하고 개인 상태를 보존한다. 개인 상태까지 지우려면 `--purge-private --confirm-root "정확한 절대 HOME"`이 필요하다. 실행 중 잠금·알 수 없는 파일·심볼릭 링크가 있으면 거부한다. 별도 위치에 만든 바로가기는 사용자가 해당 위치에서 제거한다. 개인 AI 설치/계정은 이 도구가 지우지 않는다.
+
+`diagnose.mjs RELEASE HOME`은 패키지 import·포트·개인 CLI 버전/자격 존재를 확인하며 자격 원문을 출력하지 않는다. `--connect-mcp`는 설정된 메일 MCP의 도구 목록만 확인하고 메일 조회나 동기화는 호출하지 않는다. 자격 존재는 제공자의 만료/실제 호출 성공을 보장하지 않는다.
+
+깨끗한 팀 PC 설치, 코드 서명/PowerShell 정책, 실제 계정 만료·외부 GitHub 게시(D5/D6)는 미완료다. `.workflow.example.yml`은 비활성 초안이며 Actions 실행이나 Release 게시를 수행하지 않았다.

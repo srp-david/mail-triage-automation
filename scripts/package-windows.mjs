@@ -10,6 +10,7 @@ const target=resolve('.runtime/packages',version);await mkdir(dirname(target),{r
 for(const sub of ['apps/local-app','packages/contracts','packages/history-client','packages/runner','packages/agent-adapters','packages/skills'])await cp('dist/'+sub,join(target,'dist',sub),{recursive:true});
 await cp('public',join(target,'public'),{recursive:true});
 await cp('installer/windows',join(target,'installer'),{recursive:true});
+await mkdir(join(target,'scripts'));await cp('scripts/history-v1.mjs',join(target,'scripts/history-v1.mjs'));
 await cp(process.execPath,join(target,'node.exe'));
 const checksums=await fetch('https://nodejs.org/dist/v24.16.0/SHASUMS256.txt');if(!checksums.ok)throw new Error('Node checksum fetch failed');
 const expected=(await checksums.text()).split('\n').find(line=>line.trim().endsWith('win-x64/node.exe'))?.split(/\s+/)[0];

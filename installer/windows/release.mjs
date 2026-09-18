@@ -1,4 +1,4 @@
-import {readFile,readdir,lstat,realpath,mkdir,cp,writeFile,rename,rm} from 'node:fs/promises';
+import {readFile,readdir,lstat,realpath,mkdir,cp,writeFile,rename,rm,rmdir} from 'node:fs/promises';
 import {resolve,join,relative,isAbsolute,sep} from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 const versionPattern=/^\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?$/;
@@ -38,7 +38,24 @@ export async function installRelease(home,payload,{allowCandidate=false,diagnose
   await verifyRelease(target);
   if(!await diagnose(target))throw new Error('DIAGNOSTICS_FAILED');
   let prior;try{prior=JSON.parse(await readFile(join(root,'active.json'),'utf8'));}catch(e){if(e.code!=='ENOENT')throw e;}
+  const marker=join(root,'install.json');try{const value=JSON.parse(await readFile(marker,'utf8'));if(value.product!=='mail-triage-local'||value.root!==root)throw new Error('INSTALL_MARKER_MISMATCH');}catch(e){if(e.code!=='ENOENT')throw e;await writeFile(marker,JSON.stringify({product:'mail-triage-local',root}),{flag:'wx'});}
+  if(manifest.files['installer/start.ps1'])await cp(join(target,'installer/start.ps1'),join(root,'launch.ps1'));
   await activate(root,{version:manifest.version,previous:prior?.version??null});return {version:manifest.version,previous:prior?.version??null};
+}
+export async function uninstallApplication(home,{purgePrivate=false,confirmRoot}={}){
+  const root=await managedRoot(home),marker=JSON.parse(await readFile(join(root,'install.json'),'utf8'));
+  if(marker.product!=='mail-triage-local'||marker.root!==root)throw new Error('INSTALL_MARKER_MISMATCH');
+  if(purgePrivate&&confirmRoot!==root)throw new Error('EXACT_ROOT_CONFIRMATION_REQUIRED');
+  const versions=await readdir(join(root,'releases'));
+  const targets=[];for(const version of versions){if(!versionPattern.test(version))throw new Error('UNKNOWN_RELEASE_ENTRY');const target=inside(join(root,'releases'),join(root,'releases',version));await verifyRelease(target);targets.push(target);}
+  const known=new Set(['releases','config','secrets','work','logs','active.json','install.json','launch.ps1']);
+  if(purgePrivate){for(const name of await readdir(root))if(!known.has(name))throw new Error('UNKNOWN_INSTALL_ENTRY');for(const sub of ['config','secrets','work','logs'])await files(inside(root,join(root,sub)));}
+  for(const name of ['active.json','launch.ps1'])try{await noLinks(join(root,name));}catch(e){if(e.code!=='ENOENT')throw e;}
+  // Every recursive target was resolved under the marked install root and inspected above.
+  for(const target of targets)await rm(target,{recursive:true});
+  for(const name of ['active.json','launch.ps1'])await rm(inside(root,join(root,name)),{force:true});
+  if(purgePrivate){for(const sub of ['config','secrets','work','logs'])await rm(inside(root,join(root,sub)),{recursive:true});await rm(join(root,'install.json'));await rmdir(join(root,'releases'));await rmdir(root);}
+  return {uninstalled:true,privateStatePreserved:!purgePrivate,shortcuts:'Remove any shortcut you created from its chosen location.'};
 }
 export async function rollback(home){
   const root=await managedRoot(home),active=JSON.parse(await readFile(join(root,'active.json'),'utf8'));

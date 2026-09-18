@@ -8,7 +8,7 @@ import type {LocalSession} from './session.js';
 const random=()=>randomBytes(32).toString('base64url');
 const same=(a:string,b:string)=>{const first=Buffer.from(a),second=Buffer.from(b);return first.length===second.length&&timingSafeEqual(first,second);};
 const cookie=(req:express.Request,name:string)=>(req.headers.cookie??'').split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='))?.slice(name.length+1)??'';
-export function createBrowserApp(session:LocalSession,options:{port:number;features?:(app:express.Express)=>void;staticRoot?:string;beforeLogout?:()=>Promise<unknown>;controlToken?:string}){
+export function createBrowserApp(session:LocalSession,options:{port:number;features?:(app:express.Express)=>void;staticRoot?:string;beforeLogout?:()=>Promise<unknown>;controlToken?:string;shutdown?:()=>Promise<unknown>}){
   if(options.controlToken&&options.controlToken.length<32)throw new Error('STRONG_CONTROL_TOKEN_REQUIRED');
   const app=express(),origin=`http://127.0.0.1:${options.port}`;
   let browser=random(),csrf=random(),loginCookie='',sessionExpires=Date.now()+8*3600000;
@@ -31,6 +31,10 @@ export function createBrowserApp(session:LocalSession,options:{port:number;featu
   app.post('/api/browser-ticket',(req,res)=>{
     if(!cli(req))throw new ApiError(401,'LOCAL_SESSION_REQUIRED');
     ticket=random();ticketExpires=Date.now()+60000;res.json({url:origin+'/auth/bootstrap?ticket='+ticket});
+  });
+  app.post('/api/app-stop',(req,res)=>{
+    if(!cli(req)||!options.shutdown)throw new ApiError(401,'LOCAL_SESSION_REQUIRED');
+    res.once('finish',()=>{void options.shutdown!();});res.json({ok:true});
   });
   app.get('/auth/bootstrap',(req,res)=>{
     const presented=typeof req.query.ticket==='string'?req.query.ticket:'';

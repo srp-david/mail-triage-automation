@@ -8,15 +8,15 @@ const root=process.env.TRIAGE_LOCAL_HOME;
 if(!root)throw new Error('TRIAGE_LOCAL_HOME required; start the local app and sign in first');
 try{
   const store=new ProtectedStore(join(root,'secrets')),control=await store.read('cli-control');
-  if(control.port!==3080||typeof control.token!=='string'||control.token.length<32)throw new Error('INVALID_LOCAL_CONTROL');
+  if(!Number.isInteger(control.port)||control.port<1024||control.port>65535||typeof control.token!=='string'||control.token.length<32)throw new Error('INVALID_LOCAL_CONTROL');
   const call=async(path,body)=>{
-    const response=await fetch('http://127.0.0.1:3080/api'+path,{method:body===undefined?'GET':'POST',redirect:'error',signal:AbortSignal.timeout(30000),headers:{authorization:'Bearer '+control.token,'x-local-client':'1','content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
+    const response=await fetch('http://127.0.0.1:'+control.port+'/api'+path,{method:body===undefined?'GET':'POST',redirect:'error',signal:AbortSignal.timeout(30000),headers:{authorization:'Bearer '+control.token,'x-local-client':'1','content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
     if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.code??'LOCAL_REQUEST_FAILED');}
     return response.headers.get('content-type')?.includes('application/json')?response.json():response.text();
   };
   if(process.argv[2]==='open'){
     const {url}=await call('/browser-ticket',{});
-    if(!/^http:\/\/127\.0\.0\.1:3080\/auth\/bootstrap\?ticket=[A-Za-z0-9_-]{43}$/.test(url))throw new Error('INVALID_BOOTSTRAP');
+    if(new URL(url).origin!=='http://127.0.0.1:'+control.port||!/^\/auth\/bootstrap\?ticket=[A-Za-z0-9_-]{43}$/.test(new URL(url).pathname+new URL(url).search))throw new Error('INVALID_BOOTSTRAP');
     await new Promise((resolve,reject)=>{const child=spawn('powershell.exe',['-NoProfile','-NonInteractive','-Command','Start-Process -FilePath $env:TRIAGE_BROWSER_URL -WindowStyle Hidden'],{env:{...process.env,TRIAGE_BROWSER_URL:url},windowsHide:true,stdio:'ignore'});child.once('error',reject);child.once('exit',code=>code===0?resolve():reject(new Error('BROWSER_OPEN_FAILED')));});
     process.stdout.write('분석실을 브라우저에서 열었습니다.\n');
   }else{

@@ -15,9 +15,9 @@ import {z} from 'zod';
 import {acquireInstance} from '../../../packages/runner/src/instance.js';
 const root=process.env.TRIAGE_LOCAL_HOME;if(!root)throw new Error('TRIAGE_LOCAL_HOME required');
 const command=z.object({executable:z.string().min(1),prefix:z.array(z.string()).max(5).optional()}).strict();
-const settings=z.object({historyUrl:z.string().url(),auth:z.object({issuer:z.string().url(),clientId:z.string().min(1),audience:z.string().min(1),refreshMode:z.enum(['rotating','static']).default('rotating')}),mailMcpUrl:z.string().url().optional(),agents:z.object({codex:command.optional(),claude:command.optional()}).optional(),evidenceRoots:z.record(z.string().regex(/^[a-z][a-z0-9_-]{0,39}$/),z.string().min(1)).default({})}).parse(JSON.parse(await readFile(join(root,'config','settings.json'),'utf8')));
+const settings=z.object({localPort:z.number().int().min(1024).max(65535).default(3080),historyUrl:z.string().url(),auth:z.object({issuer:z.string().url(),clientId:z.string().min(1),audience:z.string().min(1),refreshMode:z.enum(['rotating','static']).default('rotating')}),mailMcpUrl:z.string().url().optional(),agents:z.object({codex:command.optional(),claude:command.optional()}).optional(),evidenceRoots:z.record(z.string().regex(/^[a-z][a-z0-9_-]{0,39}$/),z.string().min(1)).default({})}).parse(JSON.parse(await readFile(join(root,'config','settings.json'),'utf8')));
 const secrets=new ProtectedStore(join(root,'secrets'));
-const login=new NativeLogin(settings.auth.issuer,settings.auth.clientId,settings.auth.audience);
+const login=new NativeLogin(settings.auth.issuer,settings.auth.clientId,settings.auth.audience,`http://127.0.0.1:${settings.localPort}/auth/callback`);
 const session=new LocalSession(login,secrets,async token=>(await new HistoryClient(settings.historyUrl,async()=>token).request('/me'))!,Date.now,settings.auth.refreshMode);
 const history=new HistoryClient(settings.historyUrl,()=>session.token());
 const profile=new LocalProfile(history,session,secrets,settings.mailMcpUrl);
@@ -26,9 +26,11 @@ const profiles={...(settings.agents?.codex?{codex:{agent:'codex' as const,versio
 const executor=Object.keys(profiles).length?new LocalExecutor(join(root,'work'),profiles,()=>profile.selection(),settings.evidenceRoots):undefined;
 const runtime=new LocalRuntime(history,profile,session,secrets,receipts,executor);
 const release=await acquireInstance(join(root,'app.lock'));
-const port=3080;
+const port=settings.localPort;
 const controlToken=randomBytes(32).toString('base64url');await secrets.write('cli-control',{port,token:controlToken});
-const server=createBrowserApp(session,{port,controlToken,beforeLogout:()=>runtime.stop(),features:app=>{
+let stopping:Promise<void>|undefined;
+const shutdown=()=>stopping??=(async()=>{await runtime.stop();await new Promise<void>(r=>{server.close(()=>r());server.closeIdleConnections();});await secrets.write('cli-control',{stopped:true});await release();})();
+const server=createBrowserApp(session,{port,controlToken,shutdown,beforeLogout:()=>runtime.stop(),features:app=>{
   localUiRoutes(app,history,{selection:()=>profile.selection(),registerSource:b=>profile.registerSource(b),registerRunner:b=>profile.registerRunner(b),configure:async b=>{await runtime.stop();return profile.configure(b);},status:async()=>({...await profile.status() as object,runtime:runtime.status()})});
   app.get('/api/runtime',async(_req,res)=>res.json(runtime.status()));
   app.post('/api/runtime/start',async(req,res)=>res.json(await runtime.start(z.object({kind:z.enum(['analysis','sync'])}).strict().parse(req.body).kind)));
@@ -37,4 +39,4 @@ const server=createBrowserApp(session,{port,controlToken,beforeLogout:()=>runtim
   app.post('/api/runtime/recovery',async(req,res)=>res.json(await runtime.resolve(z.object({action:z.enum(['archive-analysis','archive-sync','deliver','deliver-sync','recover'])}).strict().parse(req.body).action)));
 },staticRoot:fileURLToPath(new URL('../../../../public/',import.meta.url))}).listen(port,'127.0.0.1');
 server.on('error',()=>{void release().finally(()=>{process.exitCode=1;});});
-for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>{void runtime.stop().finally(()=>server.close(()=>{void release();}));});
+for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>{void shutdown();});

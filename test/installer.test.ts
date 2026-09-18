@@ -4,7 +4,7 @@ import {mkdtemp,mkdir,writeFile,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
-import {installRelease,rollback,verifyRelease} from '../installer/windows/release.mjs';
+import {installRelease,rollback,verifyRelease,uninstallApplication} from '../installer/windows/release.mjs';
 test('versioned install/update/rollback preserve private state and failed updates never activate',async()=>{
   const root=await mkdtemp(join(tmpdir(),'triage-install-')),home=join(root,'한글 사용자');
   async function payload(version:string){const path=join(root,version);await mkdir(path);const body='synthetic '+version;await writeFile(join(path,'app.txt'),body);await writeFile(join(path,'manifest.json'),JSON.stringify({version,contractVersion:'1',platform:'win32-x64',releaseApproved:false,files:{'app.txt':createHash('sha256').update(body).digest('hex')}}));return path;}
@@ -19,4 +19,14 @@ test('versioned install/update/rollback preserve private state and failed update
   for(const dir of ['config','secrets','work'])assert.equal(await readFile(join(home,dir,'preserve.txt'),'utf8'),'synthetic-private-'+dir);
   await writeFile(join(first,'app.txt'),'tampered');await assert.rejects(verifyRelease(first),/CHECKSUM_MISMATCH/);
   await writeFile(join(home,'app.lock'),'synthetic stale or running lock');await assert.rejects(rollback(home),/APP_RUNNING_OR_RECOVERY_LOCK/);
+});
+test('application removal preserves personal state unless exact purge scope is confirmed',async()=>{
+  const {rm,access}=await import('node:fs/promises');const root=await mkdtemp(join(tmpdir(),'triage-remove-')),home=join(root,'owned'),payload=join(root,'payload');await mkdir(payload);
+  await writeFile(join(payload,'app.txt'),'synthetic');await writeFile(join(payload,'manifest.json'),JSON.stringify({version:'1.0.0',contractVersion:'1',platform:'win32-x64',releaseApproved:true,files:{'app.txt':createHash('sha256').update('synthetic').digest('hex')}}));
+  try{
+    await installRelease(home,payload);await writeFile(join(home,'secrets','preserve.txt'),'private-fixture');
+    await assert.rejects(uninstallApplication(home,{purgePrivate:true,confirmRoot:root}),/EXACT_ROOT/);await access(join(home,'active.json'));
+    assert.equal((await uninstallApplication(home)).privateStatePreserved,true);assert.equal(await readFile(join(home,'secrets','preserve.txt'),'utf8'),'private-fixture');
+    await installRelease(home,payload);await uninstallApplication(home,{purgePrivate:true,confirmRoot:home});await assert.rejects(access(home));
+  }finally{await rm(root,{recursive:true,force:true});}
 });

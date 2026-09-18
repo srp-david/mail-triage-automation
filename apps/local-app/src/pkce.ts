@@ -5,7 +5,8 @@ export class NativeLogin {
   constructor(readonly issuer:string,readonly clientId:string,readonly audience:string,
     readonly redirectUri='http://127.0.0.1:3080/auth/callback',private transport:typeof fetch=fetch,private key?:JWTVerifyGetKey){
     const parsed=new URL(issuer);
-    if(parsed.protocol!=='https:'||parsed.username||parsed.password||parsed.search||parsed.hash||!issuer.endsWith('/')||redirectUri!=='http://127.0.0.1:3080/auth/callback')throw new Error('INVALID_OIDC_CONFIGURATION');
+    const callback=new URL(redirectUri);
+    if(parsed.protocol!=='https:'||parsed.username||parsed.password||parsed.search||parsed.hash||!issuer.endsWith('/')||callback.origin!==`http://127.0.0.1:${callback.port}`||Number(callback.port)<1024||Number(callback.port)>65535||callback.pathname!=='/auth/callback'||callback.search||callback.hash)throw new Error('INVALID_OIDC_CONFIGURATION');
   }
   begin(){
     const random=()=>randomBytes(32).toString('base64url');
