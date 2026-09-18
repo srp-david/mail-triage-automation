@@ -1,6 +1,6 @@
 # mail-triage-web 통합 구현 계획
 
-문서 버전: 1.5 · 갱신일: 2026-09-18 · 상태: P1~P3 기반, P4 합성 adapter, P5 서버·복원 후보, P6 Windows 후보, P7 기록 체계 구현·검증. 단계 전체 완료 아님. 전체 UI·세션·Runner 통합, Codex 실제 읽기 및 실인증·팀 PC 검증 미완료. P8 보류. [검증 기록](validation.md), [v1 개발 경계](v1-development.md).
+문서 버전: 1.6 · 갱신일: 2026-09-18 · 상태: P1~P6 로컬 구현·합성 검증과 실제 두 CLI 종단 연결 완료, P7 파일럿 준비. 실인증·공용 호스트·ERP 읽기 권한·깨끗한 팀 PC 및 두 PC 파일럿은 대기한다. 전체 계획/팀 배포 완료 아님. P8은 P7/D8 결정 전 보류. [최종 로컬 검증](local-completion-2026-09-18.md), [검증 기록](validation.md), [v1 개발 경계](v1-development.md).
 
 이 문서는 앞으로의 범위·기술 선택·실행 순서의 단일 기준이다. 최신 사용자 결정은 **회사 이메일 인증 가입 + 공용 이력 API·PostgreSQL + 팀원 PC의 웹 앱·개인 AI agent·MCP**이다. 향후 웹·Worker·MCP를 필요한 순서대로 공용화한다. 문서 통합과 P1 전 UI·UX 보완은 인증 구현, DB 이관, 외부 서비스 가입, GitHub 게시, 실제 팀 배포를 수행한 기록이 아니다.
 
@@ -43,7 +43,7 @@
 4. 상태 안내: 진행 중 처리 완료 버튼 숨김, 도구 실패와 전체 분석 실패 구분, 분석 결과와 업무 처리 표시 구분, 오래된 등록 알림 제거.
 5. 검색·이전 문서: 적용 조건/초기화/빈 결과/조회 실패 재시도, 파일명 우선 표시와 경로·해시 기본 접힘.
 
-회사 이메일 인증과 초기 설정 안내, 공유 범위·팀원 표시, Runner 연결/큐 복구 UX는 P2~P4에서 실제 API 계약에 맞춰 추가한다. P2에서 개인 계정이 도입되면 초안 키에 사용자 식별자를 포함하고 로그아웃·계정 전환 시 보존/삭제 정책을 함께 구현한다.
+회사 이메일 인증 진입, 초기 설정, 공유 범위·팀원 표시, Runner 연결/큐 복구 UX는 P2~P4의 Native 세션/API에 연결했다. 초안 키에 사용자 식별자를 포함하고 로그아웃 시 메모리/sessionStorage를 정리한다. 실Auth0 가입·메일 수신은 D1/D3 검증을 기다린다.
 
 ### 1.4 메일함 스레드 보기 (2026-09-18 사용자 추가 요청)
 
@@ -60,7 +60,7 @@
 
 ## 2. 현재 상태와 변경 지점
 
-2026-09-17 작업 트리와 기존 문서 대조 기준이다. 실행 중 컨테이너·DB를 이번 문서 작업에서 재검증하지 않았다. 미커밋 변경도 있으므로 아래 패키지·소스 상태가 특정 커밋의 배포 상태를 뜻하지 않는다.
+아래 표는 2026-09-17의 v0 구성에서 출발한 전환 기준이다. v1 현재 구현·검증 범위는 12절을 따른다. 기존 실행 서비스는 v0를 유지하며 v1 로컬 소스·후보 패키지를 실제 팀 배포 상태로 해석하지 않는다.
 
 | 현재 확인한 구성 | 전환 작업 |
 |---|---|
@@ -449,6 +449,8 @@ Windows 11 x64를 1차 검증 대상으로 한다. 기타 Windows 버전·ARM64�
 | `%LOCALAPPDATA%/MailTriage/config/` | 공용 API 주소, source/agent 설정, 사용자별 로컬 참조 경로 |
 | `%LOCALAPPDATA%/MailTriage/secrets/` | DPAPI 보호 refresh/device 자격. 현재 사용자 ACL |
 | `%LOCALAPPDATA%/MailTriage/work/<runId>/` | 보호된 결과·receipt·복구 outbox |
+| `%LOCALAPPDATA%/MailTriage/scratch/` | 실행 중 agent 임시 작업. DPAPI receipt와 분리 |
+| `%LOCALAPPDATA%/MailTriage/staging/` | 설치 검증 후 releases로 게시하기 전 임시 폴더 |
 | `%LOCALAPPDATA%/MailTriage/logs/` | 민감정보 제외 진단 로그, 기본 7일 순환 |
 
 AI CLI와 개인 MCP는 팀원이 관리한다. installer는 설치 유무·버전·로그인·MCP 도구·ERP 경로를 점검하고 부족한 항목을 안내한다. 팀원의 Docker·AI 구독을 대리 생성하거나 기존 설정을 통째로 바꾸지 않는다. 로컬 앱 자체에는 Docker가 필요하지 않지만 개인 MCP가 Docker를 사용하면 해당 환경은 필요하다.
@@ -516,16 +518,16 @@ schema는 추가→채움→검증→사용 전환→후속 정리 순서로 바
 
 | 단계 | 2026-09-18 현재 검증된 범위 | 남은 구현·검증 |
 |---|---|---|
-| P1 | workspace/모듈·UI 이동, DB 없는 API 클라이언트, legacy/리뷰/처리/관련 메일/검색/수동 링크/지식 제안 ACL 및 React facade, 기존 UI 15개 회귀 | 빌드 호환 shim 리뷰 수정, 전체 DB+local UI 종단 및 일부 직접 CLI 기능 연결 |
-| P2 | JWT/PKCE·Auth0 Action, 사용자/source/collection/Runner, DPAPI, Native cookie/CSRF/refresh/logout, source 공유 설정 UI, 사용자별 초안 합성 검증 | 실Auth0/메일·재설정·재발송, 기존 공유 source 원본 재연결 절차와 실계정·다른 Windows 사용자 검사 |
-| P3 | 지정 Runner 큐/lease/outbox, 지속 loop·중지·복구 UI, 원본 재확인/만료 결과 새 버전 복구, 로컬 CLI, HTTP sync 3,200건·지연 재시도·응답 유실 | P4 일반 agent 실행 연결, 실제 PC 종료/프로세스 트리 및 다중 API/장치 현장 검증 |
-| P4 | 공통 스킬 manifest·adapter·환경 분리, Claude 실제 합성 읽기/구조화 결과 | Codex 합성 읽기 실패 해결, 두 agent ERP/MCP 읽기 전용·금지 쓰기 거부, 일반 업무 adapter와 Runner 연결 |
-| P5 | 공용 API 이미지/Compose·Caddy/SMTP 템플릿, 기존 DB 복제 migration·재복원 11테이블 hash 보존 | D1~D4, 기존 source/legacy ACL 매핑·운영 DML 계정 실적용, 외부 접근/TLS/메일·외부 암호화 백업·실전환 |
-| P6 | 고정 Node Windows 후보 ZIP/3,702파일 hash, 한글 경로 설치·설정 보존·롤백·후보 실행 차단 | 전체 앱 연결 후 릴리스 승인, 바로가기/중지·완전 제거 UX/CLI·MCP 진단, 깨끗한 팀 PC·서명·게시 |
+| P1 | workspace/모듈·UI 이동·호환 export, DB 없는 클라이언트, legacy/리뷰/처리/관련 메일/검색/수동 링크/지식 제안 ACL·React facade, UI 15개 및 Native 브라우저 회귀 | 외부 통합 환경에서 기존 기능 수용 검증 |
+| P2 | JWT/PKCE·Auth0 Action, 사용자/source/collection/Runner, DPAPI, 일회용 browser bootstrap·cookie/CSRF·refresh/logout, 공유 UI·사용자별 초안·명시적 원본 재연결 | D1/D3 실Auth0·메일 인증/재설정/재발송, 실계정·다른 Windows 사용자, D5 upstream instance 식별 |
+| P3 | 지정 Runner 큐/lease/progress/outbox, 지속 loop·중지·복구 UI/CLI, 부모 보고서·답변 연결, HTTP sync 3,200건, 실제 agent 저장 종단 및 Windows 부모/자식 취소 | 실제 PC 절전/종료·다중 장치·실제 권한 회수 현장 검증 |
+| P4 | 두 개인 CLI 실제 MCP 합성 읽기→Runner→HTTP API→DB, 스킬/결과 근거 대조, 파일·환경 제한·scratch 분리 | D5 ERP DB 읽기 전용 계정/고정 query provider 연결, 실제 금지 쓰기 거부·Windows sandbox 설정/깨끗한 PC 검증 |
+| P5 | 공용 API 이미지/Compose·Caddy/SMTP 템플릿, 명시적 매핑 preview/hash/apply·DML 권한 검사, 기존 DB 복제 migration·재복원 11테이블 hash 보존 | D1~D4 실제 source/legacy 귀속 결정·운영 계정 적용, 외부 접근/TLS/메일·외부 암호화 백업·실전환 |
+| P6 | 고정 Node 후보 ZIP, 파일 hash/import 진단, staging 설치·롤백·복구, 실행/브라우저/바로가기/중지·보존 제거, DPAPI 한글 경로 검사 | D5/D6 깨끗한 팀 PC·회사 실행 정책/서명·비공개 배포 접근 및 릴리스 승인/게시 |
 | P7 | 합성 두 사용자/Runner 회귀, 파일럿 사례·기록 양식·누락 검사 | D5/D7 시험자·두 PC·지정 메일·실제 업무 관찰. 현장 미착수 |
 | P8 | v1 local 경계 유지, service 입력 거부 검사 | P7 및 D8 결정 전 전체 보류 |
 
-위의 로컬 미구현 항목은 외부 계정 부재만으로 설명하지 않는다. 현재 ZIP은 releaseApproved=false이며 팀 배포용 완성본이 아니다. 실행 중 기존 v0 서비스는 교체하지 않았다.
+승인된 범위에서 독립적으로 수행할 수 있는 로컬 구현·합성 검증·후보 산출물을 완료했다. 실제 계정/자료/호스트에 종속된 연결과 현장 검증은 위 표에 남겼다. 현재 ZIP은 releaseApproved=false이며 팀 배포용 완성본이 아니다. 실행 중 기존 v0 서비스는 교체하지 않았다. 기존 잔여 L1~L3 자료 판정/후속 설계도 자동 완료하거나 임의 매핑하지 않는다.
 
 | 단계 | 선행 조건 | 작업·산출물 | 완료 기준 | 예상 공수 |
 |---|---|---|---|---|

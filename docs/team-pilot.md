@@ -17,7 +17,7 @@
 | 업데이트 | 활성 작업 중 거부, 실패 롤백, 한글 경로·포트 충돌 | 개인 설정/인증/outbox hash 보존 |
 | 복원 | 암호화된 외부 위치 백업을 격리 DB에 복원 | 건수/hash·RPO/RTO 실측 |
 
-합성 시험은 `node scripts/test-backend.mjs`의 v1 인증·ACL·run·sync·outbox와 `node --import tsx --test test/installer.test.ts`를 사용한다. 실제 agent 시험은 `scripts/verify-agents.mjs`의 별도 합성 자료만 사용한다. 실메일은 D7에서 사용자가 메일 MCP ID를 지정한 이후에만 실행한다.
+합성 시험은 `node scripts/test-backend.mjs`의 v1 인증·ACL·run·sync·outbox와 `node --import tsx --test test/installer.test.ts`를 사용한다. 실제 agent 시험은 `scripts/verify-agents.mjs`의 adapter 검사와 `node --import tsx scripts/verify-agent-e2e.mjs`의 실제 CLI→Runner→API→DB 저장 검사를 사용한다. 모두 별도 합성 자료만 사용하며 실메일은 D7에서 사용자가 메일 MCP ID를 지정한 이후에만 실행한다.
 
 관찰마다 날짜·PC 별칭·실행 종류(합성/실제 agent/실메일)·소요시간·복구/결함 번호를 기록한다. 실제 업무 5일 이상 관찰은 제안이며 일정 약속이 아니다. 업무 판단 확인은 기술 실행 성공과 별도다. 미해결 권한·쓰기 방어·데이터 손실 결함이 있으면 팀 확대를 보류한다.
 

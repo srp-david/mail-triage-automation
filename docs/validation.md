@@ -530,3 +530,10 @@
 - 설치는 고유 staging에 복사·hash·진단을 마친 뒤 원자 rename으로 공개한다. 복사 중 실패·diagnostics 실패 뒤 같은 버전 재시도, hard-exit 잔여 staging이 있을 때 재설치, 이전 불완전 비활성 버전의 정확한 경로 확인 후 제거 검사가 통과했다. 개인 상태와 활성·직전 버전 보호를 유지한다.
 - Codex `windows.sandbox="elevated"`는 Windows sandbox 구현 선택이다. 별도의 `--sandbox read-only`와 `approval_policy="never"`를 유지하며 실제 evidence 경로에서는 shell/unified_exec를 끈다. 관리자가 sandbox 설정을 완료했다거나 OS 파일 쓰기 거부를 검증했다고 주장하지 않는다. [공식 Windows sandbox 설명](https://learn.chatgpt.com/docs/windows/windows-sandbox)을 따른다.
 - manifest 파일 hash는 전송/파일 집합 검증이다. manifest 자체를 신뢰하는 사용자 배포 경로·코드 서명은 D6 결정/실검증 대상으로 남긴다.
+
+# 2026-09-18 최종 로컬 검증 및 후보6
+
+- 최종 결과는 [로컬 완료 기록](local-completion-2026-09-18.md)에 모았다. check/build/compat, backend98/98, 기존 UI15/15와 Native Chrome 합성, 최신 파일 정책의 실제 두 CLI→Runner→API→DB 저장 종단을 통과했다. 최종 종단 소요는 Codex30,548ms/Claude55,937ms다.
+- 후보5 실제 한글 설치에서 DPAPI ACL helper의 console code page 문제가 드러났다. 경로를 ASCII base64로 전달하고 UTF8로 복원해 해결했다. 한글 폴더 반복write/read3회·현재user-only DACL·평문부재와 후보6 실제 설치/기동/진입/바로가기/정상중지/설정보존 제거가 통과했다. 이는 같은 개발 PC 검증이며 깨끗한 팀 PC 검사와 구분한다.
+- 후보6 3,719파일/Nodev24.16.0/contract1, releaseApproved=false 유지. ZIP hash `8e5c45c9439af96cb7d3e2b53a463541ae73796ec1783efdd32755ce88fa7222`. 기존 v0 API/DB healthy·Worker running과 3080 유지 확인. Git push·Release 게시·운영 이관 없음.
+- 실제 Auth0/회사 메일·호스트/TLS·외부 암호화 백업·ERP 읽기 계정/provider·OS 쓰기 거부·두 PC 파일럿은 D1~D7 입력/현장 검증 대기. P8은 P7/D8 이후다. 이 한계를 완료로 바꾸지 않았다.

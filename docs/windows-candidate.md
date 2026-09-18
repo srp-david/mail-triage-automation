@@ -2,7 +2,9 @@
 
 P6 개발 후보이며 팀 배포용 완성본이 아니다. Native UI·세션·Runner와 두 agent MCP 합성 실행은 연결됐고, 실인증·ERP 읽기 계정·공용 호스트·팀 PC 검증은 남아 manifest는 releaseApproved=false다. 시작 스크립트는 미승인 후보의 일반 실행을 거부한다. 값을 임의로 true로 바꿔 배포하지 않는다.
 
-빌드 PC의 Windows x64 Node v24.16.0을 고정한다. `npm run build` 후 `.runtime/packages` 디렉터리를 만들고 `node scripts/package-windows.mjs 0.2.0-candidate.1`을 실행한다. portable node.exe·Node 라이선스·정확한 의존성/lockfile·로컬 앱/Runner/adapter·공통 스킬·UI 자산·설치 관리 도구와 모든 파일 SHA-256 manifest/ZIP checksum을 만든다. DB 드라이버·history-api·개인 설정·ERP 자료·인증·outbox는 넣지 않는다.
+빌드 PC의 Windows x64 Node v24.16.0을 고정한다. `npm.cmd run build` 후 `node scripts/package-windows.mjs 새후보버전`을 실행한다. 버전 형식은 `0.2.0-candidate.6`이며 기존 폴더를 덮어쓰지 않으므로 다음 빌드는 새 번호를 사용한다. portable node.exe·Node 라이선스·정확한 의존성/lockfile·로컬 앱/Runner/adapter·공통 스킬·UI 자산·설치 관리 도구와 모든 파일 SHA-256 manifest/ZIP checksum을 만든다. DB 드라이버·history-api·개인 설정·ERP 자료·인증·outbox는 넣지 않는다.
+
+2026-09-18 최종 로컬 후보는 `0.2.0-candidate.6`(3,719파일)이다. ZIP SHA-256은 `8e5c45c9439af96cb7d3e2b53a463541ae73796ec1783efdd32755ce88fa7222`다. 후보5의 한글 경로 ACL 실패를 수정한 버전이며 상세 실행 근거는 [최종 검증](local-completion-2026-09-18.md)에 기록한다.
 
 검증된 ZIP은 설치 전 별도 빈 폴더에 압축 해제한다. checksum은 전송 손상 검사이며 배포자 서명을 대체하지 않는다. 승인된 배포 경로에서 받은 패키지만 사용한다. 후보 설치 실험:
 

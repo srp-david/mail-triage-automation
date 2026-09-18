@@ -2,7 +2,7 @@
 별도 Docker 웹 앱과 erp-manager 직접 스킬이 같은 이력 API를 사용하는 초기 구현이다.
 문서 진입점은 [문서 안내](docs/README.md), 앞으로의 기술 사양·단계·미완료 작업은 [통합 구현 계획](docs/implementation-plan.md), 실행한 검증은 [검증 기록](docs/validation.md)에 기록한다.
 
-현재 아래 실행법은 단일 사용자 Docker 앱 기준이다. 회사 이메일 인증, 공용 이력 서버, 팀원 PC용 설치 프로그램과 Claude Code 선택 기능은 통합 계획의 후속 구현 대상이며 아직 제공되는 기능으로 안내하지 않는다.
+현재 아래 실행법과 실행 중 서비스는 단일 사용자 v0 Docker 앱 기준이다. 회사 이메일 인증·공용 이력 API·개인 Codex/Claude Runner를 연결한 v1 로컬 후보는 [개발 실행 안내](docs/v1-development.md)와 [Windows 설치 안내](docs/windows-candidate.md)를 따른다. [로컬 검증](docs/local-completion-2026-09-18.md)은 완료했으며 실인증·공용 호스트·팀 PC 검증과 팀 배포는 남아 있다.
 
 메인 화면은 **React 19 + TypeScript + Vite SPA**이며 Express가 같은 origin에서 제공합니다. 백엔드는 기존 Node.js 24·Express 5·PostgreSQL 17과 Codex Worker/MCP 구성을 유지합니다. 전환 범위·검증·기존 화면 복귀 절차는 [React 전환 검증](docs/react-transition-validation.md)에 기록했습니다.
 

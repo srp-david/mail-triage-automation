@@ -17,7 +17,9 @@ CLI는 `TRIAGE_LOCAL_HOME` 아래 DPAPI `cli-control`로 실행 중인 로컬 �
 
 로컬 앱의 `<TRIAGE_LOCAL_HOME>/config/settings.json`에는 `historyUrl`, `auth: {issuer, clientId, audience}`, 선택적 `mailMcpUrl`을 설정한다. 실제 회사 설정은 D1/D3 확인 후 넣는다. 비밀을 이 파일에 넣지 않는다.
 
-설정 화면에서 source/collection 선택, 현재 MCP 출처 등록, 실행 장치 등록·폐기, 사용자별 공유 권한을 관리한다. 개인 source instance와 사용자별 선택은 DPAPI에 보존한다. 다른 출처의 원본 연결을 임의로 가정하지 않고 공용 이력 조회만 제공한다. 분석 admission/관련 메일/수동 링크는 로컬 MCP의 현재 식별자를 재조회한다. 실행/중지/미전송 복구도 설정에서 관리한다. 일반 AI adapter 검증 전이므로 현재 후보의 분석 실행은 차단된다. sync는 명시적으로 켠 로컬 loop가 처리한다.
+설정 화면에서 source/collection 선택, 현재 MCP 출처 등록, 실행 장치 등록·폐기, 사용자별 공유 권한을 관리한다. 개인 source instance와 사용자별 선택은 DPAPI에 보존한다. 다른 출처의 원본 연결을 임의로 가정하지 않고 공용 이력 조회만 제공한다. 분석 admission/관련 메일/수동 링크는 로컬 MCP의 현재 식별자를 재조회한다. 실행/중지/미전송 복구도 설정에서 관리한다. 아래 개인 agent가 설정된 경우 분석 loop를 명시적으로 시작할 수 있다. agent 미설정 시에는 분석을 거부하며 sync는 별도 명시적으로 켠 loop가 처리한다.
+
+원본 저장소 주소가 바뀌었으면 설정의 대조/복구 절차를 따른다. 최대10개 기존 이력의 mail ID·Message-ID·제목을 다시 비교하고 사용자가 같은 저장소/복원본임을 확인해야 연결한다. 표본 일치가 전체 저장소 동일성을 증명하지는 않는다. 근거가 없으면 새 출처를 등록하고 기존 공유 이력은 원본 없는 상태로 보존한다.
 
 직접 명령은 `node scripts/history-v1.mjs` 뒤에 `sources`, `settings [JSON_FILE]`, `get RUN`, `progress RUN`, `export RUN`, `begin JSON_FILE`, `cancel RUN`, `review RUN JSON_FILE`, `handling RUN true|false`, `runner start analysis|sync`, `runner stop`, `recovery show|deliver|recover|deliver-sync|archive-analysis|archive-sync`, `sync start|stop [ID]`를 사용한다. begin 입력은 UI와 같은 source UUID인 `storeId`, 메일 `mailId/messageId`, 고정 `requestId`와 선택적 `parentId/answer`다. 메일 원문이나 자격은 입력 파일에 넣지 않는다.
 
