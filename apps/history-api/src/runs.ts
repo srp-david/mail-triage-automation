@@ -5,6 +5,7 @@ import {transaction} from './db.js';
 import {lock,member,sourceAccess,deviceAccess,digest,secretMatches} from './directory.js';
 import {ApiError,runInput,leaseSchema,uuid,completionSchema,type Principal,type RunInput} from '../../../packages/contracts/src/v1.js';
 import {progressSchema} from '../../../src/progress.js';
+import {SharedHistory} from './shared-history.js';
 async function expire(c:PoolClient){
   await c.query(`UPDATE analysis_run r SET status=CASE WHEN v.cancel_requested_at IS NULL THEN 'failed' ELSE 'cancelled' END,error='LEASE_OR_QUEUE_EXPIRED',finished_at=now(),lease_until=NULL
     FROM v1_run v WHERE v.run_id=r.id AND ((r.status='running' AND (r.lease_until<=now() OR r.started_at<now()-interval '30 minutes')) OR (r.status='queued' AND r.created_at<now()-interval '24 hours'))`);
@@ -47,18 +48,8 @@ export class Runs {
       return {id,status:'queued'};
     });
   }
-  async get(actor:Principal,id:string){return transaction(async c=>{
-    const r=await row(c,actor,id);
-    const result=(await c.query('SELECT result FROM report_version WHERE run_id=$1',[id])).rows[0]?.result??null;
-    return {id:r.id,sourceId:r.source_id,mailId:r.mail_id,messageId:r.message_id,subject:r.subject,status:r.status,agent:r.agent,runnerId:r.target_runner_id,
-      progress:r.progress_events,handledAt:r.handled_at,result,reportHash:result?digest(result.report):null,cancelRequested:!!r.cancel_requested_at,
-      verifiedBy:r.verified_by,verifiedAt:r.verified_at,parentId:r.parent_id,answer:r.answer};
-  });}
-  async list(actor:Principal,sourceId:string,offset=0){return transaction(async c=>{
-    await sourceAccess(c,actor,sourceId);
-    return (await c.query(`SELECT r.id,r.status,r.created_at,m.mail_id,m.subject FROM analysis_run r JOIN v1_run v ON v.run_id=r.id
-      JOIN mail_identity m ON m.id=r.mail_key WHERE v.source_id=$1 ORDER BY r.created_at DESC,r.id DESC LIMIT 100 OFFSET $2`,[sourceId,offset])).rows;
-  });}
+  async get(actor:Principal,id:string){return new SharedHistory().get(actor,id);}
+  async list(actor:Principal,sourceId:string,offset=0,mailId?:number,query=''){return new SharedHistory().list(actor,sourceId,offset,mailId,query);}
   async claim(actor:Principal,runnerId:string,requestId:string,device:string){return transaction(async c=>{
     await lock(c);const r=await deviceAccess(c,actor,runnerId,device);const m=await member(c,actor);await expire(c);
     let job=(await c.query(`SELECT a.*,v.* FROM v1_run v JOIN analysis_run a ON a.id=v.run_id WHERE v.claim_request_id=$1`,[requestId])).rows[0];

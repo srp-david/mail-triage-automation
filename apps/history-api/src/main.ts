@@ -5,6 +5,8 @@ import {directoryRoutes} from './directory-routes.js';
 import {runRoutes} from './run-routes.js';
 import {syncRoutes} from './sync-routes.js';
 import {SourceSync} from './source-sync.js';
+import {sharedHistoryRoutes} from './shared-history-routes.js';
+import {sharedArchiveRoutes} from './shared-archive-routes.js';
 import {tokenVerifier} from './auth.js';
 import {schemaReady,migrateVersioned} from './migrations.js';
 import {pool} from './db.js';
@@ -17,7 +19,7 @@ else{
   await schemaReady();
   const app=createHistoryApp(runs,async token=>directory.login(await verify(token)));
   const sync=new SourceSync();
-  directoryRoutes(app,directory);runRoutes(app,runs);syncRoutes(app,sync);
+  directoryRoutes(app,directory);runRoutes(app,runs);syncRoutes(app,sync);sharedHistoryRoutes(app);sharedArchiveRoutes(app);
   const sweep=async()=>{try{await runs.sweep();await sync.sweep();}catch{console.error('lease_sweep_failed');}};
   await sweep();const sweepTimer=setInterval(()=>void sweep(),30000);sweepTimer.unref();
   app.get('/health/ready',async(_req,res)=>{try{await schemaReady();res.json({ok:true});}catch{res.status(503).json({ok:false});}});

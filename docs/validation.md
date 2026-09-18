@@ -404,3 +404,17 @@
 - local run UUID 검증, 직접 navigate/document 차단, device credential 전달 assertion, 후속 라우트가 최종 404에 가려지지 않는 검사를 추가했다.
 - npm run check 성공. node --import tsx --test test/v1-contract.test.ts test/local-app.test.ts: 4/4 통과.
 - orca 명령이 현재 PowerShell PATH에서 발견되지 않아 Claude 현재 작업 여부 확인은 못 했다. build-compat 소유권 겹침 가능 범위는 별도 보류했다. 실제 배포나 고객 분석은 수행하지 않았다.
+
+### 2026-09-18 P1 공용 이력 ACL 기능 연결
+
+- SharedHistory에 이력 조회/검색/리뷰/처리 상태/관련 메일/수동 링크/메일별 집계를 연결했다. 권한 확인과 데이터 접근은 동일 트랜잭션 및 v1 ACL lock에서 수행한다. 리뷰 author는 인증 actor로 정한다.
+- 매핑된 기존 store의 v0 이력을 읽되 과거 agent/requester는 unknown/null로 유지한다. 다른 source 및 기본 비공개 legacy 건수를 집계하지 않는다. 원본은 중앙에서 조회하지 않으며 링크 입력의 원본 재확인은 후속 local facade 연결 대상이다.
+- npm run check 성공. 격리 Docker 백엔드 전체 70/70 통과. 두 사용자 read-only grant/회수/검색/집계/리뷰 멱등성/연결 해제/불변 보고서 포함.
+- legacy collection 공유/지식 제안 ACL 및 전체 local UI 연결은 계속 구현한다. 기존 운영 서비스 미교체.
+
+### 2026-09-18 P1 legacy collection 및 지식 제안 ACL
+
+- 004 migration은 collection별 명시적 read/write grant만 추가한다. 기존 문서는 자동 귀속하지 않는다. 새 import는 불변 hash 확인 후 해당 collection에 연결하며 기존 미분류/타 collection 문서를 재import로 획득하지 못한다.
+- collection 목록/본문/검색/메일 연결/메일별 legacy 목록과 집계가 collection 및 source 권한을 각각 확인한다. grant 회수 즉시 차단한다.
+- 지식 제안은 인증된 source 쓰기 사용자만 생성, 읽기 사용자만 조회한다. 원본 보고서 hash 및 제안 멱등성을 유지하고 owner credential을 반환하지 않는다. ERP 파일 쓰기 실행 경로는 제공하지 않는다.
+- check 성공, 격리 백엔드 전체 71/71 통과. 실데이터 자동 매핑/이관/운영 migration 없음.

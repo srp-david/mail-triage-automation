@@ -6,6 +6,7 @@ import {HistoryClient} from '../packages/history-client/src/index.js';
 import {createHistoryApp,errors} from '../apps/history-api/src/app.js';
 import {directoryRoutes} from '../apps/history-api/src/directory-routes.js';
 import {runRoutes} from '../apps/history-api/src/run-routes.js';
+import {sharedHistoryRoutes} from '../apps/history-api/src/shared-history-routes.js';
 process.env.NODE_ENV='test';
 const schema='triage_test_'+randomUUID().replaceAll('-','');
 if(!process.env.DATABASE_URL)throw new Error('Dedicated test database required');
@@ -23,7 +24,7 @@ const input=(mailId:number,other=false)=>({sourceId:other?sourceB.id:sourceA.id,
 const result={outcome:'completed',project:'unknown',report:'Synthetic immutable report',question:'',knowledge:'',evidence:[]};
 after(async()=>{await pool.end();await admin.query('DROP SCHEMA '+schema+' CASCADE');await admin.end();});
 test('HTTP DB-free client registers, claims, saves and reads same report with ACL enforced',async()=>{
-  const app=createHistoryApp(runs,async token=>token==='a'?a:b);directoryRoutes(app,d);runRoutes(app,runs);
+  const app=createHistoryApp(runs,async token=>token==='a'?a:b);directoryRoutes(app,d);runRoutes(app,runs);sharedHistoryRoutes(app);
   const server=errors(app).listen(0,'127.0.0.1');await new Promise<void>(r=>server.once('listening',r));
   try{
     const base='http://127.0.0.1:'+(server.address() as any).port,client=new HistoryClient(base,async()=>'a');
@@ -36,6 +37,37 @@ test('HTTP DB-free client registers, claims, saves and reads same report with AC
     await assert.rejects(new HistoryClient(base,async()=>'b').request('/runs/'+job.id+'/export'),/SOURCE_NOT_FOUND/);
     await assert.rejects(client.complete(job.id,lease,requestId,{...result,report:'changed'},ra.credential),/RESULT_CONFLICT/);
   }finally{await new Promise<void>(r=>server.close(()=>r()));}
+});
+
+test('shared history features enforce source ACL, read-only grants and immutable reports',async()=>{
+  const {SharedHistory}=await import('../apps/history-api/src/shared-history.js');const h=new SharedHistory();
+  const s=await d.registerSource(a,{instanceId:randomUUID(),displayName:'History fixture'});
+  // A migrated v0 run has a mapped store but deliberately no invented v1 actor/agent.
+  const mailKey=randomUUID(),runId=randomUUID();
+  await pool.query('INSERT INTO mail_identity(id,store_id,mail_id,message_id,subject) VALUES($1,$2,90,$3,$4)',[mailKey,s.id,'<fixture@test>','Private unique subject']);
+  await pool.query("INSERT INTO analysis_run(id,mail_key,source,request_id,request_hash,status) VALUES($1,$2,'direct',$3,'fixture','completed')",[runId,mailKey,randomUUID()]);
+  await pool.query('INSERT INTO report_version(run_id,result) VALUES($1,$2)',[runId,JSON.stringify(result)]);
+  assert.equal((await runs.get(a,runId)).agent,'unknown');assert.equal((await runs.get(a,runId)).requestedBy,null);
+  for(const action of [()=>h.get(b,runId),()=>h.list(b,s.id),()=>h.summaries(b,s.id,[90]),()=>h.threads(b,s.id),()=>h.review(b,runId,{requestId:randomUUID(),body:'denied'}),()=>h.handling(b,runId,true)])await assert.rejects(action,/SOURCE_NOT_FOUND/);
+  await d.grant(a,s.id,{userId:b.userId,permission:'read'});
+  assert.equal((await h.list(b,s.id,0,90,'unique')).length,1);assert.equal((await h.list(b,s.id,0,91)).length,0);
+  assert.equal((await h.summaries(b,s.id,[90]))[0].runCount,1);
+  await assert.rejects(h.handling(b,runId,true),/SOURCE_NOT_FOUND/);
+  const review={requestId:randomUUID(),body:'Synthetic review'};const r=await h.review(a,runId,review);assert.equal((await h.review(a,runId,review)).id,r.id);
+  await assert.rejects(h.review(a,runId,{...review,body:'changed'}),/REVIEW_CONFLICT/);
+  const after=await h.get(b,runId);assert.equal(after.reviews[0].author,a.userId);assert.equal(after.result.report,result.report);
+  await h.handling(a,runId,true);
+  const from={id:90,messageId:'<fixture@test>',fetchedAt:'2026-09-18T00:00:00Z',subject:'Synthetic'};
+  const to={...from,id:91,messageId:'<related@test>'};const verifiedAt=new Date().toISOString();
+  const related=await h.related(a,runId,{mail:to,verifiedAt});assert.equal((await h.get(b,runId)).relatedMails[0].id,related.id);
+  await assert.rejects(h.related(b,runId,{mail:to,verifiedAt}),/SOURCE_NOT_FOUND/);
+  const edge=await h.addThread(a,s.id,{source:from,target:to,verifiedAt});
+  assert.equal((await h.addThread(a,s.id,{source:to,target:from,verifiedAt})).link.id,edge.link.id);
+  await assert.rejects(h.detachThread(a,s.id,{mail:{id:90,messageId:'wrong',fetchedAt:from.fetchedAt},linkIds:[edge.link.id]}),/MAIL_IDENTITY_CHANGED/);
+  assert.equal((await h.threads(b,s.id)).length,1);
+  await h.detachThread(a,s.id,{mail:{id:90,messageId:from.messageId,fetchedAt:from.fetchedAt},linkIds:[edge.link.id]});assert.equal((await h.threads(b,s.id)).length,0);
+  await h.unlinkRelated(a,runId,related.id);assert.equal((await h.get(a,runId)).relatedMails.length,0);
+  await d.grant(a,s.id,{userId:b.userId,permission:'none'});await assert.rejects(h.get(b,runId),/SOURCE_NOT_FOUND/);
 });
 test('source-local numeric and Message-ID collisions remain distinct; admission/claim are exclusive',async()=>{
   const start=input(2),admission=await Promise.allSettled([runs.start(a,start),runs.start(a,{...start,requestId:randomUUID()})]);
@@ -84,4 +116,32 @@ test('source sync serializes batches, preserves idempotent counts and pauses unc
   await pool.query("UPDATE v1_sync SET lease_until=now()-interval '1 second' WHERE id=$1",[uncertain.id]);
   await sync.start(a,{sourceId:sourceA.id,runnerId:ra.id,requestId:randomUUID()});
   const old=await sync.get(a,uncertain.id);assert.equal(old.status,'paused');assert.equal(old.uncertain,true);assert.equal(old.saved,0);
+});
+
+test('legacy collections isolate search, bodies, links and counts; knowledge requires source access',async()=>{
+  const {SharedArchive}=await import('../apps/history-api/src/shared-archive.js');const archive=new SharedArchive();
+  const {SharedHistory}=await import('../apps/history-api/src/shared-history.js');const h=new SharedHistory();
+  const {digest}=await import('../apps/history-api/src/directory.js');
+  const col=await archive.create(a,{name:'Private fixture',requestId:randomUUID()}),other=await archive.create(b,{name:'Other fixture',requestId:randomUUID()});
+  const body='Synthetic legacy confidential fixture',doc={namespace:'fixture',path:'report.md',hash:digest(body),kind:'report',body};
+  const imported=await archive.import(a,col.id,doc);assert.equal((await archive.import(a,col.id,doc)).id,imported.id);
+  await assert.rejects(archive.import(b,other.id,doc),/DOCUMENT_MAPPING_REQUIRED/);
+  await assert.rejects(archive.get(b,imported.id),/COLLECTION_NOT_FOUND/);await assert.rejects(archive.list(b,col.id,0,'confidential'),/COLLECTION_NOT_FOUND/);
+  const s=await d.registerSource(a,{instanceId:randomUUID(),displayName:'Legacy shared source'});await d.grant(a,s.id,{userId:b.userId,permission:'read'});
+  await archive.link(a,imported.id,{sourceId:s.id,hash:doc.hash,mailId:1,messageId:'<legacy@test>',subject:'Synthetic',verifiedAt:new Date().toISOString()});
+  assert.equal((await h.summaries(b,s.id,[1]))[0].legacyCount,0);assert.equal((await archive.mailDocuments(b,s.id,1)).length,0);
+  await archive.grant(a,col.id,{userId:b.userId,permission:'read'});assert.equal((await archive.get(b,imported.id)).body,body);assert.equal((await archive.list(b,col.id,0,'confidential')).length,1);
+  assert.equal((await h.summaries(b,s.id,[1]))[0].legacyCount,1);assert.equal((await archive.mailDocuments(b,s.id,1))[0].id,imported.id);
+  await assert.rejects(archive.import(b,col.id,{...doc,path:'new.md'}),/COLLECTION_NOT_FOUND/);
+  // Unassigned migration rows cannot be claimed by re-importing matching bytes.
+  const unassigned=randomUUID();await pool.query("INSERT INTO legacy_document(id,namespace,source_path,source_hash,kind,body) VALUES($1,'unassigned','old.md',$2,'report',$3)",[unassigned,doc.hash,body]);
+  await assert.rejects(archive.get(a,unassigned),/DOCUMENT_NOT_FOUND/);await assert.rejects(archive.import(a,col.id,{...doc,namespace:'unassigned',path:'old.md'}),/DOCUMENT_MAPPING_REQUIRED/);
+  const mail=(await pool.query('SELECT id FROM mail_identity WHERE store_id=$1',[s.id])).rows[0],id=randomUUID();
+  await pool.query("INSERT INTO analysis_run(id,mail_key,source,request_id,request_hash,status) VALUES($1,$2,'direct',$3,'fixture','completed')",[id,mail.id,randomUUID()]);
+  await pool.query('INSERT INTO report_version(run_id,result) VALUES($1,$2)',[id,JSON.stringify({...result,knowledge:'Synthetic proposal only'})]);
+  const proposal={runId:id,namespace:'fixture',target:'erp/gg/docs/synthetic.md',baseHash:digest('base'),reportHash:digest(result.report),nextHash:digest('next')};
+  const k=await archive.prepareKnowledge(a,proposal);assert.equal((await archive.prepareKnowledge(a,proposal)).id,k.id);assert.equal(k.owner_hash,undefined);
+  await assert.rejects(archive.prepareKnowledge(b,proposal),/SOURCE_NOT_FOUND/);assert.equal((await archive.knowledge(b,k.id)).id,k.id);
+  await d.grant(a,s.id,{userId:b.userId,permission:'none'});await assert.rejects(archive.knowledge(b,k.id),/SOURCE_NOT_FOUND/);
+  await archive.grant(a,col.id,{userId:b.userId,permission:'none'});await assert.rejects(archive.get(b,imported.id),/COLLECTION_NOT_FOUND/);
 });
