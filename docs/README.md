@@ -1,10 +1,10 @@
 # 문서 안내
 
-갱신일: 2026-09-17. 현재 방향은 **공용 이력 API·PostgreSQL + 팀원 PC의 웹 앱·개인 AI agent·MCP**이며, 이후 필요한 기능부터 공용화한다.
+갱신일: 2026-09-18. 현재 방향은 **공용 이력 API·PostgreSQL + 팀원 PC의 웹 앱·개인 AI agent·MCP**이며, 이후 필요한 기능부터 공용화한다. 메인 화면의 React 전환 R0~R6은 구현·검증·로컬 Docker 적용을 완료했다. 계획은 통합 구현 계획 4.3절, 결과와 복귀 절차는 React 전환 검증에서 관리한다. 팀 인증·Runner P1~P8은 구현 전이다.
 
 ## 먼저 읽을 문서
 
-1. [통합 구현 계획](implementation-plan.md): 앞으로의 범위, 기술 스택, 인증·DB·API·Runner·설치·운영 사양, P0~P8 작업과 완료 기준.
+1. [통합 구현 계획](implementation-plan.md): 앞으로의 범위, 기술 스택, 인증·DB·API·Runner·설치·운영 사양, React 전환 R0~R6(4.3절) 및 P0~P8 작업과 완료 기준.
 2. [프로젝트 README](../README.md): 지금 구현된 단일 사용자 Docker 앱의 실행·사용법. 계획 중인 설치형 앱 명령과 구분한다.
 3. [운영 안내](maintenance.md): 현재 이관·동기화·지식 반영·복구 도구. 사용자별 v1 API 전환 전까지 현재 토큰 방식 기준이다.
 4. [검증 기록](validation.md): 실제로 수행한 검사와 제한. 계획서의 목표 수치나 미구현 기능은 검증 완료를 뜻하지 않는다.
@@ -17,6 +17,7 @@
 | [team-deployment-plan.md](team-deployment-plan.md) | 이전 링크를 위한 통합 안내 | 별도 배포 계획을 중복 유지하지 않음 |
 | [maintenance.md](maintenance.md) | 현재 구현에 맞는 운영 절차 | 해당 기능 구현·검증 후 명령 갱신 |
 | [validation.md](validation.md) | 날짜별 검증 일지 | 과거 사실은 보존하고 후속 결과·제한 추가 |
+| [react-transition-validation.md](react-transition-validation.md) | React 전환 대응표·회귀·적용·복귀 근거 | 합성 검증과 실제 읽기 확인을 구분 |
 | [legacy-link-validation.md](legacy-link-validation.md) | 기존 문서 33건의 연결·보존 증거 | 추가 연결 작업이 있을 때 근거와 함께 추가 |
 | [status-filter-validation.md](status-filter-validation.md) | 메일 검색 상태 필터의 구현·합성 검증 | 해당 기능의 실제 검증 범위 기록 |
 | [work-summary.md](work-summary.md) | 기존 작업·인계 맥락 | 역사 기록, 최신 계획의 기준으로 사용하지 않음 |

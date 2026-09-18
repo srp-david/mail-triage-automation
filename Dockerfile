@@ -6,6 +6,7 @@ COPY tsconfig.json ./
 COPY src ./src
 COPY public ./public
 COPY viewer ./viewer
+COPY ui ./ui
 COPY test ./test
 COPY scripts ./scripts
 RUN npm run build

@@ -69,7 +69,7 @@ try{
  assert.equal(await body.locator('.markdown-table').evaluate(e=>e.scrollWidth>e.clientWidth),true);
  assert.equal(await body.locator('pre').evaluate(e=>e.scrollWidth>e.clientWidth),true);
  await page.screenshot({path:'.runtime/markdown-mobile.png'});
- await page.keyboard.press('Escape');await page.getByRole('link',{name:'이전 이력',exact:true}).click();
+ await page.keyboard.press('Escape');await page.locator('#menu-toggle').click();await page.getByRole('link',{name:'이전 이력',exact:true}).click();
  await page.locator('#legacy-list button').click();await page.locator('#legacy-document .markdown-body h1').waitFor();
  await page.getByRole('button',{name:'이전 문서 원문 보기',exact:true}).click();
  assert.equal(await page.locator('#legacy-document .markdown-source').textContent(),source);

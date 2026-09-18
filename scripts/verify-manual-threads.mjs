@@ -20,7 +20,7 @@ const server=createApp(async(name,args)=>{
  if(name==='get_email_html')return {html:''};
  assert.equal(name,'search_emails');if(failRefresh){failRefresh=false;throw Error('Synthetic refresh failure');}
  return {emails:mails,nextOffset:null};
-},async id=>({...mails[id-1],body:'합성 메일 본문 '+id,attachments:[]}),undefined,store).listen(0,'127.0.0.1');
+},async id=>({...mails[id-1],body:'합성 메일 본문 '+id,attachments:[]}),undefined,store,async()=> 'synthetic-sync').listen(0,'127.0.0.1');
 await new Promise(resolve=>server.once('listening',resolve));
 const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const context=await browser.newContext({viewport:{width:1440,height:1000},extraHTTPHeaders:{Authorization:'Bearer '+config.token}});
@@ -58,6 +58,8 @@ try{
  await source(3).dragTo(group().locator('summary'));await count(2);
  await page.locator('#thread-link-manager>summary').click();await page.locator('#thread-link-list').getByRole('button',{name:'연결 해제'}).click();await count(3);
  await page.getByText('저장된 수동 연결이 없습니다.',{exact:true}).waitFor();
+ // The connection popover covers list targets at narrow widths; close it before dragging.
+ await page.locator('#thread-link-manager>summary').click();
  // Failed saves leave the list alone. A failed refresh after a save preserves undo.
  failSave=true;await source(3).dragTo(group().locator('summary'));await status.getByText(/연결하지 못했습니다/).waitFor();assert.equal(links.length,0);await count(3);
  failRefresh=true;await source(3).dragTo(group().locator('summary'));await status.getByText(/목록을 갱신하지 못했습니다/).waitFor();assert.equal(links.length,1);

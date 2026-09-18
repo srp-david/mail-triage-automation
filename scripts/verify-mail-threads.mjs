@@ -16,7 +16,7 @@ const server=createApp(async(name,args)=>{
  const total=emails.length;emails=emails.slice(args.offset,args.offset+args.limit);
  if(missingMetadata)emails=emails.map(({inReplyTo,references,...rest})=>rest);
  return {emails,total,nextOffset:args.offset+args.limit<total?args.offset+args.limit:null};
-},async id=>({...mail(id),body:'개별 메일 본문 '+id,attachments:[]}),undefined,{list:async()=>[]}).listen(0,'127.0.0.1');
+},async id=>({...mail(id),body:'개별 메일 본문 '+id,attachments:[]}),undefined,{list:async()=>[]},async()=> 'synthetic-sync').listen(0,'127.0.0.1');
 await new Promise(resolve=>server.once('listening',resolve));
 const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const context=await browser.newContext({viewport:{width:1280,height:900},extraHTTPHeaders:{Authorization:'Bearer '+process.env.TRIAGE_TOKEN}});

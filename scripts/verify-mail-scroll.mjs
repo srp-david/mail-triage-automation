@@ -10,7 +10,7 @@ const store={list:async()=>links,add:async(storeId,source,target)=>{const link={
  remove:async(_store,id)=>{links=links.filter(link=>link.id!==id);return {ok:true};},detach:async(_store,_mail,ids)=>{const n=links.length;links=links.filter(link=>!ids.includes(link.id));return {ok:true,removed:n-links.length};}};
 const server=createApp(async(name,args)=>{
  if(name==='get_email')return mails[args.id-1];if(name==='get_email_html')return {html:''};assert.equal(name,'search_emails');return {emails:mails,nextOffset:null};
-},async id=>({...mails[id-1],body:Array.from({length:220},(_,i)=>'합성 본문 '+id+' · '+(i+1)+'번째 줄').join('\n'),attachments:[]}),undefined,store).listen(0,'127.0.0.1');
+},async id=>({...mails[id-1],body:Array.from({length:220},(_,i)=>'합성 본문 '+id+' · '+(i+1)+'번째 줄').join('\n'),attachments:[]}),undefined,store,async()=> 'synthetic-sync').listen(0,'127.0.0.1');
 await new Promise(r=>server.once('listening',r));
 const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const page=await browser.newPage({viewport:{width:1440,height:900},extraHTTPHeaders:{Authorization:'Bearer '+config.token}});page.setDefaultTimeout(10000);await page.clock.install();

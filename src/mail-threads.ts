@@ -42,11 +42,7 @@ export function groupThreads(emails:Mail[],links:ThreadLink[]=[]):Thread[]{
     .sort((a,b)=>newest(a.emails[0],b.emails[0]));
 }
 
-export async function searchThreads(args:Parameters<typeof searchByAnalysis>[0],status:Parameters<typeof searchByAnalysis>[1],
-  search:Parameters<typeof searchByAnalysis>[2],summaries:Parameters<typeof searchByAnalysis>[3],links:ThreadLink[]=[]){
-  // Scan upstream once. Keep per-mail filter semantics, then group before
-  // slicing the requested thread page.
-  const scan=async(conditions:Parameters<typeof searchByAnalysis>[0])=>{
+export async function scanThreadMails(conditions:Parameters<typeof searchByAnalysis>[0],search:Parameters<typeof searchByAnalysis>[2]){
   const emails:Mail[]=[];const seen=new Set<number>();let offset=0,lastSync;
   for(;;){
     const page=await search({...conditions,limit:100,offset});
@@ -64,7 +60,11 @@ export async function searchThreads(args:Parameters<typeof searchByAnalysis>[0],
     offset=page.nextOffset;
   }
   return {emails,lastSync};
-  };
+}
+
+export async function searchThreads(args:Parameters<typeof searchByAnalysis>[0],status:Parameters<typeof searchByAnalysis>[1],
+  search:Parameters<typeof searchByAnalysis>[2],summaries:Parameters<typeof searchByAnalysis>[3],links:ThreadLink[]=[],
+  scan=(conditions:Parameters<typeof searchByAnalysis>[0])=>scanThreadMails(conditions,search)){
   const {emails,lastSync}=await scan(args);
   // Keep the whole header graph for cases where a filtered-out intermediate
   // reply is the only link, while displaying only matching messages.

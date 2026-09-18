@@ -3,6 +3,7 @@ node_modules
 dist
 public/preview
 public/markdown
+public/react
 .env
 .runtime
 

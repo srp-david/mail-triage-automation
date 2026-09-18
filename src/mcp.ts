@@ -25,6 +25,14 @@ export async function callMail(name: string, args: Record<string, unknown>) {
     return result;
   });
 }
+// A full thread scan reuses one MCP session instead of connecting per page.
+export async function withMailSearch<T>(action:(search:(args:Record<string,unknown>)=>Promise<any>)=>Promise<T>){
+  return withMcp(config.mailUrl,c=>action(async args=>{
+    const result=unpack(await c.callTool({name:'search_emails',arguments:args},undefined,{timeout:180000}));
+    if(result.code)throw new HttpError(502,'메일 조회 실패: '+result.code);
+    return result;
+  }));
+}
 export async function callAttachment(emailId:number,attachmentId:string):Promise<any> {
   return withMcp(config.mailUrl,c=>c.callTool({name:'get_attachment',arguments:{email_id:emailId,attachment_id:attachmentId}}));
 }

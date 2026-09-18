@@ -4,6 +4,10 @@
 
 현재 아래 실행법은 단일 사용자 Docker 앱 기준이다. 회사 이메일 인증, 공용 이력 서버, 팀원 PC용 설치 프로그램과 Claude Code 선택 기능은 통합 계획의 후속 구현 대상이며 아직 제공되는 기능으로 안내하지 않는다.
 
+메인 화면은 **React 19 + TypeScript + Vite SPA**이며 Express가 같은 origin에서 제공합니다. 백엔드는 기존 Node.js 24·Express 5·PostgreSQL 17과 Codex Worker/MCP 구성을 유지합니다. 전환 범위·검증·기존 화면 복귀 절차는 [React 전환 검증](docs/react-transition-validation.md)에 기록했습니다.
+
+메일 목록은 TanStack React Query로 검색 조건·보기·페이지별 결과를 재사용합니다. 스레드 조회도 서버에서 완성된 검색 결과를 짧게 재사용하여 페이지마다 전체 메일을 다시 읽는 비용을 줄였습니다. 최신 목록을 명시적으로 확인하려면 **검색**을 누르세요. 동기화와 수동 연결 변경 후에는 목록을 갱신합니다.
+
 ## 실행
 Node.js 24, Docker Compose가 필요하다. 기존 mail MCP(17082)와 DB MCP(17080)를 먼저 실행한다.
 ```powershell
@@ -29,7 +33,7 @@ API/DB만 실행해도 직접 스킬에서 공용 이력을 사용할 수 있다
 - Docker 호스트를 다른 서버로 옮기면 경로·접속·인증을 별도로 설정해야 한다.
 
 ## 웹 사용
-상단 메뉴를 **메일함 / 분석 이력 / 이전 이력**으로 나누어 사용한다. 메뉴를 바꿔도 메일함의 검색 조건과 선택한 메일은 유지된다.
+사이드바 메뉴를 **메일함 / 분석 이력 / 이전 이력**으로 나누어 사용한다. 모바일에서는 **메뉴** 버튼으로 연다. 메뉴를 바꿔도 메일함의 검색 조건과 선택한 메일은 유지된다.
 메일 상세의 **이 메일 분석 이력**을 누르면 해당 메일에 연결된 분석·이전 이력이 레이어로 열린다. 보고서도 레이어에서 읽고 **이력 목록으로** 돌아갈 수 있다. **닫기/Escape**로 닫으면 읽던 메일로 돌아온다. 전체 이력 메뉴의 보고서와 이전 문서도 레이어로 표시한다.
 메일 검색 → 메일 선택 → 본문/첨부 확인 → **분석 시작** 순서로 진행한다. 분석 중에는 **진행 상황 보기**, 종료 후에는 **결과 보기** 또는 **실패 내용 보기**가 기본 버튼이 된다. **새로 분석**은 기존 보고서를 보존하고 원문으로 새 분석을 등록하며, 진행 중인 실행이 확인되면 해당 실행을 연다. 기존 결과에 추가 조건을 반영하려면 보고서의 **추가 답변 · 재분석**을 사용한다.
 작성 중인 추가 답변은 출처·분석별로 현재 탭에 임시 보관한다. 화면 이동, 보고서 새로고침, 같은 탭의 브라우저 새로고침 후 같은 분석을 열면 복원되며, 전송 성공 또는 **초안 지우기** 시 삭제한다. 탭을 닫으면 삭제될 수 있고 다른 PC·탭과 공유하지 않는다. 브라우저 임시 저장소를 사용할 수 없으면 화면 이동 중에만 보존되며 화면에 제한을 안내한다.
@@ -67,6 +71,13 @@ keepalive는 분석 중 별도 프로세스로 실행한다. API 장애 때 신�
 Outlook 예외 등록, 원본 해시 기반 이관, 지식 제안의 단일 반영, 결과 재등록 절차는 [운영 도구 안내](docs/maintenance.md)를 따른다. 실제 지식 문서는 제안 내용을 검토한 뒤 별도로 반영한다.
 
 ## 검증
+
+React 개발은 `ui/`에서 진행한다. `npm run build`로 서버·Office·Markdown·메인 UI를 빌드하고 `npm start`로 동일 origin에서 확인한다. UI만 수정할 때는 `npm run build:ui -- --watch`를 별도 터미널에서 실행한다. Vite 개발 서버용 인증 완화나 CORS 변경은 사용하지 않는다. `public/react/`, `public/preview/`, `public/markdown/`은 생성물이며 Git에 추가하지 않는다.
+
+메인 UI 전체 회귀는 `python scripts/create-preview-fixtures.py` 후 `npm run verify:ui`(15개 합성 브라우저 검사), 요청 경합·재인증 검사는 `node --import tsx scripts/verify-react-state.mjs`로 실행한다. 로컬 Chrome 설치가 필요하며 DB·MCP·고객 메일 대신 임시 서버와 모의 API를 사용한다.
+
+목록 캐시의 페이지 재사용·만료·동기화·재인증 검사는 `node --import tsx scripts/verify-query-cache.mjs`, 서버 캐시 검사는 `node --import tsx --test test/thread-cache.test.ts test/thread-cache-route.test.ts`로 실행한다. 실제 API 시간 비교는 `node scripts/measure-thread-api.mjs before` / `after`로 수행하며 메일 본문 없이 건수와 시간만 `.runtime/query-cache/`에 기록한다. 동기화·분석을 시작하지 않는다.
+
 ```powershell
 npm run check
 npm run build

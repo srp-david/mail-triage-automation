@@ -1,6 +1,6 @@
 # mail-triage-web 통합 구현 계획
 
-문서 버전: 1.1 · 갱신일: 2026-09-17 · 상태: P0 문서 통합 및 P1 전 UI·UX 보완 완료, P1~P8 구현 전. [검증 기록](validation.md).
+문서 버전: 1.4 · 갱신일: 2026-09-18 · 상태: P0 문서 통합 및 P1 전 UI·UX 보완 완료. React 전환 R0~R6 및 React Query·스레드 조회 개선 구현·검증·로컬 Docker 적용 완료. P1~P8 구현 전. [검증 기록](validation.md).
 
 이 문서는 앞으로의 범위·기술 선택·실행 순서의 단일 기준이다. 최신 사용자 결정은 **회사 이메일 인증 가입 + 공용 이력 API·PostgreSQL + 팀원 PC의 웹 앱·개인 AI agent·MCP**이다. 향후 웹·Worker·MCP를 필요한 순서대로 공용화한다. 문서 통합과 P1 전 UI·UX 보완은 인증 구현, DB 이관, 외부 서비스 가입, GitHub 게시, 실제 팀 배포를 수행한 기록이 아니다.
 
@@ -122,7 +122,7 @@ flowchart LR
 | 공통 런타임 | Node.js 24 계열, ESM, TypeScript 7.0.2 기준 | 현 Dockerfile·package.json 유지. 패치·이미지 digest는 릴리스 시 고정 |
 | API/로컬 서버 | Express 5.2.1, Zod 4 계열 | 기존 라우트와 검증 재사용. DB 모듈은 공용 API에만 포함 |
 | DB | PostgreSQL 17, `pg` 8.23.0 | 기존 SQL·트랜잭션·불변 이력 재사용. 연결 풀 기본 max 8 |
-| UI | 현재 HTML/CSS/JavaScript 유지 | 인증·source/agent 선택·공유 상태를 추가. 전체 React/Next.js 전환 불필요 |
+| UI | React 19.3.0 + TypeScript + Vite SPA | 4.3절 R0~R6 전환 완료. 기존 Express에서 정적 빌드 제공. 인증·source/agent 선택·공유 상태는 후속 P1~P8 |
 | Office/Markdown | 현재 Vite 8.3.0·React 19.3.0 viewer, marked·DOMPurify, extend viewer 버전 유지 | 현재 lockfile 재현. 이번 설계에서 버전 업그레이드하지 않음 |
 | MCP | `@modelcontextprotocol/sdk` 1.30.0 기준, Streamable HTTP 우선 | 기존 MCP와 호환 검증. stdio는 실제 필요가 확인되면 후속 지원 |
 | 로그인 | Auth0 Universal Login + Database Connection | 회사 이메일·비밀번호·메일 인증. Hiworks는 수신함 역할 |
@@ -149,13 +149,155 @@ packages/history-client/ 사용자 인증 API 클라이언트, 멱등 재전송
 packages/runner/       작업 수명·취소·heartbeat·outbox
 packages/agent-adapters/ codex.ts, claude.ts, 공통 이벤트 변환
 packages/skills/        배포 가능한 공통 규칙·템플릿·manifest
-packages/ui/            기존 public/viewer 자산과 빌드
+packages/ui/            React 메인 화면과 기존 Office/Markdown 자산·빌드
 deploy/                 compose.server.yaml, Caddyfile, backup/restore
 installer/windows/      설치·시작·중지·진단·업데이트·제거
 docs/                   이 문서, 운영법, 검증 근거
 ```
 
 `src/history.ts`, `archive.ts`, `related.ts` 등은 history-api 서비스로 옮긴다. `mcp.ts`, `attachments.ts`, 로컬 검색·미리보기는 local-app에 둔다. `worker.ts`는 runner/adapter로 나누고 `sync.ts`는 서버 상태 관리와 로컬 묶음 처리로 나눈다. ERP 쪽 기존 CLI는 우선 앱 저장소 안의 호환 클라이언트로 검증하고, 외부 저장소 변경이 필요한 배포 작업은 별도 변경 목록으로 관리한다.
+
+### 4.3 React 화면 전환 계획 (2026-09-18)
+
+사용자의 단계별 계획 요청에 따라 먼저 작성한 전환 기준안이다. 기존의 ‘HTML/CSS/JavaScript 유지’ 선택을 이 계획으로 갱신했다. **2026-09-18 R0~R6 구현·검증·로컬 Docker 적용 완료.** 지정 터미널의 선행 작업 완료와 기준 커밋 `97525f6`을 확인한 뒤 구현했다. 단계별 산출물·기능 대응표·합성 및 실제 읽기 검증·복귀 정보는 [React 전환 검증](react-transition-validation.md)을 따른다. 아래 단계는 수행 기준으로 보존하며 팀 배포 P1~P8의 완료를 뜻하지 않는다.
+
+#### 목적과 범위
+
+- 검색·선택 메일·스레드·보고서·분석 진행·답변 초안의 상태를 React 컴포넌트와 훅으로 관리하고, 메인 화면을 TypeScript로 전환한다.
+- 현재 사이드바, 창 전체 너비, 목록/상세 구성, 모바일 전환, 버튼 의미와 CSS를 기준으로 기능을 이관한다. 디자인 개편은 이 전환의 완료 조건에 포함하지 않는다.
+- 현재 `/api/*` 계약, 토큰 로그인, PostgreSQL, Codex Worker, MCP 호출 및 ERP 읽기 전용 경계를 유지한다. 서버 변경은 정적 파일 제공·빌드 연결에 필요한 범위로 한정한다.
+- Auth0, 사용자별 권한, Claude Code 선택, 공용 API 분리, Runner와 설치 프로그램은 P1~P8에서 구현한다. React 전환에서 미래 API를 실제 제공 기능처럼 사용하지 않는다.
+- 전환 순서는 **R0 → R1 → R2 → R3 → R4 → R5 → R6 → P1 → P2~P8**을 기본으로 한다. 서비스 분리 문서·계약 검토는 선행 가능하지만 동일 화면의 팀 기능 개발과 전환 구현을 겹치지 않는다.
+
+#### 구현 구조와 상태 관리 기준
+
+R1에서는 저장소 루트의 `ui/`에 메인 화면을 만들고 기존 `viewer/`를 유지한다. `packages/ui/`로의 위치 이동은 P1 서비스 분리 때 수행하며 React 전환만을 위해 전체 저장소를 workspaces로 재편하지 않는다.
+
+```text
+ui/
+  index.html
+  vite.config.ts
+  tsconfig.json
+  src/
+    main.tsx
+    app/                App, 로그인, 사이드바, 화면 전환, 공유 UI 상태
+    api/                fetch 클라이언트, 현재 API의 DTO, 오류 처리
+    features/
+      mailbox/          검색, 목록, 스레드, 수동 연결, 상세, 동기화
+      analysis/         실행 상태, 보고서, 추가 답변, 처리 상태, 관련 메일
+      history/          전체 분석 이력, 이전 문서
+    components/         Dialog, 상태 안내, Markdown, 첨부·뷰어 연결
+    hooks/              폴링, 초안, 포커스·스크롤 복원
+public/style.css        현재 화면 스타일 재사용
+viewer/                 기존 Office iframe 앱과 WASM, Markdown 변환
+public/                 정제·뷰어 공통 모듈 및 빌드 산출물 제공 위치
+```
+
+| 항목 | 전환 기준 |
+|---|---|
+| 의존성 | 기존 React 19.3.0·Vite 8.3.0·TypeScript 7.0.2와 lockfile을 출발점으로 사용. JSX 빌드에 추가 패키지가 필요하면 R1에서 호환성·정확한 버전·라이선스를 확인하고 고정 |
+| 화면 이동 | 현재 `#mailbox`·`#history`·`#legacy`를 유지. 별도 라우터 없이 hash와 화면 상태를 동기화하고 뒤로/앞으로 이동 검증 |
+| 상태 소유 | 선택 메일·적용 검색 조건·페이지·읽던 위치는 App 아래 공통 상태에 둔다. 입력 중 검색어와 적용된 조건을 구분하고 개별 모달 상태는 해당 기능에서 관리 |
+| 상태 구현 | 로컬 상태는 `useState`, 함께 바뀌는 상태는 `useReducer`, 공유가 필요한 범위만 Context 사용. 서버 응답을 여러 전역 저장소에 복제하지 않음 |
+| 조회 | 출처·검색 조건·페이지·메일 ID·run ID를 요청 식별에 포함. `AbortController`와 요청 식별 확인으로 이전 응답이 새 선택을 덮어쓰지 않게 함 |
+| 폴링 | 기존 실행 상태 3초·목록 상태 10초 등의 동작을 먼저 보존. 요청 중첩 방지, 화면 해제·401·실행 종료 시 타이머/요청 정리. StrictMode 재마운트에서도 중복 루프가 남지 않게 검증 |
+| 변경 요청 | 분석·동기화·연결·추가 답변 POST는 사용자 이벤트에서 호출. 마운트 Effect에서 실행하지 않으며 응답 불확실 시 자동 재전송하지 않고 상태 재조회. 서버의 기존 중복 방지 규칙 유지 |
+| 초안 | 기존 출처·run별 sessionStorage 키와 메모리 fallback 보존. 성공 또는 명시적 삭제 때 제거하고 401 후 재인증·전송 실패 때 유지. 개인 계정 도입 시의 분리는 P2에서 적용 |
+| API 경계 | `/api` 상대 경로와 기존 HttpOnly 쿠키 사용. 토큰을 프런트 빌드·localStorage에 넣지 않으며 DB·MCP용 서버 모듈을 UI 번들에서 import하지 않음 |
+| 개발·빌드 | R1의 기본 확인 경로는 Vite 빌드/watch + Express 동일 origin. HMR을 추가할 경우 현재 Origin 검사·쿠키 경로와의 호환을 검증하고 인증 검사를 완화하지 않음 |
+| Office | `/preview/` iframe과 별도 CSP·WASM 빌드 유지. 메인 React 번들에는 Office 패키지를 직접 포함하지 않고 기존 메시지의 origin/source 검사와 자원 정리를 보존 |
+| HTML·Markdown | 메일 본문 재구성·외부 리소스 차단, marked·DOMPurify 정책을 재사용. 정제되지 않은 HTML을 React에 직접 삽입하지 않음. 메인 화면은 CSS class 기반으로 기존 CSP 준수 |
+
+추가 상태 관리·UI 라이브러리는 초기 필수 의존성으로 넣지 않는다. 실제 중복이나 사용성 문제가 확인되면 해당 단계에서 도입 근거와 검증 비용을 기록한다.
+
+#### R0. 현재 동작과 검증 기준 확정
+
+- 현재 작업 트리의 미커밋 스레드·수동 연결·사이드바 변경까지 포함해 이관 기준을 기록한다. 기존 변경을 덮어쓰거나 이전 커밋으로 되돌려 기준을 만들지 않는다.
+- `public/app.js`와 기능별 JS의 화면 상태·이벤트·API 호출·타이머·DOM 의존성을 목록화한다. 로그인, 메일함, 보고서, 이력, 미리보기별 동작과 실패 경로를 대응시킨다.
+- 기존 Playwright 합성 검증을 실행해 현재 통과/실패를 분리하고 데스크톱·모바일 화면을 합성 데이터로 기록한다. 기존 실패는 원인과 처리 범위를 정한 뒤 비교 기준으로 사용한다.
+- **산출물:** 기능/기존 파일/대상 컴포넌트/API/검증 스크립트 대응표, 현재 검증 결과, 화면 기준 자료.
+- **완료 기준:** 아래 회귀 검증 표의 각 기능에 재현 가능한 시나리오가 있고, 기존 결함과 전환 결함을 구분할 수 있다.
+
+#### R1. React 앱과 빌드 연결
+
+- `ui/`에 React + TypeScript + Vite 앱, AppShell, 오류 경계, 최소 로그인/연결 확인, API 클라이언트와 DTO를 만든다.
+- 과도기에는 기존 `/` 화면과 후보 `/react/`를 분리한다. 후보 빌드 출력은 `public/react/`로 제한하고 생성물을 Git에서 제외한다. Vite의 출력 정리가 `public/preview/`, `public/markdown/`, 기존 화면을 삭제하지 않게 한다.
+- 기존 루트 package.json의 타입 검사·전체 빌드에 UI를 연결하고 Dockerfile에 UI 소스 복사·빌드 단계를 추가한다. `viewer/`의 독립 빌드는 유지한다.
+- 후보와 기존 화면은 서로 다른 문서에서 실행한다. 같은 DOM 하위 영역을 기존 JS와 React가 함께 수정하지 않으며 두 화면에서 변경 작업을 동시에 실행하는 것을 비교 검증 방식으로 사용하지 않는다.
+- **산출물:** 후보 진입점, UI 디렉터리·빌드 구성, 타입이 있는 API 호출 계층, 기존/후보 화면 선택 방법.
+- **완료 기준:** 타입 검사·전체 빌드와 합성 로그인/401/상태 조회 통과, 기존 화면과 Office/Markdown 자산 경로 정상, 프로덕션 빌드에서 CSP 오류 없음.
+
+#### R2. 메일함·검색·스레드·동기화 이관
+
+- 사이드바, 검색 폼, 분석 상태 필터, 페이지 이동, 스레드/개별 보기, 선택 강조, 모바일 메뉴와 빈 목록/재시도 상태를 컴포넌트로 옮긴다.
+- 자동 답장 관계는 현재 서버 결과를 사용한다. 수동 드래그 연결·해제·되돌리기·수동 연결 관리와 검색에 가려진 관계 보존을 유지하며, 프런트에서 제목으로 재그룹화하지 않는다.
+- 검색/페이지 전환 시 요청 취소와 늦은 응답 무시, 화면을 왕복할 때 검색 조건·스레드 펼침·스크롤 복원을 구현한다.
+- 동기화 시작·중지·이어가기와 부분 실패 표시를 옮긴다. 실제 메일 수집 없이 모의 API로 상태 전이를 검증한다.
+- **산출물:** MailboxPage, SearchForm, MailList, ThreadList, 수동 연결 UI, SyncStatus와 상태 훅.
+- **완료 기준:** 필터·페이지 건수·스레드 동작이 현재 API와 일치하고 빠른 검색/선택에서도 이전 결과가 섞이지 않는다. 드래그 요청 중복과 화면 이동 후 폴링 누수가 없다.
+
+#### R3. 메일 상세·첨부·문서 표시 이관
+
+- 메일 상세의 텍스트/HTML fallback, CID 이미지, 첨부 기본 접힘, 원본 다운로드를 이관한다. 선택 메일 변경 중 늦은 본문·첨부 응답이 새 상세에 표시되지 않게 한다.
+- 이미지·Office 미리보기의 열기/닫기/Escape·재시도·다운로드를 React dialog와 연결한다. 기존 Office iframe을 재사용하고 요청·이벤트·파일 자원을 닫을 때 정리한다.
+- 공통 Markdown 표시를 React 컴포넌트에서 사용하도록 감싼다. 외부 이미지·문서 HTML·링크 처리 정책을 유지하고 표/코드의 좁은 화면 표시를 확인한다.
+- **산출물:** MailDetail, MailBody, AttachmentList, PreviewDialog, MarkdownView.
+- **완료 기준:** 합성 본문·이미지·DOCX/PPTX/XLSX·Markdown 검증 통과. 5 MiB 초과·손상 파일·조회 실패 안내, CSP·외부 리소스 차단, 닫기 후 포커스 복귀와 모바일 목록 복귀 확인.
+
+#### R4. 분석·보고서·이력 이관
+
+- 분석 시작/진행 상황/결과/실패 버튼, 기존 활성 실행 재확인, 보고서와 메일별·전체 이력 레이어를 옮긴다. 재분석은 기존 보고서를 보존하는 새 실행으로 유지한다.
+- 진행 이벤트 폴링, 추가 답변과 초안, 처리 완료/취소, 관련 메일 연결·해제, 리뷰·지식 제안 표시, Markdown 내보내기 및 이전 문서를 이관한다.
+- 도구 실패와 전체 분석 실패, 분석 완료와 업무 처리 완료를 구분한다. 401 재인증과 전송 실패 시 초안을 보존하고 통신 실패를 저장 성공으로 표시하지 않는다.
+- **산출물:** AnalysisActions, RunProgress, ReportDialog, AnswerForm, HandlingActions, RelatedMails, HistoryPage, LegacyPage.
+- **완료 기준:** 기존 보고서·질문·리뷰·연결의 표시/요청 계약 유지, 빠른 보고서 전환 시 내용 혼합 없음, 초안 보존·성공 후 제거 확인. 버튼 연속 클릭과 StrictMode에서도 분석/답변 POST가 의도치 않게 중복되지 않음.
+
+#### R5. 전체 회귀 검증과 기본 화면 전환 준비
+
+- 기존 브라우저 스크립트의 API 모의 응답·행동 검증을 재사용한다. DOM 구조 변경에 필요한 선택자만 수정하고 실패를 피하기 위해 검증 항목을 제거하지 않는다.
+- 아래 표의 정상/실패/경합 시나리오를 React 후보에서 실행한다. 키보드 이동, dialog 포커스, Escape, 모바일, 401 복귀, 콘솔 오류·미처리 Promise를 확인한다.
+- R0와 같은 합성 목록 크기·브라우저에서 초기 로딩, 목록/상세 전환, 네트워크 요청 수를 비교한다. 중복 폴링·뷰어의 초기 번들 유입·응답 역전은 해결하고 성능 차이는 측정 조건과 함께 기록한다.
+- 기본 `/`를 React로 바꿀 빌드와 명시적으로 선택 가능한 기존 UI 빌드를 준비한다. 두 빌드 모두 최근 서버/API 변경을 포함하며, `/api`, `/preview/`, `/markdown/`, 다운로드 경로를 유지한다.
+- **산출물:** `validation.md`의 React 전환 검증 결과, 기본 전환용 빌드, 기존 UI 복귀용 빌드와 절차.
+- **완료 기준:** 관련 타입 검사·전체 빌드·합성 회귀 통과. 미해결 기능 손실이 없고 자산 404·인증 실패·콘솔 오류가 없다. 기본 전환과 복귀를 격리된 환경에서 확인한다.
+
+#### R6. 기본 화면 적용·확인·기존 구현 정리
+
+- 배포 실행이 요청된 시점에 R5의 검증된 React 빌드를 API 서비스에 반영한다. API 이미지와 기존 UI 복귀 이미지의 식별자를 보존하고 기존 DB·Worker·볼륨을 재생성하지 않는다.
+- 기존 운영 방식에 따라 API만 `--no-deps`로 교체한다. UI 복귀 시에도 최신 API 기능을 포함하는 기존 UI 빌드를 사용하며 DB 복원으로 화면을 되돌리지 않는다.
+- 반영된 기본 URL, 인증, 정적 자산, 목록/상세/기존 보고서의 읽기 동작을 확인한다. 실제 분석·동기화는 별도 지정된 대상과 실행 범위가 있을 때 확인하고 합성 결과와 구분해 기록한다.
+- 기본 화면 안정성과 복귀 절차가 확인된 후 참조되지 않는 기존 DOM 조작 파일·임시 후보 경로를 정리한다. 재사용 중인 정제·뷰어 자산을 함께 삭제하지 않는다. 운영 README와 빌드/검증 명령을 갱신한다.
+- **산출물:** 반영 버전·확인 범위·복귀 정보, 정리된 프런트 소스, 최신 운영 안내.
+- **완료 기준:** 실제 적용 확인까지 기록되어야 ‘React 전환 완료’로 표시한다. R5까지 끝나고 적용하지 않았다면 ‘구현·합성 검증 완료, 적용 대기’로 기록한다. 팀 인증·Runner 전환 완료와는 별도다.
+
+#### 회귀 검증 대응표
+
+아래는 기존 스크립트의 재사용 후보다. R0에서 실행 의존성·현재 커버리지·실제 외부 접근 여부를 확인한다. 스크립트가 존재한다는 사실만으로 통과나 전체 커버리지를 인정하지 않는다.
+
+| 기능 | 우선 확인할 기존 스크립트 | 추가로 확인할 전환 위험 |
+|---|---|---|
+| 인증·검색·상태·초안·모바일 | `verify-pre-p1-ux.mjs`, `verify-status-filter.mjs` | 401 후 복귀, 초안 키 호환, 저장소 차단, 뒤로/앞으로 이동 |
+| 스레드·수동 연결·읽던 위치 | `verify-mail-threads.mjs`, `verify-manual-threads.mjs`, `verify-mail-scroll.mjs` | 늦은 검색 응답, 숨겨진 연결, 드래그 중복, 펼침·포커스·스크롤 유지 |
+| 본문·첨부·미리보기 | `verify-inline-images.mjs`, `verify-downloads.mjs`, `verify-image-preview.mjs`, `verify-preview.mjs` | 메일 변경 중 응답, 닫은 뷰어의 이벤트, 5 MiB, 외부 요청 차단, CSP |
+| 분석·진행·업무 처리 | `verify-mail-analysis.mjs`, `verify-analysis-progress.mjs`, `verify-handling-ui.mjs`, `verify-related-mails.mjs` | 연속 클릭, 폴링 정리, 잘못된 완료 표시, 전송 실패 후 입력 보존 |
+| 이력·문서·동기화 | `verify-history-ui.mjs`, `verify-markdown.mjs`, `verify-maintenance-ui.mjs`, `verify-sync-refresh.mjs` | 보고서 응답 역전, 미연결 문서 보존, 동기화 중 화면 이동·재로그인 |
+| 빌드·서비스 제공 | 기존 `npm run check`, `npm run build` 확장 | Docker에 UI 소스 포함, 출력 디렉터리 충돌, 기본/후보 URL과 iframe 자산 경로 |
+
+검증에는 합성 메일·문서를 사용한다. 기존 live Worker/sync 검증은 UI 전환의 자동 실행 항목으로 넣지 않는다. 고객 원문·인증값·실제 화면 캡처를 Git에 추가하지 않는다. 단계별로 관련 검사를 수행하고 R5에서 전체 UI 회귀를 한 번 묶어 실행하며, 변경이 없는 ERP/DB 전체 검사를 반복하지 않는다.
+
+기술 참고: 기존 서버에 React를 점진적으로 도입하는 방식은 [React 공식 안내](https://react.dev/learn/add-react-to-an-existing-project)를 참고한다. 요청·구독 정리와 개발 중 재마운트 대응은 [Effect 동기화 안내](https://react.dev/learn/synchronizing-with-effects)를 따른다. 이 문서의 디렉터리·단계·기존 동작 보존 기준은 현재 프로젝트를 위한 설계이며 React가 정한 필수 구조는 아니다.
+
+### 4.4 React Query 및 스레드 조회 개선 (2026-09-18)
+
+React 전환 후 사용자 요청으로 추가한 성능 개선 범위다. 2026-09-18 구현·검증·로컬 Docker 적용을 완료했다. R0~R6의 기존 API 계약 보존 원칙을 유지하면서 메일 목록 캐시와 스레드 조회 내부 구현을 개선한다. P1~P8 팀 전환과는 별도다.
+
+1. `@tanstack/react-query` 5.103.1(React 18/19 지원, MIT)을 정확한 버전으로 고정한다. 메일 목록의 출처·보기·검색·상태·페이지를 query key로 사용하고 기존 화면·스크롤 상태는 유지한다.
+2. 목록 결과는 브라우저 메모리에서 15초간 fresh, 비활성 캐시는 60초간 보관한다. 명시적 검색, 동기화 변화, 수동 연결 변경은 캐시를 무효화한다. 401에는 캐시를 제거한다. 자동 재시도·창 포커스 재조회·디스크 영속화는 사용하지 않는다.
+3. 서버는 완성된 upstream 검색 결과만 15초간 메모리에 재사용한다. 출처·검색 조건으로 구분하고 최대 8개/직렬화 크기 합계 16 MiB로 제한한다. 동시에 들어온 동일 조회는 Promise를 공유한다. 전체 메일을 읽는 동안 MCP 세션 하나를 사용한다.
+4. 페이지와 분석 상태 필터는 같은 원본 스냅샷을 재사용하되 현재 DB의 분석 상태·수동 연결로 다시 계산한 뒤 페이지를 자른다. sync 실행/배치 상태가 바뀌면 서버 캐시를 제거한다. `refresh=1` 조회로 명시적 검색 시 원본을 다시 읽는다. 앱 밖의 MCP 변경은 TTL 뒤 다음 조회에 반영되며 프런트/서버 TTL이 겹치면 약 30초의 지연이 가능하다.
+5. 캐시·동시 요청·만료·동기화·인증 및 기존 스레드 정확성 검증, 전체 UI 회귀, 적용 전후 실제 읽기 성능과 데이터 보존을 확인한다. API만 교체하며 실메일 동기화·분석은 실행하지 않는다.
+
+일반적인 이력·보고서 조회와 진행 폴링을 전부 React Query로 재작성하는 작업은 이번 범위가 아니다. 페이지별 불필요한 prefetch는 서버 전체 스캔을 늘릴 수 있어 도입하지 않는다. 근거는 [React Query 기본 동작](https://tanstack.com/query/latest/docs/framework/react/guides/important-defaults), [취소](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation), [캐시 무효화](https://tanstack.com/query/latest/docs/framework/react/guides/query-invalidation)이며, 실제 결과는 [검증 기록](validation.md)에 추가한다.
 
 ## 5. 로그인·권한·로컬 연결
 
@@ -370,12 +512,12 @@ schema는 추가→채움→검증→사용 전환→후속 정리 순서로 바
 
 ## 12. 단계별 작업·산출물·완료 기준
 
-P0 외 단계는 모두 미착수 계획이다. 예상 공수는 1인 개발 기준의 대략적인 순수 작업일이며 계정·서버 준비, 실제 팀 사용 관찰, 발견된 결함 수정은 별도다. 개발 일정 약속이나 자동 진행 승인을 뜻하지 않는다.
+아래 표의 P1~P8은 미착수 계획이다. React 전환 R0~R6는 4.3절에서 관리하며 P1 전에 완료했다. 아래 공수에는 완료된 React 전환을 포함하지 않는다. 예상 공수는 1인 개발 기준의 대략적인 순수 작업일이며 계정·서버 준비, 실제 팀 사용 관찰, 발견된 결함 수정은 별도다. 개발 일정 약속이나 후속 P1~P8의 자동 진행 승인을 뜻하지 않는다.
 
 | 단계 | 선행 조건 | 작업·산출물 | 완료 기준 | 예상 공수 |
 |---|---|---|---|---|
 | P0 문서 통합 | 현재 문서·소스 대조 | 이 통합 계획, 문서 목록, 기존 계획 보존, 상태/근거 구분 | 문서 링크·보존 대조 및 상충 계획 정리 | 이번 문서 작업 |
-| P1 서비스 분리 | P0 | contracts/history-client, history-api/local-app 골격, v1 계약, 기존 기능 경계 이동 | 합성 Runner가 DB 자격 없이 API로 등록·저장·조회. 기존 기능 회귀 통과 | 3~5일 |
+| P1 서비스 분리 | P0, React R0~R6 | contracts/history-client, history-api/local-app 골격, v1 계약, 기존 기능 경계 이동 및 UI 패키지 이동 | 합성 Runner가 DB 자격 없이 API로 등록·저장·조회. 기존 기능 회귀 통과 | 3~5일 |
 | P2 인증·권한·다중 출처 | P1, Auth0 개발 설정 | Native PKCE, 이메일 인증 Actions, 사용자/source/Runner/ACL, migration | 도메인·미인증·타인 데이터 차단, 자동 가입·비활성화·재설정·두 저장소 ID 충돌 검증 | 4~6일 |
 | P3 로컬 Runner·sync | P1/P2 | claim/lease/progress/cancel/outbox, source별 sync, 직접 CLI v1 | 두 Runner 배정·중복 방지, API 중단·PC 종료·만료·재전송·sync 복구 통과 | 3~5일 |
 | P4 agent·스킬 | P3, 각 agent의 시험 계정·자료 | Codex/Claude adapter, 공통 스킬 manifest, 권한·결과 검증 | 두 agent로 같은 합성 업무 종단 검증, 금지된 ERP 쓰기 차단, 로그인/스킬 적용 확인 | 3~5일 |

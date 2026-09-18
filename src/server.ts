@@ -4,17 +4,20 @@ import { config, HttpError } from './config.js';
 import { pool, migrate } from './db.js';
 import { addReview, expireRuns, failRun, finishRun, getRun, heartbeat, listRuns, mailAnalysis, sameSecret, startRun, startExternalRun, recoverResult, setMailHandled } from './history.js';
 import { importLegacy, listLegacy, getLegacy, linkLegacy, registerExternal, prepareKnowledge, getKnowledge, claimKnowledge, completeKnowledge, hashSchema } from './archive.js';
-import { callMail, fullMail, withMcp, callAttachment } from './mcp.js';
+import { callMail, fullMail, withMcp, callAttachment, withMailSearch } from './mcp.js';
 import { attachmentDownload } from './attachments.js';
 import { startSchema } from './schema.js';
 import { startSync, stopSync, recoverSync, startSyncScheduler } from './sync.js';
 import { addRelatedMail, getRelatedMail, unlinkRelatedMail, relatedSource } from './related.js';
 import { analysisStatus, searchByAnalysis } from './mail-search.js';
-import { searchThreads } from './mail-threads.js';
+import { searchThreads, scanThreadMails } from './mail-threads.js';
+import {ThreadSearchCache} from './thread-cache.js';
 import {threadLinkStore,threadMailIdentity,verifyThreadMail} from './thread-links.js';
-export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRead = callAttachment, links = threadLinkStore) {
+export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRead = callAttachment, links = threadLinkStore,
+  threadRevision=async()=>JSON.stringify((await pool.query('SELECT id,status,saved,batch_count,finished_at FROM sync_run ORDER BY started_at DESC LIMIT 1')).rows[0]??null)) {
   if(config.token.length<32) throw new Error('TRIAGE_TOKEN must have at least 32 characters');
   const app=express(); app.disable('x-powered-by');
+  const threadCache=new ThreadSearchCache<Awaited<ReturnType<typeof scanThreadMails>>>();
   app.use((req,res,next)=>{
     // Only the packaged Office renderer needs WASM and React's inline layout styles.
     // Document assets stay local; remote images/fonts/frames and form navigation are blocked.
@@ -58,7 +61,18 @@ export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRe
     const status=analysisStatus.default('all').parse(req.query.analysis_status);
     const view=z.enum(['individual','threads']).default('individual').parse(req.query.view);
     const search=(args:any)=>mailCall('search_emails',args),summaries=(ids:number[])=>mailAnalysis(config.store,ids);
-    res.json(view==='threads'?await searchThreads(args,status,search,summaries,await links.list(config.store)):await searchByAnalysis(args,status,search,summaries));
+    if(view==='individual'){res.json(await searchByAnalysis(args,status,search,summaries));return;}
+    const refresh=z.enum(['1']).optional().parse(req.query.refresh)==='1';
+    // Reading the shared revision also detects sync batches completed by another process.
+    const [relations,revision]=await Promise.all([links.list(config.store),threadRevision()]);
+    if(refresh)threadCache.clear();
+    const scan=(conditions:typeof args)=>{
+      const key=JSON.stringify([config.store,conditions.query??'',conditions.from_address??'',conditions.sent_after??'',conditions.sent_before??'']);
+      return threadCache.get(key,revision,()=>mailCall===callMail
+        ?withMailSearch(search=>scanThreadMails(conditions,search))
+        :scanThreadMails(conditions,search));
+    };
+    res.json(await searchThreads(args,status,search,summaries,relations,scan));
   });
   app.get('/api/thread-links',async(_req,res)=>res.json(await links.list(config.store)));
   app.post('/api/thread-links',async(req,res)=>{
@@ -188,6 +202,8 @@ export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRe
     if(!r.result) throw new HttpError(409,'저장된 보고서가 없습니다.');
     res.set('X-Report-SHA256',r.reportHash).type('text/markdown').send(r.result.report+r.reviews.map((x:any)=>'\n\n## '+x.author+' 리뷰\n\n'+x.body).join(''));
   });
+  // React uses the same origin, cookies and API contract as the API.
+  app.get('/',(_req,res)=>res.sendFile('public/react/index.html',{root:process.cwd()}));
   app.use(express.static('public'));
   app.use((err:any,_req:express.Request,res:express.Response,_next:express.NextFunction)=>{
     const status=err instanceof z.ZodError?400:err instanceof HttpError?err.status:err.code==='23505'?409:500;
