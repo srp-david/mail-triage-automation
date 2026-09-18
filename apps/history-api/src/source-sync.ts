@@ -14,6 +14,7 @@ async function owned(c:PoolClient,actor:Principal,id:string,b:z.infer<typeof lea
   if(row.runner_id!==b.runnerId||row.generation!==b.generation||!secretMatches(row.owner_hash??'',digest(b.leaseToken)))throw new ApiError(409,'SYNC_LEASE_CONFLICT');return row;
 }
 export class SourceSync {
+  async sweep(){return transaction(async c=>{await lock(c);await expire(c);});}
   async start(actor:Principal,input:unknown){
     const b=z.object({sourceId:uuid,runnerId:uuid,requestId:uuid}).strict().parse(input),hash=digest(JSON.stringify(b));
     return transaction(async c=>{

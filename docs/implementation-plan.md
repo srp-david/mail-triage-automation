@@ -1,6 +1,6 @@
 # mail-triage-web 통합 구현 계획
 
-문서 버전: 1.5 · 갱신일: 2026-09-18 · 상태: P0, React R0~R6 및 조회 개선 완료. P1 경계/UI 이동, P2 인증/ACL, P3 v1 DB 종단·큐/Runner/sync 기반 구현·합성 검증. 전체 UI·세션 연결과 실인증·팀 PC 검증은 미완료. [검증 기록](validation.md), [v1 개발 경계](v1-development.md).
+문서 버전: 1.5 · 갱신일: 2026-09-18 · 상태: P1~P3 기반, P4 합성 adapter, P5 서버·복원 후보, P6 Windows 후보, P7 기록 체계 구현·검증. 단계 전체 완료 아님. 전체 UI·세션·Runner 통합, Codex 실제 읽기 및 실인증·팀 PC 검증 미완료. P8 보류. [검증 기록](validation.md), [v1 개발 경계](v1-development.md).
 
 이 문서는 앞으로의 범위·기술 선택·실행 순서의 단일 기준이다. 최신 사용자 결정은 **회사 이메일 인증 가입 + 공용 이력 API·PostgreSQL + 팀원 PC의 웹 앱·개인 AI agent·MCP**이다. 향후 웹·Worker·MCP를 필요한 순서대로 공용화한다. 문서 통합과 P1 전 UI·UX 보완은 인증 구현, DB 이관, 외부 서비스 가입, GitHub 게시, 실제 팀 배포를 수행한 기록이 아니다.
 
@@ -512,7 +512,20 @@ schema는 추가→채움→검증→사용 전환→후속 정리 순서로 바
 
 ## 12. 단계별 작업·산출물·완료 기준
 
-P1은 서비스 경계/UI 이동과 v1 HTTP 계약을 구현했고, 실제 DB repository와 전체 기능 라우팅 전환은 후속 작업이다. 최신 인계 지시에 따라 P1~P8의 가능한 로컬 구현·검증·작업별 커밋을 진행한다. React 전환 R0~R6는 4.3절에서 관리하며 P1 전에 완료했다. 아래 공수는 최초 예상이며 실제 완료를 뜻하지 않는다. 외부 인증·배포·팀 파일럿 검증은 따로 기록한다.
+최신 인계 지시에 따라 작업별로 구현·검증·커밋했다. 아래 현재 상태가 실제 완료 범위다. React R0~R6 완료와 P1~P8 팀 기능 완료를 구분한다. 최초 예상 공수와 목표 완료 기준은 다음 표에 보존한다.
+
+| 단계 | 2026-09-18 현재 검증된 범위 | 남은 구현·검증 |
+|---|---|---|
+| P1 | workspace/모듈·UI 이동, DB 없는 HTTP 클라이언트→PostgreSQL 등록·저장·조회, 기존 UI 15개 회귀 | 기존 전체 화면과 legacy/리뷰/처리/관련 메일/검색/수동 링크/지식 기능의 v1 ACL 라우팅 연결 |
+| P2 | JWT/PKCE 모듈·Auth0 Action, 사용자/source/ACL/Runner, DPAPI/ACL, migration/checksum 합성 검증 | 로그인 화면·cookie/CSRF 세션·refresh rotation/로그아웃 연결, 실Auth0/메일·재설정·재발송, 팀 source 공유 관리 UI |
+| P3 | 지정 Runner 큐/lease/generation/progress/cancel/outbox, 출처 sync/3,200건·응답 유실·만료 정리 | 지속 Runner 스케줄러·원본 재확인/복구 UI·직접 CLI 전체 명령, sync 지연 재시도/자동 loop, PC 종료/프로세스 트리 검증 |
+| P4 | 공통 스킬 manifest·adapter·환경 분리, Claude 실제 합성 읽기/구조화 결과 | Codex 합성 읽기 실패 해결, 두 agent ERP/MCP 읽기 전용·금지 쓰기 거부, 일반 업무 adapter와 Runner 연결 |
+| P5 | 공용 API 이미지/Compose·Caddy/SMTP 템플릿, 기존 DB 복제 migration·재복원 11테이블 hash 보존 | D1~D4, 기존 source/legacy ACL 매핑·운영 DML 계정 실적용, 외부 접근/TLS/메일·외부 암호화 백업·실전환 |
+| P6 | 고정 Node Windows 후보 ZIP/3,702파일 hash, 한글 경로 설치·설정 보존·롤백·후보 실행 차단 | 전체 앱 연결 후 릴리스 승인, 바로가기/중지·완전 제거 UX/CLI·MCP 진단, 깨끗한 팀 PC·서명·게시 |
+| P7 | 합성 두 사용자/Runner 회귀, 파일럿 사례·기록 양식·누락 검사 | D5/D7 시험자·두 PC·지정 메일·실제 업무 관찰. 현장 미착수 |
+| P8 | v1 local 경계 유지, service 입력 거부 검사 | P7 및 D8 결정 전 전체 보류 |
+
+위의 로컬 미구현 항목은 외부 계정 부재만으로 설명하지 않는다. 현재 ZIP은 releaseApproved=false이며 팀 배포용 완성본이 아니다. 실행 중 기존 v0 서비스는 교체하지 않았다.
 
 | 단계 | 선행 조건 | 작업·산출물 | 완료 기준 | 예상 공수 |
 |---|---|---|---|---|

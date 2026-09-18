@@ -1,5 +1,5 @@
-import {HttpError} from '../../../src/config.js';
-import {matchesAnalysis,searchByAnalysis} from '../../../src/mail-search.js';
+import {HttpError} from './config.js';
+import {matchesAnalysis,searchByAnalysis} from './mail-search.js';
 import type {ThreadLink,ThreadMailIdentity} from '../../../src/thread-links.js';
 
 type Mail={id:number;messageId?:string|null;inReplyTo?:string[];references?:string[];subject?:string;sentAt?:string|null;fetchedAt?:string;[key:string]:unknown};

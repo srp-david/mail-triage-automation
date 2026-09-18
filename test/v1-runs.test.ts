@@ -59,6 +59,7 @@ test('lost claim response rotates generation; cancellation, expiry and ACL revoc
   const exp=await runs.start(a,input(4)),ce=(await runs.claim(a,ra.id,randomUUID(),ra.credential))!;
   await pool.query("UPDATE analysis_run SET lease_until=now()-interval '1 second' WHERE id=$1",[exp.id]);
   await assert.rejects(runs.complete(a,exp.id,{...lease(ce),requestId:randomUUID(),result},ra.credential),/LEASE_EXPIRED/);
+  await runs.sweep();assert.equal((await runs.get(a,exp.id)).status,'failed');
   await d.grant(a,sourceA.id,{userId:b.userId,permission:'write'});
   const shared=await d.registerRunner(b,{requestId:randomUUID(),displayName:'B shared',agents:['codex'],sourceIds:[sourceA.id]});
   const sharedRun=await runs.start(b,{...input(5),runnerId:shared.id});const cs=(await runs.claim(b,shared.id,randomUUID(),shared.credential))!;

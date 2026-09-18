@@ -362,3 +362,45 @@
 - Claude 실제 합성 실행: 제한된 Read/Glob/Grep/Skill, 빈 MCP 설정, shell/write 도구 제외. 읽기 이벤트, 스킬 표식, 12×3=36 구조화 결과와 원본 파일 보존 검증 통과(강화 재검증 약 18.5초).
 - Codex 실제 합성 실행: read-only/approval never/개인 config 제외. 3회 모두 파일을 읽지 못했다는 needs_input, evidence 없음으로 반환하여 검증 실패. 마지막 약 15.1초. 모델 응답만으로 OS 차단 원인이나 스킬 적용을 확정하지 않는다. sandbox를 완화해 통과시키지 않았다.
 - 두 agent의 실제 ERP/MCP 도구 조회·쓰기 시도 거부, Windows process-tree 취소, Runner 전체 연결은 미완료다. Claude의 합성 읽기 성공은 이 항목의 대체 증거가 아니다.
+
+## 2026-09-18 P5 서버 후보·복제 DB 리허설
+
+- 별도 history API Dockerfile, DB 비공개 Compose/Caddy, Auth0 SMTP 예시, runtime DML grants, secret-file DB 연결과 운영 runbook 추가. Node 24.21.0 이미지 digest 고정. PostgreSQL/Caddy digest·실제 DNS/운영 설정은 배포 전에 고정해야 한다.
+- `docker compose --env-file deploy/server.env.example -f deploy/compose.server.yaml config --quiet` 통과. `mail-triage-history:p5-candidate` 빌드 통과. 네트워크 없는 컨테이너에서 v1 모듈 import와 AI CLI 미포함 확인.
+- `node scripts/verify-v1-restore.mjs` 통과. 기존 DB read-only dump를 독립 `triage-v1-restore-67eddc4a` DB에 복원→numbered migration→두 번째 복원. 11개 기존 테이블의 전체 행 내용 hash와 건수 동일. mail_identity 34, analysis/report 각 6, sync 15, related 3, legacy 33/연결 30 보존. 실제 이관/쓰기 전환은 수행하지 않았다.
+- 전체 약 9.3초, 두 번째 복원·대조·migration 확인 약 1.9초. 로컬 작은 DB의 실측이며 공용 운영 RTO 보장이 아니다. 자신이 만든 컨테이너와 volume만 정리했고 dump/hash 증거는 Git 제외 `.runtime`에 보존했다.
+- VM/DNS/외부 두 환경·TLS·SMTP 실수신·다른 위치 암호화 백업·운영 계정 분리의 실환경 검증은 D1~D4 대기다. runtime 역할 SQL은 작성했고 실제 운영 역할 provisioning은 하지 않았다.
+
+## 2026-09-18 P6 Windows 후보 패키지
+
+- portable Node v24.16.0(공식 SHA-256 대조)/라이선스, local-app·Runner·adapter·UI·공통 스킬, production 의존성만 포함한 `0.2.0-candidate.2.zip` 생성. 3,702개 파일 manifest/hash 검증. DB 드라이버/history-api·개인 자료 제외. ZIP/checksum은 `.runtime/packages`에만 보존했다.
+- 비ASCII 경로에 실제 후보 설치 후 포함된 node.exe 버전, 로컬 앱/MCP 모듈 import, 전체 파일 hash 검증 통과. 설정/secret/outbox 보존·업데이트·롤백·진단 실패 시 활성 버전 유지·변조/잠금 거부 합성 테스트 통과.
+- 최초 설치 테스트에서 디렉터리 선생성 후 cp의 EEXIST가 발견되어 파일별 독점 복사로 수정했다. 최초 패키지 후보는 로컬 Node LICENSE 부재로 중단했고 공식 버전별 라이선스/checksum을 확인하도록 고쳤다.
+- local 모듈의 config와 공통 HttpError를 분리해 로컬 배포물에 DB 설정/연결 모듈이 들어가지 않게 했다. 기본 v0 API 동작은 같은 HttpError 클래스를 유지한다.
+- installer 관리 CLI·진단·후보 시작 차단, 비활성 Actions 초안 추가. `releaseApproved=false`이며 실제 팀 배포·자동 바로가기/완전한 제거 UI·개인 CLI/MCP 진단·깨끗한 PC 실인증/분석은 미완료다.
+
+## 2026-09-18 P3 후속 검토: 오프라인 만료 정리
+
+- Runner가 완전히 오프라인이면 다음 claim이 없어 만료 상태가 남을 수 있어 API의 30초 정리기를 추가했다. 만료된 v1 run만 실패/취소로, 만료된 sync만 paused/uncertain으로 바꾼다. 활성 작업 전체 복구나 자동 재분석은 수행하지 않는다.
+- 격리 DB 전체 백엔드 66개 통과. lease 만료 후 정리기를 호출해 failed 상태로 전환되는 검사를 추가했다.
+
+## 2026-09-18 P7 준비·P8 보류
+
+- 실제 두 PC·agent별 설치·격리·장애·백업·실메일 관찰을 구분하는 파일럿 실행표와 익명 기록 양식을 추가했다. `check-pilot-record.mjs`는 비어 있는 예시를 readyForHumanReview=false로 판정한다. 이는 계획대로 미착수를 표시하는 결과다.
+- v1 계약에서 executorKind=service 입력 거부 검사를 추가했다. P7/D8 결정 없이 공용 실행 계정이나 비용/권한을 만들지 않았다.
+- 현장 파일럿, 실제 두 PC, 지정 실메일은 실행하지 않았다. 실메일 분석·고객 원문 수정·운영 서비스 교체·Git push/Release 게시도 수행하지 않았다.
+
+## 2026-09-18 최종 후보 검토
+
+- local facade의 Host/Origin/세션 거부와 no-store를 합성 HTTP로 검증했다. 패키지 생성기가 최초 출력 부모 디렉터리도 생성하도록 보완했다.
+- 추가 Host 검사의 첫 실행은 Node fetch에서 Host 재정의가 전달되지 않아 200으로 실패했다. 실제 Host 헤더를 전송하는 node:http로 검증 도구를 수정했으며 실패 기록을 보존한다.
+- 최종 타입 검사·전체 빌드 통과. UI 소스 자체는 P1 이동 후 추가 변경하지 않았으며 UI 15개 회귀는 P1 검증 결과다. 이후 전체 백엔드 66개와 local facade 추가 1개를 각각 확인했다.
+- 생성된 `0.2.0-candidate.2.zip`과 `p5-candidate` 이미지의 검증 시점은 각 항목과 같다. 이후 lease 정리/no-store 등 후속 소스 수정이 있으므로 최종 Git HEAD와 동일한 배포물이라고 해석하지 않는다. 외부 배포·정식 release 전 새 버전으로 다시 빌드해야 한다.
+
+### 2026-09-18 지속 작업: P1 HTTP 리뷰 반영
+
+- Claude P1 리뷰를 HEAD 9ac10e6과 대조했다. 이전 리뷰의 result 무검증/실제 DB 테스트 부재는 P3에서 해소됐으며, 공통 completionSchema로 HTTP/repository 검증을 통일했다.
+- JSON 파싱/용량 초과를 400/413으로 분류하고, 안전한 message/requestId와 no-store를 파서 이전부터 적용했다. 임의 error.status/오류 본문은 노출하지 않는다. 상류 ApiError 401/409 의미는 유지한다.
+- local run UUID 검증, 직접 navigate/document 차단, device credential 전달 assertion, 후속 라우트가 최종 404에 가려지지 않는 검사를 추가했다.
+- npm run check 성공. node --import tsx --test test/v1-contract.test.ts test/local-app.test.ts: 4/4 통과.
+- orca 명령이 현재 PowerShell PATH에서 발견되지 않아 Claude 현재 작업 여부 확인은 못 했다. build-compat 소유권 겹침 가능 범위는 별도 보류했다. 실제 배포나 고객 분석은 수행하지 않았다.

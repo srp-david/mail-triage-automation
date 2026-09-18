@@ -1,7 +1,7 @@
-import { mailEndpoint } from '../../../src/mail-proxy.js';
+import { mailEndpoint } from './mail-proxy.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { config, HttpError } from '../../../src/config.js';
+import { config, HttpError } from './config.js';
 export async function withMcp<T>(url: string, action: (client: Client) => Promise<T>): Promise<T> {
   const client = new Client({ name: 'mail-triage-web', version: '0.1.0' });
   const transport = new StreamableHTTPClientTransport(new URL(url === config.mailUrl ? await mailEndpoint() : url));

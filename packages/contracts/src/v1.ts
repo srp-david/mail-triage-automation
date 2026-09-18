@@ -1,5 +1,6 @@
 import {z} from 'zod';
-export {resultSchema} from './schema.js';
+import {resultSchema} from './schema.js';
+export {resultSchema};
 export const contractVersion='1' as const;
 export const uuid=z.string().uuid();
 export const runInput=z.object({
@@ -12,6 +13,8 @@ export type RunInput=z.infer<typeof runInput>;
 export type Principal={userId:string};
 export type Lease={runnerId:string;leaseToken:string;generation:number};
 export const leaseSchema=z.object({runnerId:uuid,leaseToken:z.string().min(32).max(200),generation:z.number().int().positive()});
+export const completionSchema=leaseSchema.extend({requestId:uuid,result:resultSchema}).strict();
+export type Completion=z.infer<typeof completionSchema>;
 export class ApiError extends Error {
   constructor(public status:number,public code:string){super(code);}
 }

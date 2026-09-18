@@ -3,7 +3,7 @@ import type {PoolClient} from 'pg';
 import {z} from 'zod';
 import {transaction} from './db.js';
 import {lock,member,sourceAccess,deviceAccess,digest,secretMatches} from './directory.js';
-import {ApiError,runInput,leaseSchema,uuid,resultSchema,type Principal,type RunInput} from '../../../packages/contracts/src/v1.js';
+import {ApiError,runInput,leaseSchema,uuid,completionSchema,type Principal,type RunInput} from '../../../packages/contracts/src/v1.js';
 import {progressSchema} from '../../../src/progress.js';
 async function expire(c:PoolClient){
   await c.query(`UPDATE analysis_run r SET status=CASE WHEN v.cancel_requested_at IS NULL THEN 'failed' ELSE 'cancelled' END,error='LEASE_OR_QUEUE_EXPIRED',finished_at=now(),lease_until=NULL
@@ -27,6 +27,7 @@ async function owned(c:PoolClient,actor:Principal,id:string,input:unknown,device
 }
 function active(r:any){if(r.status!=='running'||!r.valid)throw new ApiError(409,'LEASE_EXPIRED');}
 export class Runs {
+  async sweep(){return transaction(async c=>{await lock(c);await expire(c);});}
   async start(actor:Principal,input:RunInput){
     const b=runInput.parse(input),hash=digest(JSON.stringify(b));
     return transaction(async c=>{
@@ -92,7 +93,7 @@ export class Runs {
     });
   }
   async complete(actor:Principal,id:string,input:unknown,device:string){
-    const b=leaseSchema.extend({requestId:uuid,result:resultSchema}).strict().parse(input),hash=digest(JSON.stringify(b.result));
+    const b=completionSchema.parse(input),hash=digest(JSON.stringify(b.result));
     return transaction(async c=>{
       await lock(c);const r=await owned(c,actor,id,b,device);
       if(r.result_hash){if(r.result_hash!==hash||r.result_request_id!==b.requestId)throw new ApiError(409,'RESULT_CONFLICT');return {id,status:r.status};}

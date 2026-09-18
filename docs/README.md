@@ -1,6 +1,6 @@
 # 문서 안내
 
-갱신일: 2026-09-18. 현재 방향은 **공용 이력 API·PostgreSQL + 팀원 PC의 웹 앱·개인 AI agent·MCP**이며, 이후 필요한 기능부터 공용화한다. 메인 화면의 React 전환 R0~R6은 구현·검증·로컬 Docker 적용을 완료했다. 계획은 통합 구현 계획 4.3절, 결과와 복귀 절차는 React 전환 검증에서 관리한다. 팀 인증·Runner P1~P8은 구현 전이다.
+갱신일: 2026-09-18. 현재 방향은 **공용 이력 API·PostgreSQL + 팀원 PC의 웹 앱·개인 AI agent·MCP**이며, 이후 필요한 기능부터 공용화한다. React R0~R6은 구현·검증·로컬 Docker 적용 완료다. 팀 기능 P1~P7은 기반 모듈과 검증 후보를 구현했으며 전체 통합·실환경 검증은 미완료다. 단계별 실제 범위와 남은 항목은 통합 구현 계획 12절을 따른다. P8은 보류다.
 
 ## 먼저 읽을 문서
 
@@ -17,6 +17,10 @@
 | [team-deployment-plan.md](team-deployment-plan.md) | 이전 링크를 위한 통합 안내 | 별도 배포 계획을 중복 유지하지 않음 |
 | [maintenance.md](maintenance.md) | 현재 구현에 맞는 운영 절차 | 해당 기능 구현·검증 후 명령 갱신 |
 | [validation.md](validation.md) | 날짜별 검증 일지 | 과거 사실은 보존하고 후속 결과·제한 추가 |
+| [v1-development.md](v1-development.md) | 분리된 v1 개발 실행 경계 | 기존 서비스와 신규 후보를 구분 |
+| [server-runbook.md](server-runbook.md) | 공용 서버·복제 DB 복원·전환 준비 | 외부 운영 실검증 전 후보로 표시 |
+| [windows-candidate.md](windows-candidate.md) | Windows 후보 ZIP·설치·롤백 | 미승인 후보를 팀용 완성본으로 배포하지 않음 |
+| [team-pilot.md](team-pilot.md) | 두 PC 파일럿 사례와 기록 | 실제 관찰 근거와 합성 회귀 구분 |
 | [react-transition-validation.md](react-transition-validation.md) | React 전환 대응표·회귀·적용·복귀 근거 | 합성 검증과 실제 읽기 확인을 구분 |
 | [legacy-link-validation.md](legacy-link-validation.md) | 기존 문서 33건의 연결·보존 증거 | 추가 연결 작업이 있을 때 근거와 함께 추가 |
 | [status-filter-validation.md](status-filter-validation.md) | 메일 검색 상태 필터의 구현·합성 검증 | 해당 기능의 실제 검증 범위 기록 |

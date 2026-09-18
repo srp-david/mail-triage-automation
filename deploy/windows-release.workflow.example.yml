@@ -1,0 +1,20 @@
+# Draft only. Move to .github/workflows after D6 and release readiness approval.
+name: windows-candidate
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4 # Pin reviewed action commit before activation.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.16.0
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
+      - run: node --import tsx --test test/installer.test.ts test/runner.test.ts test/v1-auth.test.ts
+      - run: node scripts/package-windows.mjs 0.2.0-candidate.1
+      # No publish/upload step until repository access and signing policy are set.

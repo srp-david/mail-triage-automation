@@ -1,0 +1,17 @@
+import {readFile} from 'node:fs/promises';
+import {randomBytes} from 'node:crypto';
+import {join} from 'node:path';
+import {HistoryClient} from '../../../packages/history-client/src/index.js';
+import {ProtectedStore} from './protected-store.js';
+import {createLocalApp} from './app.js';
+import {acquireInstance} from '../../../packages/runner/src/instance.js';
+const root=process.env.TRIAGE_LOCAL_HOME;if(!root)throw new Error('TRIAGE_LOCAL_HOME required');
+const settings=JSON.parse(await readFile(join(root,'config','settings.json'),'utf8'));
+const secrets=new ProtectedStore(join(root,'secrets'));
+const history=new HistoryClient(settings.historyUrl,async()=>(await secrets.read('session')).accessToken);
+const release=await acquireInstance(join(root,'app.lock'));
+const port=3080,token=randomBytes(32).toString('base64url');
+await secrets.write('local-session',{token});
+const server=createLocalApp(history,token,port).listen(port,'127.0.0.1');
+server.on('error',()=>{void release().finally(()=>{process.exitCode=1;});});
+for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>server.close(()=>{void release();}));

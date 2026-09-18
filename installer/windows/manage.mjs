@@ -1,0 +1,10 @@
+import {installRelease,rollback,uninstallRelease} from './release.mjs';
+import {diagnoseRelease} from './diagnose.mjs';
+const [command,home,payload]=process.argv.slice(2);
+if(!home)throw new Error('Usage: install|rollback|remove HOME PAYLOAD_OR_VERSION [--candidate]');
+let result;
+if(command==='install')result=await installRelease(home,payload,{allowCandidate:process.argv.includes('--candidate'),diagnose:async path=>{await diagnoseRelease(path);return true;}});
+else if(command==='rollback')result=await rollback(home);
+else if(command==='remove')result=await uninstallRelease(home,payload);
+else throw new Error('Unknown command');
+console.log(JSON.stringify(result??{ok:true}));

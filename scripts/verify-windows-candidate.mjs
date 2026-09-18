@@ -1,0 +1,16 @@
+import {installRelease,verifyRelease} from '../installer/windows/release.mjs';
+import {diagnoseRelease} from '../installer/windows/diagnose.mjs';
+import {mkdir,readFile} from 'node:fs/promises';
+import {randomUUID} from 'node:crypto';
+import {resolve,join} from 'node:path';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+import assert from 'node:assert/strict';
+const payload=resolve(process.argv[2]),home=resolve('.runtime','설치 검증-'+randomUUID());await mkdir(home);
+const result=await installRelease(home,payload,{allowCandidate:true,diagnose:async path=>{await diagnoseRelease(path);return true;}});
+const release=join(home,'releases',result.version),manifest=await verifyRelease(release);
+const exec=promisify(execFile);
+assert.equal((await exec(join(release,'node.exe'),['--version'])).stdout.trim(),manifest.nodeVersion);
+await exec(join(release,'node.exe'),['-e',"await import('./dist/apps/local-app/src/app.js'); await import('./dist/apps/local-app/src/mcp.js'); console.log('ok')"],{cwd:release});
+assert.equal(Object.keys(manifest.files).some(x=>x.includes('node_modules/pg/')||x.includes('history-api')),false);
+console.log(JSON.stringify({ok:true,version:result.version,nodeVersion:manifest.nodeVersion,files:Object.keys(manifest.files).length,nonAsciiPath:true,releaseApproved:manifest.releaseApproved}));

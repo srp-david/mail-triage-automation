@@ -1,4 +1,4 @@
-import {ApiError,contractVersion,type RunInput,type Lease} from '../../contracts/src/v1.js';
+import {ApiError,contractVersion,uuid,type RunInput,type Lease} from '../../contracts/src/v1.js';
 export class HistoryClient {
   constructor(readonly baseUrl:string,private token:()=>Promise<string>,private transport:typeof fetch=fetch){
     const url=new URL(baseUrl);
@@ -16,8 +16,8 @@ export class HistoryClient {
     return response.status===204?null:await response.json();
   }
   start(input:RunInput){return this.request('/runs',input);}
-  get(id:string){return this.request('/runs/'+id);}
+  get(id:string){return this.request('/runs/'+uuid.parse(id));}
   complete(id:string,lease:Lease,requestId:string,result:unknown,device:string){
-    return this.request('/runs/'+id+'/result',{...lease,requestId,result},device);
+    return this.request('/runs/'+uuid.parse(id)+'/result',{...lease,requestId,result},device);
   }
 }

@@ -1,5 +1,5 @@
 import {z} from 'zod';
-import {HttpError} from '../../../src/config.js';
+import {HttpError} from './config.js';
 
 export const analysisStatus=z.enum(['all','unanalysed','queued','running','needs_input','completed','failed','handled','legacy']);
 type Status=z.infer<typeof analysisStatus>;

@@ -1,5 +1,5 @@
 import { createServer, request } from 'node:http';
-import { config } from '../../../src/config.js';
+import { config } from './config.js';
 let endpoint:Promise<string>|undefined;
 // This loopback-only adapter preserves the upstream localhost virtual host.
 // It is not a public proxy and never accepts an arbitrary destination.

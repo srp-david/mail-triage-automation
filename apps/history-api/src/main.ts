@@ -4,6 +4,7 @@ import {Runs} from './runs.js';
 import {directoryRoutes} from './directory-routes.js';
 import {runRoutes} from './run-routes.js';
 import {syncRoutes} from './sync-routes.js';
+import {SourceSync} from './source-sync.js';
 import {tokenVerifier} from './auth.js';
 import {schemaReady,migrateVersioned} from './migrations.js';
 import {pool} from './db.js';
@@ -15,8 +16,11 @@ else{
   const directory=new Directory(env.TEAM_ID,env.ADMIN_SUBJECT),runs=new Runs();
   await schemaReady();
   const app=createHistoryApp(runs,async token=>directory.login(await verify(token)));
-  directoryRoutes(app,directory);runRoutes(app,runs);syncRoutes(app);
+  const sync=new SourceSync();
+  directoryRoutes(app,directory);runRoutes(app,runs);syncRoutes(app,sync);
+  const sweep=async()=>{try{await runs.sweep();await sync.sweep();}catch{console.error('lease_sweep_failed');}};
+  await sweep();const sweepTimer=setInterval(()=>void sweep(),30000);sweepTimer.unref();
   app.get('/health/ready',async(_req,res)=>{try{await schemaReady();res.json({ok:true});}catch{res.status(503).json({ok:false});}});
   const server=errors(app).listen(Number(process.env.PORT??3081),process.env.HISTORY_BIND??'127.0.0.1');
-  for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>server.close(()=>{void pool.end();}));
+  for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>{clearInterval(sweepTimer);server.close(()=>{void pool.end();});});
 }

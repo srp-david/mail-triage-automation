@@ -1,4 +1,4 @@
-import { HttpError } from '../../../src/config.js';
+import { HttpError } from './config.js';
 export const DOWNLOAD_LIMIT=5*1024*1024;
 export function attachmentDownload(result:any,emailId:number,attachmentId:string){
   let metadata=result.structuredContent;
