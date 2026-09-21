@@ -18,6 +18,7 @@
 | [maintenance.md](maintenance.md) | 현재 구현에 맞는 운영 절차 | 해당 기능 구현·검증 후 명령 갱신 |
 | [validation.md](validation.md) | 날짜별 검증 일지 | 과거 사실은 보존하고 후속 결과·제한 추가 |
 | [v1-development.md](v1-development.md) | 분리된 v1 개발 실행 경계 | 기존 서비스와 신규 후보를 구분 |
+| [auth0-setup.md](auth0-setup.md) | 회사 이메일 가입·로그인 설정과 실검증 절차 | 필요한 입력·설정 대응과 실제 인증 완료를 구분 |
 | [server-runbook.md](server-runbook.md) | 공용 서버·복제 DB 복원·전환 준비 | 외부 운영 실검증 전 후보로 표시 |
 | [windows-candidate.md](windows-candidate.md) | Windows 후보 ZIP·설치·롤백 | 미승인 후보를 팀용 완성본으로 배포하지 않음 |
 | [team-pilot.md](team-pilot.md) | 두 PC 파일럿 사례와 기록 | 실제 관찰 근거와 합성 회귀 구분 |

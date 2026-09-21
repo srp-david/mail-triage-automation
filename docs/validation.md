@@ -576,3 +576,10 @@
 - `npm.cmd run check`, `npm.cmd run build:ui` 통과. `node scripts/verify-react-suite.mjs pre-p1-ux query-cache native-ui` Chrome 3/3 통과.
 - Git 제외 `.runtime/verify-search-entry.mjs`로 검색어·발신자 Enter 후 API 조건, 조합 이벤트 동안 추가 검색 0회, 조합 완료 후 검색, 실제 입력 폭 280/220px, 390px 화면 가로 넘침 없음, pageerror 0 확인. 초기 검증 스크립트의 발신자 파라미터명을 `from`에서 실제 API 계약 `from_address`로 정정한 뒤 통과했다. 합성 데스크톱/모바일 스크린샷을 육안 확인했다.
 - 증거: `.runtime/search-entry-result.json`, `.runtime/search-entry-desktop.png`, `.runtime/search-entry-mobile.png`, `.runtime/react-validation/react/` 로그. 실제 OS IME 수동 입력 검증과는 구분한다. 기존 실행 중 Docker 서비스·DB·Worker 및 Windows 후보 ZIP은 변경하지 않았다.
+
+# 2026-09-21 실제 이메일 인증 연결 준비
+
+- `docs/auth0-setup.md`에 D1/D3 입력 양식, Native/PKCE·callback·API audience·Action·메일 발송 설정 대응, 최초 관리자 subject 지정 시점, 실검증 시나리오를 작성했다. Auth0 공식 문서와 현재 코드를 대조했다. `deploy/auth0/local-settings.example.json`은 기존 v0와 분리한 43180 포트·실값 없는 예시다.
+- 실제 Action 파일을 불러와 정확한 회사 도메인만 가입 허용, 미인증/외부 도메인/누락 설정 차단, 허용된 Action claim을 서명해 API verifier까지 연결하는 합성 검사 2개를 추가했다. `node --import tsx --test test/v1-auth.test.ts test/local-session.test.ts` 9/9 및 `npm.cmd run check` 통과.
+- 앞선 검색 작업에서 Native 브라우저 합성 로그인·출처 선택·초안 격리·로그아웃 회귀도 통과했다. 이는 실제 Auth0 검증이 아니다. 회사 도메인·최초 관리자·팀·Auth0 테넌트·발송 서비스 입력을 요청한 상태이며 계정 생성, 인증메일 발송, 실로그인, 기존 서비스의 v1 전환은 수행하지 않았다.
+- 최초 관리자는 새 membership을 만들기 전에 `ADMIN_SUBJECT`를 지정해야 한다. 기존 analyst를 환경변수 변경만으로 승격하지 않는다. 현재 인증메일 재발송은 Auth0 관리자 절차이며 앱 내 셀프서비스는 미구현이다. 실메일 수신·재발송·만료·재설정·실토큰 갱신은 입력 후 별도 검증한다.

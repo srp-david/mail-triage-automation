@@ -1,5 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
 import {generateKeyPair,SignJWT,exportJWK,createLocalJWKSet} from 'jose';
 import {tokenVerifier} from '../apps/history-api/src/auth.js';
 import {NativeLogin} from '../apps/local-app/src/pkce.js';
@@ -8,6 +9,30 @@ const jwk=await exportJWK(publicKey);jwk.kid='fixture';
 const key=createLocalJWKSet({keys:[jwk]});
 const settings={issuer:'https://tenant.example.test/',audience:'https://history.example.test',namespace:'https://claims.example.test',domains:['company.test']};
 const sign=(claims:any,aud=settings.audience,exp='1h')=>new SignJWT(claims).setProtectedHeader({alg:'RS256',kid:'fixture'}).setIssuer(settings.issuer).setSubject('fixture-user').setAudience(aud).setIssuedAt().setExpirationTime(exp).sign(privateKey);
+const require=createRequire(import.meta.url);
+const {onExecutePreUserRegistration}=require('../deploy/auth0/pre-registration.cjs');
+const {onExecutePostLogin}=require('../deploy/auth0/post-login.cjs');
+
+test('deployed registration Action accepts only configured exact company domains',async()=>{
+  for(const [email,allowed] of [['user@company.test',true],['user@COMPANY.TEST',true],['user@company.test.evil',false],['user@sub.company.test',false],['user@outside.test',false],['',false]] as const){
+    const denials:unknown[]=[];
+    await onExecutePreUserRegistration({user:{email},secrets:{COMPANY_DOMAINS:' company.test '}},{access:{deny:(...args:unknown[])=>denials.push(args)}});
+    assert.equal(denials.length,allowed?0:1,email);
+  }
+  let denied=false;
+  await onExecutePreUserRegistration({user:{email:'user@company.test'},secrets:{}},{access:{deny:()=>{denied=true;}}});
+  assert.equal(denied,true,'Missing domain configuration must deny registration');
+});
+
+test('deployed login Action claims are accepted by API only after verified company login',async()=>{
+  for(const scenario of [{email:'user@company.test',verified:true,namespace:settings.namespace,allowed:true},{email:'user@company.test',verified:false,namespace:settings.namespace,allowed:false},{email:'user@outside.test',verified:true,namespace:settings.namespace,allowed:false},{email:'user@company.test',verified:true,namespace:'',allowed:false}]){
+    const claims:Record<string,unknown>={};let denied=false;
+    await onExecutePostLogin({user:{email:scenario.email,email_verified:scenario.verified},secrets:{COMPANY_DOMAINS:'company.test',CLAIM_NAMESPACE:scenario.namespace}},{access:{deny:()=>{denied=true;}},accessToken:{setCustomClaim:(name:string,value:unknown)=>{claims[name]=value;}}});
+    assert.equal(denied,!scenario.allowed);
+    if(scenario.allowed)assert.equal((await tokenVerifier(settings,key)(await sign(claims))).email,scenario.email);
+    else {assert.deepEqual(claims,{});await assert.rejects(tokenVerifier(settings,key)(await sign(claims)),/IDENTITY_DENIED/);}
+  }
+});
 test('JWT requires signed audience, expiry, verified exact domain and trusted claims',async()=>{
   const verify=tokenVerifier(settings,key),claims={[settings.namespace+'/email']:'user@company.test',[settings.namespace+'/email_verified']:true};
   assert.equal((await verify(await sign(claims))).email,'user@company.test');

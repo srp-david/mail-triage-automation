@@ -620,3 +620,5 @@ API/DB 테스트는 전용 schema 또는 별도 Compose 프로젝트로 격리�
 같은 날 추가 UI 요청: 처리 완료 보고서의 관련 메일 연결 전 미리보기/연결 후 ‘메일 보기’를 메일함과 같은 `MailContent`로 통일했다. 확인된 메일 ID의 HTML 본문을 조회해 문단·줄바꿈·표·CID 이미지를 보존하고, 서식 조회 실패 시 전체 텍스트의 줄바꿈을 보존한다. 원문 식별 검사와 HTML 안전 처리, 닫힌 미리보기의 늦은 응답 차단은 유지한다. check·UI build, Chrome related-mails/image-preview/mail-scroll/history-ui 4/4 통과. 기존 로컬 v0 화면 반영과 데이터 보존 근거는 검증 기록을 따른다.
 
 같은 날 잔여 작업 1: 검색어·발신자 입력에서 Enter로 검색하고 한글 조합 중 Enter는 제출하지 않도록 정리했다. 데스크톱 검색어/발신자 폭은 최대 280/220px이며 모바일 배치를 유지한다. check·UI build, Chrome pre-p1-ux/query-cache/native-ui 3/3과 별도 Enter·IME 이벤트·폭 검증을 통과했다. 이 후속 변경의 실행 중 Docker 서비스 반영과 Windows ZIP 갱신은 수행하지 않았다.
+
+같은 날 잔여 작업 2: [실제 이메일 인증 연결 절차](auth0-setup.md)와 별도 43180 포트의 Native 설정 예시를 준비했다. 실제 배포할 Auth0 Action의 도메인/인증 차단과 API claim 호환 검사를 추가하고 인증·세션 9/9 및 check를 통과했다. D1/D3 회사 도메인·최초 관리자·팀·Auth0·발송 서비스 입력 대기이며 실테넌트 연결·실메일 수신·실가입/로그인은 아직 미완료다. 재발송 버튼은 현재 없으며 Auth0 관리자 재발송과 사용자 셀프서비스를 구분한다.
