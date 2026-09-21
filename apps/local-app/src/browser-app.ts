@@ -18,10 +18,11 @@ export function createBrowserApp(session:LocalSession,options:{port:number;featu
   app.disable('x-powered-by');app.use(requestContext);
   app.use((req,res,next)=>{
     res.set('Referrer-Policy','no-referrer');
+    res.set('Cache-Control','no-store');
     res.set('Content-Security-Policy',"default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     if(req.get('host')!==`127.0.0.1:${options.port}`)throw new ApiError(403,'LOCAL_ORIGIN_DENIED');
     // OIDC browser navigation is the only cross-site exception and is bound by state+PKCE+cookie.
-    if(req.path==='/auth/callback'&&req.method==='GET')return next();
+    if(!session.usernameMode&&req.path==='/auth/callback'&&req.method==='GET')return next();
     if(req.get('origin')&&req.get('origin')!==origin||req.get('sec-fetch-site')==='cross-site')throw new ApiError(403,'LOCAL_ORIGIN_DENIED');
     next();
   });
@@ -47,14 +48,16 @@ export function createBrowserApp(session:LocalSession,options:{port:number;featu
   });
   app.get('/api/session',async(req,res)=>{
     if(Date.now()>sessionExpires||!same(cookie(req,'triage-local'),browser))throw new ApiError(401,'LOCAL_SESSION_REQUIRED');
-    try{res.json({mode:'native',authenticated:true,...await session.identity(),csrf});}
-    catch(error){if(error instanceof ApiError&&error.status===401)res.json({mode:'native',authenticated:false,csrf});else throw error;}
+    try{res.json({mode:'native',authMode:session.usernameMode?'username':'legacy',authenticated:true,...await (session.usernameMode?session.status():session.identity()),csrf});}
+    catch(error){if(error instanceof ApiError&&(error.status===401||error.status===403))res.json({mode:'native',authMode:session.usernameMode?'username':'legacy',authenticated:false,csrf});else throw error;}
   });
-  app.post('/auth/login',(req,res)=>{
+  app.post('/auth/login',async(req,res)=>{
     if(req.get('origin')!==origin||!same(cookie(req,'triage-local'),browser)||!same(req.get('x-csrf-token')??'',csrf))throw new ApiError(403,'CSRF_REQUIRED');
+    if(session.usernameMode){await options.beforeLogout?.();await session.credentials(req.body);rotate();setCookie(res);res.json({ok:true});return;}
     loginCookie=random();res.cookie('triage-login',loginCookie,{httpOnly:true,sameSite:'lax',path:'/auth',maxAge:300000});res.json({url:session.begin()});
   });
   app.get('/auth/callback',async(req,res)=>{
+    if(session.usernameMode)throw new ApiError(401,'LEGACY_AUTH_DISABLED');
     const expected=loginCookie;loginCookie='';res.clearCookie('triage-login',{path:'/auth'});
     if(!expected||!same(cookie(req,'triage-login'),expected))throw new ApiError(401,'INVALID_OIDC_CALLBACK');
     try{await session.accept(new URL(req.originalUrl,origin));rotate();setCookie(res);res.redirect('/');}
@@ -65,8 +68,12 @@ export function createBrowserApp(session:LocalSession,options:{port:number;featu
     if(!trustedCli&&(Date.now()>sessionExpires||!same(cookie(req,'triage-local'),browser)))throw new ApiError(401,'LOCAL_SESSION_REQUIRED');
     if(!trustedCli&&!['GET','HEAD'].includes(req.method)&&(req.get('origin')!==origin||!same(req.get('x-csrf-token')??'',csrf)))throw new ApiError(403,'CSRF_REQUIRED');
     // Logout also clears a session whose refresh failed.
-    if(req.path!=='/logout')await session.token();next();
+    if(req.path!=='/logout'){
+      await session.token();
+      if(session.usernameMode&&req.path!=='/password'&&(await session.identity()).mustChangePassword)throw new ApiError(403,'PASSWORD_CHANGE_REQUIRED');
+    }next();
   });
+  app.post('/api/password',async(req,res)=>{await options.beforeLogout?.();res.json(await session.password(req.body));});
   app.post('/api/logout',async(_req,res)=>{rotate();setCookie(res);await options.beforeLogout?.();res.json(await session.logout());});
   options.features?.(app);
   if(options.staticRoot){

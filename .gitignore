@@ -8,3 +8,6 @@ public/react/
 *.log
 
 *.dump
+supabase/functions/history/index.js
+supabase/functions/history/index.ts
+supabase/.temp/

@@ -29,7 +29,8 @@ export async function diagnoseLocal(path,home,{connectMcp=false}={}){
     const {Client}=await import('@modelcontextprotocol/sdk/client/index.js'),{StreamableHTTPClientTransport}=await import('@modelcontextprotocol/sdk/client/streamableHttp.js');const client=new Client({name:'triage-diagnose',version:'1'});
     try{await client.connect(new StreamableHTTPClientTransport(endpoint));const names=(await client.listTools()).tools.map(t=>t.name);mailMcp={configured:true,checked:true,connected:true,requiredTools:['get_email','search_emails','sync'].every(n=>names.includes(n))};}catch{mailMcp={configured:true,checked:true,connected:false};}finally{await client.close().catch(()=>{});}
   }
-  return {...release,portAvailable:await portAvailable(settings.localPort??3080),agents,mailMcp,authentication:'provider token validity requires explicit sign-in or synthetic execution'};
+  if(settings.auth?.mode!=='username')throw new Error('USERNAME_AUTH_SETTINGS_REQUIRED');
+  return {...release,portAvailable:await portAvailable(settings.localPort??3080),agents,mailMcp,authentication:'username login and live server session verification required'};
 }
 export async function portAvailable(port=3080){return new Promise(resolve=>{const server=createServer();server.once('error',()=>resolve(false));server.listen(port,'127.0.0.1',()=>server.close(()=>resolve(true)));});}
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){try{console.log(JSON.stringify(process.argv[3]?await diagnoseLocal(process.argv[2],process.argv[3],{connectMcp:process.argv.includes('--connect-mcp')}):{...await diagnoseRelease(process.argv[2]),portAvailable:await portAvailable()}));}catch{console.error('LOCAL_DIAGNOSTICS_FAILED');process.exitCode=1;}}

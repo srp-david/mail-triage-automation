@@ -10,7 +10,7 @@ export const runInput=z.object({
   verifiedAt:z.string().datetime(),parentId:uuid.optional(),answer:z.string().max(20000).optional(),
 }).strict();
 export type RunInput=z.infer<typeof runInput>;
-export type Principal={userId:string};
+export type Principal={userId:string;sessionId?:string};
 export type Lease={runnerId:string;leaseToken:string;generation:number};
 export const leaseSchema=z.object({runnerId:uuid,leaseToken:z.string().min(32).max(200),generation:z.number().int().positive()});
 export const completionSchema=leaseSchema.extend({requestId:uuid,result:resultSchema}).strict();

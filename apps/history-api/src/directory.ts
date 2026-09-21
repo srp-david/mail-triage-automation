@@ -9,6 +9,7 @@ export const secretMatches=(a:string,b:string)=>timingSafeEqual(Buffer.from(dige
 export async function lock(c:PoolClient){await c.query("SELECT pg_advisory_xact_lock(hashtextextended(current_schema()||':v1-write',0))");}
 export async function lockShared(c:PoolClient){await c.query("SELECT pg_advisory_xact_lock_shared(hashtextextended(current_schema()||':v1-write',0))");}
 export async function member(c:PoolClient,actor:Principal){
+  if(actor.sessionId&&!(await c.query('SELECT 1 FROM auth_session s JOIN user_credential uc ON uc.user_id=s.user_id WHERE s.id=$1 AND s.user_id=$2 AND s.revoked_at IS NULL AND s.expires_at>now() AND NOT s.restricted AND NOT uc.must_change',[actor.sessionId,actor.userId])).rowCount)throw new ApiError(401,'SESSION_REVOKED');
   const rows=(await c.query('SELECT m.* FROM membership m JOIN app_user u ON u.id=m.user_id WHERE u.id=$1 AND u.active AND m.active',[actor.userId])).rows;
   if(rows.length>1)throw new ApiError(403,'AMBIGUOUS_MEMBERSHIP');const row=rows[0];
   if(!row)throw new ApiError(403,'MEMBERSHIP_DISABLED');return row;
@@ -26,9 +27,11 @@ export async function deviceAccess(c:PoolClient,actor:Principal,id:string,secret
 }
 export class Directory {
   constructor(readonly teamId:string,readonly adminSubject?:string){}
-  async members(actor:Principal){return transaction(async c=>{await lockShared(c);const m=await member(c,actor);return (await c.query('SELECT u.id,u.email,m.role FROM app_user u JOIN membership m ON m.user_id=u.id WHERE m.team_id=$1 AND m.active AND u.active ORDER BY u.email,u.id',[m.team_id])).rows;});}
+  async members(actor:Principal){return transaction(async c=>{await lockShared(c);const m=await member(c,actor);return (await c.query('SELECT u.id,u.email,u.username,u.display_name,m.role FROM app_user u JOIN membership m ON m.user_id=u.id WHERE m.team_id=$1 AND m.active AND u.active ORDER BY coalesce(u.username,u.email),u.id',[m.team_id])).rows;});}
   async runners(actor:Principal){return transaction(async c=>{await lockShared(c);await member(c,actor);return (await c.query('SELECT id,display_name,agents,active,seen_at FROM runner WHERE owner_user_id=$1 ORDER BY created_at,id',[actor.userId])).rows;});}
   async login(identity:VerifiedIdentity):Promise<Principal>{
+    // Legacy fixture support only. Production entrypoints exclusively use UsernameAuth.
+    if(process.env.NODE_ENV!=='test')throw new ApiError(401,'LEGACY_AUTH_DISABLED');
     return transaction(async c=>{
       await lock(c);
       let user=(await c.query('SELECT * FROM app_user WHERE issuer=$1 AND subject=$2',[identity.issuer,identity.subject])).rows[0];
@@ -83,6 +86,8 @@ export class Directory {
   async disable(actor:Principal,id:string){return transaction(async c=>{
     await lock(c);const m=await member(c,actor),target=await member(c,{userId:id});
     if(m.role!=='admin'||m.team_id!==target.team_id||actor.userId===id)throw new ApiError(403,'ADMIN_REQUIRED');
-    await c.query('UPDATE app_user SET active=false WHERE id=$1',[id]);return {ok:true};
+    await c.query('UPDATE app_user SET active=false WHERE id=$1',[id]);
+    await c.query('UPDATE auth_session SET revoked_at=now() WHERE user_id=$1',[id]);
+    await c.query("INSERT INTO audit_event(actor_id,action,target_id) VALUES($1,'admin.user_disabled',$2)",[actor.userId,id]);return {ok:true};
   });}
 }

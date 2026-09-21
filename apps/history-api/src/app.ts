@@ -8,9 +8,10 @@ export interface HistoryRepository {
 }
 export type Authenticator=(token:string)=>Promise<Principal>;
 // Authentication is mandatory and injected; this app never mounts the v0 token routes.
-export function createHistoryApp(repository:HistoryRepository,authenticate:Authenticator){
+export function createHistoryApp(repository:HistoryRepository,authenticate:Authenticator,beforeAuth?:(app:express.Express)=>void){
   const app=express();app.disable('x-powered-by');app.use(requestContext);app.use(express.json({limit:'2mb'}));
   app.get('/health/live',(_req,res)=>res.json({ok:true}));
+  beforeAuth?.(app);
   app.use('/api/v1',async(req,res,next)=>{
     if(req.get('origin')||req.get('sec-fetch-site')==='cross-site'||req.get('sec-fetch-mode')==='navigate'||req.get('sec-fetch-dest')==='document')throw new ApiError(403,'BROWSER_ACCESS_DENIED');
     if(req.get('x-contract-version')!==contractVersion)throw new ApiError(409,'CONTRACT_VERSION');

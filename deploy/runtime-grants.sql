@@ -3,6 +3,8 @@
 GRANT CONNECT ON DATABASE triage TO triage_runtime;
 GRANT USAGE ON SCHEMA public TO triage_runtime;
 GRANT SELECT ON schema_migration TO triage_runtime;
+GRANT SELECT,INSERT,UPDATE ON user_credential,auth_session,refresh_token TO triage_runtime;
+GRANT SELECT,INSERT,UPDATE,DELETE ON auth_throttle TO triage_runtime;
 -- Revoke the earlier broad grants when applying this template to an existing role.
 REVOKE UPDATE,DELETE ON audit_event,report_version,review,legacy_document FROM triage_runtime;
 REVOKE DELETE ON analysis_run,v1_run,mail_identity,sync_run,v1_sync,v1_sync_batch FROM triage_runtime;

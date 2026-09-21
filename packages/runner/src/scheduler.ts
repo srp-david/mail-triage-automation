@@ -9,11 +9,12 @@ export class Scheduler {
   constructor(private tick:(signal:AbortSignal)=>Promise<unknown>,private intervalMs=3000,private maxBackoffMs=30000){}
   start(){if(this.task)return false;this.controller=new AbortController();const signal=this.controller.signal;this.task=this.run(signal).finally(()=>{this.task=undefined;this.controller=undefined;this.state='stopped';});return true;}
   async stop(){this.controller?.abort();await this.task;}
-  private async run(signal:AbortSignal){let failures=0;
+  private async run(signal:AbortSignal){let failures=0,idle=0;
     while(!signal.aborted){let wait=this.intervalMs;
-      try{this.state='working';await this.tick(signal);this.state='idle';this.lastError=undefined;failures=0;}
+      try{this.state='working';const result=await this.tick(signal);this.state='idle';this.lastError=undefined;failures=0;
+        idle=result===null?idle+1:0;wait=Math.min(this.maxBackoffMs,this.intervalMs*2**Math.min(idle,10));}
       catch(error:any){if(signal.aborted)break;const code=String(error?.code??error?.message??'');
-        if(/RECOVERY|UNCERTAIN|NO_RECOVERABLE|LOGIN_REQUIRED|IDENTITY_DENIED|RUNNER_DENIED|SOURCE_NOT_FOUND|LEASE_|RESULT_CONFLICT|SOURCE_CHANGED|ORIGINAL_UNAVAILABLE|NOT_RELEASE_APPROVED/.test(code)){
+        if(error?.status===401||error?.status===403||/RECOVERY|UNCERTAIN|NO_RECOVERABLE|LOGIN_REQUIRED|IDENTITY_DENIED|RUNNER_DENIED|SOURCE_NOT_FOUND|LEASE_|RESULT_CONFLICT|SOURCE_CHANGED|ORIGINAL_UNAVAILABLE|NOT_RELEASE_APPROVED/.test(code)){
           this.state='recovery_required';this.lastError='ACTION_REQUIRED';
           await delay(2147483647,undefined,{signal}).catch(()=>{});break;
         }

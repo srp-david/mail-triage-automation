@@ -34,8 +34,8 @@ export class LocalRuntime {
     this.sync=new SyncRunner(this.history,this.receipts,selected.runnerId,device.credential,async(sourceId,limit,signal)=>{
       const source=await check(sourceId);signal.throwIfAborted();return source.sync(limit,signal);
     });
-    this.loops.set('analysis',new Scheduler(signal=>this.runner!.tick(signal)));
-    this.loops.set('sync',new Scheduler(signal=>this.sync!.tick(signal)));
+    this.loops.set('analysis',new Scheduler(signal=>this.runner!.tick(signal),5000,60000));
+    this.loops.set('sync',new Scheduler(signal=>this.sync!.tick(signal),5000,60000));
     this.key=key;
   }
   async start(kind:'analysis'|'sync'){return this.serial(async()=>{if(kind==='analysis'&&!this.executor)throw new ApiError(409,'ADAPTER_NOT_RELEASE_APPROVED');await this.initialize();const loop=this.loops.get(kind)!;if(loop.state==='recovery_required')await loop.stop();return {ok:true,started:loop.start(),state:loop.state};});}

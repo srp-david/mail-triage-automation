@@ -30,7 +30,7 @@ async function scan(sub=''){
 }
 await scan();
 if(Object.keys(hashes).some(x=>/^(config|secrets|work|logs)\/|(^|\/)\.env|(^|\/)pg\/|history-api/.test(x)))throw new Error('Forbidden package content');
-await writeFile(join(target,'manifest.json'),JSON.stringify({version,contractVersion:'1',platform:'win32-x64',nodeVersion:process.version,releaseApproved:false,files:hashes},null,2));
+await writeFile(join(target,'manifest.json'),JSON.stringify({version,contractVersion:'1',platform:'win32-x64',nodeVersion:process.version,authentication:'username',releaseApproved:false,files:hashes},null,2));
 const zip=target+'.zip';
 await exec('python',['-X','utf8','scripts/zip-candidate.py',target,zip]);
 await writeFile(zip+'.sha256',createHash('sha256').update(await readFile(zip)).digest('hex')+'\n');

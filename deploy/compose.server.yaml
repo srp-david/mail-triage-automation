@@ -30,11 +30,9 @@ services:
       DATABASE_URL_FILE: /run/secrets/runtime_database_url
       AUTH_ISSUER: ${AUTH_ISSUER:?Set issuer}
       AUTH_AUDIENCE: ${AUTH_AUDIENCE:?Set API audience}
-      AUTH_NAMESPACE: ${AUTH_NAMESPACE:?Set claim namespace}
-      COMPANY_DOMAINS: ${COMPANY_DOMAINS:?Set company domains}
+      AUTH_SIGNING_KEY_FILE: /run/secrets/auth_signing_key
       TEAM_ID: ${TEAM_ID:?Set team UUID}
-      ADMIN_SUBJECT: ${ADMIN_SUBJECT:?Set first admin subject}
-    secrets: [runtime_database_url]
+    secrets: [runtime_database_url,auth_signing_key]
     networks: [database,edge]
     depends_on:
       db: {condition: service_healthy}
@@ -60,6 +58,8 @@ secrets:
     file: ${SECRET_DIR:?Set secret directory}/db-password
   runtime_database_url:
     file: ${SECRET_DIR:?Set secret directory}/runtime-database-url
+  auth_signing_key:
+    file: ${SECRET_DIR:?Set secret directory}/auth-signing-key.json
 volumes:
   history:
   caddy_data:

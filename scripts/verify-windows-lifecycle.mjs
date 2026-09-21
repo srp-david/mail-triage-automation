@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 const payload=resolve(process.argv[2]);await mkdir('.runtime/lifecycle',{recursive:true});const home=await mkdtemp(resolve('.runtime/lifecycle/한글 설치-'));
 await installRelease(home,payload,{allowCandidate:true});
 const probe=createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));const origin='http://127.0.0.1:'+port;
-await writeFile(join(home,'config/settings.json'),JSON.stringify({localPort:port,historyUrl:'https://synthetic.invalid',auth:{issuer:'https://synthetic.invalid/',clientId:'synthetic',audience:'synthetic'}}));
+await writeFile(join(home,'config/settings.json'),JSON.stringify({localPort:port,historyUrl:'https://synthetic.invalid',auth:{mode:'username',issuer:'https://synthetic.invalid/',audience:'synthetic'}}));
 let running=false;
 try{
   await assert.rejects(startApp(home,{open:false}),/CANDIDATE_NOT_APPROVED/);

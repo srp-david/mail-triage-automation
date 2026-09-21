@@ -18,7 +18,7 @@ export async function migrateVersioned(){
 }
 export async function schemaReady(){
   const files=['000_baseline.sql',...(await readdir(directory)).filter(x=>/^\d{3}_[a-z_]+\.sql$/.test(x))];
-  const rows=(await pool.query('SELECT id,checksum FROM schema_migration')).rows;
+  const rows=await transaction(async c=>(await c.query('SELECT id,checksum FROM schema_migration')).rows);
   for(const name of files){
     const content=await readFile(name==='000_baseline.sql'?new URL('../../../src/migration.sql',import.meta.url):new URL(name,directory),'utf8');
     if(!rows.some(row=>row.id===name&&row.checksum===createHash('sha256').update(content).digest('hex')))throw new Error('SCHEMA_NOT_READY');

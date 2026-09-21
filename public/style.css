@@ -139,6 +139,11 @@ body.preview-open{overflow:hidden}
 /* Keep navigation beside the workspace and search controls close to the list. */
 #workspace{display:grid;grid-template-columns:148px minmax(0,1fr);gap:18px;align-items:start;position:relative}
 #workspace>.workspace-nav{grid-column:1;grid-row:1;position:sticky;top:20px;display:flex;flex-direction:column;gap:5px;border:0;margin:0;padding:8px 0}
+#view-settings,#view-admin{grid-column:2;grid-row:1;min-width:0;min-height:0;overflow:auto}
+.username-panel label,#login label{display:flex;flex-direction:column;gap:6px;margin:10px 0;max-width:100%}
+.username-panel input,.username-panel select,#login input{max-width:100%;min-width:0}
+.username-panel fieldset{min-width:0;border:1px solid #dce4df;border-radius:8px;margin:18px 0;padding:16px}
+.username-panel fieldset label:has(input[type=checkbox]){flex-direction:row;align-items:center}
 .workspace-nav a{padding:12px 14px}
 #view-mailbox,#view-history,#view-legacy{grid-column:2;grid-row:1;min-width:0}
 #menu-toggle{display:none}
