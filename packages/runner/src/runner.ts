@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import type {HistoryClient} from '../../history-client/src/index.js';
 import {resultSchema} from '../../contracts/src/v1.js';
+import {watchLease,failureCode,transientHistoryError} from './lease-heartbeat.js';
 export interface ReceiptStore {read(key:string):Promise<any>;write(key:string,value:unknown):Promise<void>}
 export type RunnerProgress={kind:'analysis_started'|'mail_read'|'local_tool'|'db_tool'|'result_saving';outcome:'completed'|'failed'};
 export interface Executor {execute(run:any,signal:AbortSignal,progress?:(event:RunnerProgress)=>Promise<void>):Promise<unknown>}
@@ -28,27 +29,31 @@ export class Runner {
     if(!claim){await this.store.write(this.runnerId,{state:'idle'});return null;}
     receipt={state:'running',claim,resultRequestId:randomUUID()};await this.store.write(this.runnerId,receipt);
     const lease={runnerId:this.runnerId,leaseToken:claim.leaseToken,generation:claim.generation};
-    let deadline:ReturnType<typeof setTimeout>;
-    const arm=(until:string)=>{clearTimeout(deadline);deadline=setTimeout(()=>controller.abort(new Error('LEASE_EXPIRED')),Math.max(0,Date.parse(until)-Date.now()-1000));};
-    arm(claim.leaseUntil);let checking=false;
-    const pulse=setInterval(async()=>{
-      if(checking||controller.signal.aborted)return;checking=true;
-      try{const h=await this.client.request('/runs/'+claim.id+'/heartbeat',lease,this.device);if(h.cancelRequested)controller.abort(new Error('CANCELLED'));else arm(h.leaseUntil);}
-      catch{controller.abort(new Error('HEARTBEAT_FAILED'));}finally{checking=false;}
-    },this.heartbeatMs);
+    const stopHeartbeat=watchLease(controller,claim.leaseUntil,signal=>this.client.request('/runs/'+claim.id+'/heartbeat',lease,this.device,{signal}),this.heartbeatMs);
     try{
-      const run=await this.client.get(claim.id);controller.signal.throwIfAborted();
-      const progress=async(event:RunnerProgress)=>{controller.signal.throwIfAborted();await this.client.request('/runs/'+claim.id+'/progress',{...lease,event},this.device);};
+      controller.signal.throwIfAborted();
+      const run=await this.client.get(claim.id).catch(error=>{throw new Error(failureCode(error,true));});controller.signal.throwIfAborted();
+      const progress=async(event:RunnerProgress)=>{
+        controller.signal.throwIfAborted();
+        try{await this.client.request('/runs/'+claim.id+'/progress',{...lease,event},this.device,{signal:controller.signal});}
+        catch(error){
+          controller.signal.throwIfAborted();
+          // Progress is advisory and has no idempotency key. Do not duplicate it
+          // or kill valid work for a lost response; heartbeat still fences work.
+          if(!transientHistoryError(error)){controller.abort(new Error(failureCode(error,true)));throw error;}
+        }
+        controller.signal.throwIfAborted();
+      };
       await progress({kind:'analysis_started',outcome:'completed'});
       const result=resultSchema.parse(await this.executor.execute(run,controller.signal,progress));controller.signal.throwIfAborted();
       receipt={...receipt,state:'outbox',result};await this.store.write(this.runnerId,receipt);
       await progress({kind:'result_saving',outcome:'completed'}).catch(()=>{});
     }catch(error){
-      const reason=controller.signal.aborted?'INTERRUPTED':'EXECUTION_FAILED';
+      const reason=failureCode(controller.signal.aborted?controller.signal.reason:error);
       await this.store.write(this.runnerId,{...receipt,state:receipt.result?'outbox':'interrupted',reason});
-      if(!receipt.result)await this.client.request('/runs/'+claim.id+'/fail',{...lease,code:controller.signal.aborted?'CANCELLED':'AGENT_FAILED'},this.device).catch(()=>{});
+      if(!receipt.result)await this.client.request('/runs/'+claim.id+'/fail',{...lease,code:reason},this.device).catch(()=>{});
       throw error;
-    }finally{clearInterval(pulse);clearTimeout(deadline!);}
+    }finally{stopHeartbeat();}
     return this.flush(receipt);
   }
   async recovery(){let r:any;try{r=await this.store.read(this.runnerId);}catch(e:any){if(e.code!=='ENOENT')throw e;}return r?{state:r.state,runId:r.claim?.id,hasResult:!!r.result,reason:r.reason}:null;}

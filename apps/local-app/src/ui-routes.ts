@@ -6,9 +6,11 @@ import {ApiError,uuid} from '../../../packages/contracts/src/v1.js';
 import type {HistoryClient} from '../../../packages/history-client/src/index.js';
 import type {MailSource} from './source-client.js';
 import {analysisStatus,searchByAnalysis} from './mail-search.js';
-import {searchThreads} from './mail-threads.js';
+import {searchThreads,scanThreadMails} from './mail-threads.js';
+import {ThreadSearchCache} from './thread-cache.js';
 import {attachmentDownload} from './attachments.js';
-export type LocalSelection={sourceId:string;collectionId?:string;runnerId?:string;agent:'codex'|'claude';original?:MailSource};
+// cacheScope is backend-only and binds snapshots to the authenticated user and MCP instance/endpoint.
+export type LocalSelection={sourceId:string;cacheScope?:string;collectionId?:string;runnerId?:string;agent:'codex'|'claude';original?:MailSource};
 export interface LocalUiContext {
   selection():Promise<LocalSelection>;
   configure(input:unknown):Promise<unknown>;
@@ -25,6 +27,7 @@ function identity(mail:any,expected?:{id:number;messageId?:string|null;fetchedAt
 const present=(r:any,selection:LocalSelection)=>({...r,store_id:r.sourceId??selection.sourceId,mail_id:r.mailId,message_id:r.messageId,identity_kind:r.identityKind,handled_at:r.handledAt,created_at:r.createdAt,started_at:r.startedAt,finished_at:r.finishedAt,progress_events:r.progress,source:r.agent==='unknown'?'legacy':'web',
   relatedMails:r.relatedMails?.map((x:any)=>({...x,store_id:r.sourceId,available:!!selection.original&&r.sourceId===selection.sourceId&&x.store_id===r.storeId}))});
 export function localUiRoutes(app:express.Express,h:HistoryClient,context:LocalUiContext){
+  const threadCache=new ThreadSearchCache<Awaited<ReturnType<typeof scanThreadMails>>>();
   const summaries=(sourceId:string,ids:number[])=>h.request<any[]>('/sources/'+sourceId+'/mail-analysis',{mailIds:ids}).then(x=>x??[]);
   app.get('/api/status',async(_req,res)=>res.json(await context.status()));
   app.get('/api/sources',async(_req,res)=>res.json(await h.request('/sources')));
@@ -55,7 +58,19 @@ export function localUiRoutes(app:express.Express,h:HistoryClient,context:LocalU
   app.get('/api/mail-analysis',async(req,res)=>{const ids=z.string().max(2000).regex(/^\d+(,\d+)*$/).transform(x=>x.split(',').map(Number)).pipe(z.array(z.number().int().positive().safe()).max(100)).parse(req.query.mailIds);res.json(await summaries((await context.selection()).sourceId,ids));});
   app.get('/api/mails',async(req,res)=>{const s=await context.selection(),m=original(s),args=z.object({query:z.string().max(1000).optional(),from_address:z.string().max(320).optional(),sent_after:z.string().datetime({offset:true}).optional(),sent_before:z.string().datetime({offset:true}).optional(),limit:z.coerce.number().int().min(1).max(100).default(30),offset:z.coerce.number().int().min(0).default(0)}).parse(req.query),status=analysisStatus.default('all').parse(req.query.analysis_status);
     const search=(args:any)=>m.call('search_emails',args),summary=(ids:number[])=>summaries(s.sourceId,ids);
-    res.json(req.query.view==='threads'?await searchThreads(args,status,search,summary,await h.request('/sources/'+s.sourceId+'/thread-links')??[]):await searchByAnalysis(args,status,search,summary));
+    if(req.query.view!=='threads'){res.json(await searchByAnalysis(args,status,search,summary));return;}
+    const refresh=z.enum(['1']).optional().parse(req.query.refresh)==='1';
+    // Always recheck source access, current links and sync state, including cache hits.
+    const [links,sync]=await Promise.all([h.request<any[]>('/sources/'+s.sourceId+'/thread-links'),h.request<any>('/sources/'+s.sourceId+'/sync-latest')]);
+    const revision=JSON.stringify([s.cacheScope,s.sourceId,sync?.id,sync?.status,sync?.saved,sync?.batch_count,sync?.finished_at]);
+    if(refresh)threadCache.clear();
+    const scan=(conditions:typeof args)=>{
+      const load=()=>m.withSearch?m.withSearch(search=>scanThreadMails(conditions,search)):scanThreadMails(conditions,search);
+      if(!s.cacheScope)return load();
+      const key=JSON.stringify([s.cacheScope,s.sourceId,conditions.query??'',conditions.from_address??'',conditions.sent_after??'',conditions.sent_before??'']);
+      return threadCache.get(key,revision,load);
+    };
+    res.json(await searchThreads(args,status,search,summary,links??[],scan));
   });
   app.get('/api/mails/:id',async(req,res)=>res.json(await original(await context.selection()).full(number.parse(req.params.id))));
   app.get('/api/mails/:id/body',async(req,res)=>res.json(await original(await context.selection()).call('get_email_html',{id:number.parse(req.params.id)})));

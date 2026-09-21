@@ -14,12 +14,12 @@ export class LocalProfile implements LocalUiContext {
   private async read(key:string,fallback:any){try{return await this.store.read(key);}catch(e:any){if(e?.code==='ENOENT')return fallback;throw new ApiError(503,'LOCAL_SETTINGS_UNAVAILABLE');}}
   private async profile(){const {userId}=await this.session.identity();return {userId,value:selection.parse(await this.read('profile-'+userId,{sourceId:'',agent:'codex'}))};}
   private instance(){return this.instancePromise??=(async()=>{let value=await this.read('source-instance',null);if(!value){value={id:randomUUID(),endpoint:this.endpoint};await this.store.write('source-instance',value);}if(value.endpoint!==this.endpoint)throw new ApiError(409,'SOURCE_CONFIGURATION_CHANGED');return uuid.parse(value.id);})().catch(error=>{this.instancePromise=undefined;throw error;});}
-  async selection(){const {value}=await this.profile();
+  async selection(){const {value,userId}=await this.profile();
     if(!value.sourceId)return {...value,original:undefined};
     const sources=await this.history.request<any[]>('/sources'),source=sources!.find(s=>s.id===value.sourceId);
     if(!source)return {...value,sourceId:'',runnerId:undefined,original:undefined};
     let bound=false;try{bound=!!this.endpoint&&source.instance_id===await this.instance();}catch(error){if(!(error instanceof ApiError)||error.code!=='SOURCE_CONFIGURATION_CHANGED')throw error;}
-    return {...value,original:bound?this.source(this.endpoint!):undefined};
+    return {...value,cacheScope:bound?JSON.stringify([userId,source.instance_id,this.endpoint]):undefined,original:bound?this.source(this.endpoint!):undefined};
   }
   async configure(input:unknown){return this.serial(async()=>{
     const value=selection.parse(input),{userId}=await this.profile();

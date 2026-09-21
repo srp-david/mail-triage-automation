@@ -537,3 +537,27 @@
 - 후보5 실제 한글 설치에서 DPAPI ACL helper의 console code page 문제가 드러났다. 경로를 ASCII base64로 전달하고 UTF8로 복원해 해결했다. 한글 폴더 반복write/read3회·현재user-only DACL·평문부재와 후보6 실제 설치/기동/진입/바로가기/정상중지/설정보존 제거가 통과했다. 이는 같은 개발 PC 검증이며 깨끗한 팀 PC 검사와 구분한다.
 - 후보6 3,719파일/Nodev24.16.0/contract1, releaseApproved=false 유지. ZIP hash `8e5c45c9439af96cb7d3e2b53a463541ae73796ec1783efdd32755ce88fa7222`. 기존 v0 API/DB healthy·Worker running과 3080 유지 확인. Git push·Release 게시·운영 이관 없음.
 - 실제 Auth0/회사 메일·호스트/TLS·외부 암호화 백업·ERP 읽기 계정/provider·OS 쓰기 거부·두 PC 파일럿은 D1~D7 입력/현장 검증 대기. P8은 P7/D8 이후다. 이 한계를 완료로 바꾸지 않았다.
+
+# 2026-09-21 보완 1: v1 스레드 검색
+
+- v1 `/api/mails?view=threads`에도 전체 검색 캐시(15초/8개/16MiB)와 동시 요청 합치기를 연결했다. 사용자·source·MCP instance/endpoint를 구분하며 캐시 hit에도 source 접근 권한, sync 상태, 수동 연결과 분석 상태를 새로 확인한다. 명시적 refresh와 sync revision 변경은 원본 재조회, 실패한 검색은 캐시하지 않는다.
+- 실제 SDK를 사용한 loopback 합성 MCP와 HTTP facade 검사: 205개/3개 원본 페이지를 첫 조회에서 읽고 다음 페이지는 추가 조회 0회, 동시 페이지 요청도 scan 1회. 실제 MCP initialize는 scan당 1회다. 새 계정·source·instance, sync batch 변경, refresh, 권한 회수와 실패 후 재시도를 검사했다.
+- `node --import tsx --test test/local-thread-cache.test.ts test/source-client.test.ts test/local-profile.test.ts test/local-ui.test.ts test/thread-cache.test.ts test/mail-threads.test.ts`: 15/15 통과. 기존 cache 검사에서 TTL·크기 상한·늦은 응답·필터/연결 정확성도 확인했다. `npm.cmd run check` 통과.
+- 실메일·ERP·운영 DB를 사용하지 않았다. 기존 v0 서비스 교체나 candidate.6 패키지 재생성은 수행하지 않았다.
+
+# 2026-09-21 보완 2: Runner heartbeat 복구와 실패 사유
+
+- heartbeat의 네트워크 오류·요청 timeout·HTTP 408/429/500/502/503/504는 5·15·30초로 제한 재시도한다. 성공하면 재시도 횟수를 초기화하고, 실패 응답은 마지막 확인 lease를 연장하지 않는다. 독립 deadline은 lease 1초 전에 실행을 중지한다. 권한 거절·lease 충돌·명시 취소는 즉시 중지한다.
+- 완료/중지 시 타이머와 진행 중 heartbeat HTTP를 함께 정리한다. 늦게 도착한 응답은 타이머를 다시 등록하지 않는다. 진행 이벤트 응답의 일시 유실은 분석을 중단하지 않으며, 멱등 키가 없는 이벤트를 재전송하지 않는다. 이벤트 전송의 권한 오류는 즉시 중지한다.
+- 보호된 receipt와 `/fail`에 `NETWORK_ERROR`, `AUTH_REJECTED`, `LEASE_EXPIRED`, `APP_STOPPED`를 구분하고 기존 `CANCELLED`, `TIMEOUT`, `SOURCE_CHANGED`, `AGENT_FAILED`를 유지했다. 사용자 취소만 cancelled, 다른 사유는 failed로 저장한다. 기한이 지났거나 권한이 회수돼 서버가 저장을 거절하면 receipt를 보존하고 기존 서버 만료 처리에 맡긴다.
+- 가상 시계로 5/15/30초 재시도, 기한 내 중지, 성공 후 backoff 초기화, pending HTTP 중지, 종료 후 늦은 응답, 권한 거절과 취소를 검사했다. Runner 통합에서 heartbeat 1회/진행 이벤트 유실에도 agent 실행 1회·결과 저장 1회를 확인했다.
+- `node scripts/test-backend.mjs`: PostgreSQL 임시 스키마를 사용하는 전체 백엔드 110/110 통과. 이후 실행 TypeError를 통신 오류와 구분하는 보완을 포함해 `node --import tsx --test test/runner-heartbeat.test.ts test/runner.test.ts test/v1-contract.test.ts` 17/17 및 `npm.cmd run check` 통과. 실제 AI·메일 동기화·ERP 조회는 실행하지 않았다.
+
+# 2026-09-21 보완 3: 오류 요청 추적 및 최종 회귀
+
+- v1 공용 API와 로컬 앱의 공통 `requestContext`/`jsonError`에서 오류 요청당 stderr JSON 한 줄을 기록한다. 응답의 `requestId`/`X-Request-ID`와 같은 서버 생성 UUID를 쓰며, 요청 메서드·등록 경로 템플릿·상태·고정 오류 코드/종류·처리 시간·응답 완료 여부를 포함한다. 공용 API의 오류를 로컬 앱이 전달할 때 검증된 `upstreamRequestId`로 두 로그를 연결한다.
+- 요청 본문·토큰·cookie·query/실제 경로 매개변수·오류 message/stack·SQL/DB detail은 기록하지 않는다. 알려진 코드 목록에 없는 upstream 오류 코드는 로그에서 `REQUEST_FAILED`로 대체한다. DB 오류는 허용된 SQLSTATE만 기록한다. parser/auth 이전 오류는 등록 경로를 알 수 없어 `<unmatched>`로 표시한다.
+- 부분 응답 후 오류는 연결을 종료하고 안전한 로그 한 줄만 남긴다. 원시 오류를 Express 기본 stack logger로 넘기지 않는다. sink가 예외를 던져도 HTTP 응답이 변하지 않는다.
+- HTTP 로그 신규 검사 5개, 기존 계약·local-app·session과 함께 13/13 통과. 합성 비밀을 header/body/query/URL/오류 name/message/stack/DB detail에 주입해 로그에서 제외됨을 확인했다. 로컬→공용 API 요청 ID 연결과 완료/close 중복 방지를 확인했다.
+- 최종 `node scripts/test-backend.mjs` **116/116**, `npm.cmd run check`, `npm.cmd run build`, `node scripts/verify-build-compat.mjs` 통과. 실제 Chrome에서 `node scripts/verify-react-suite.mjs query-cache native-ui` **2/2** 통과: Query 캐시/무효화와 Native 로그인·출처 선택·원본 없는 공용 이력·계정 간 초안 격리·로그아웃을 검사했다. Auth0와 메일은 합성 fixture다.
+- 로컬 상세 로그: `.runtime/20260921-backend.log`, `.runtime/20260921-build.log`, `.runtime/20260921-browser.log`. 실행 중 v0 서비스, 기존 DB/Worker, 개인 AI 설정을 교체하지 않았고 배포 ZIP/Release/실서비스 배포는 이번 수정에 포함하지 않았다.

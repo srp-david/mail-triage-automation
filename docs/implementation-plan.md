@@ -1,6 +1,6 @@
 # mail-triage-web 통합 구현 계획
 
-문서 버전: 1.6 · 갱신일: 2026-09-18 · 상태: P1~P6 로컬 구현·합성 검증과 실제 두 CLI 종단 연결 완료, P7 파일럿 준비. 실인증·공용 호스트·ERP 읽기 권한·깨끗한 팀 PC 및 두 PC 파일럿은 대기한다. 전체 계획/팀 배포 완료 아님. P8은 P7/D8 결정 전 보류. [최종 로컬 검증](local-completion-2026-09-18.md), [검증 기록](validation.md), [v1 개발 경계](v1-development.md).
+문서 버전: 1.7 · 갱신일: 2026-09-21 · 상태: P1~P6 로컬 구현 이후 조회·Runner·오류 로그 보완 3건의 구현·검증 완료(16절). P7 파일럿 준비, 실인증·공용 호스트·ERP 읽기 권한·깨끗한 팀 PC 및 두 PC 파일럿은 대기한다. 전체 계획/팀 배포 완료 아님. P8은 P7/D8 결정 전 보류. [이전 로컬 검증](local-completion-2026-09-18.md), [검증 기록](validation.md), [v1 개발 경계](v1-development.md).
 
 이 문서는 앞으로의 범위·기술 선택·실행 순서의 단일 기준이다. 최신 사용자 결정은 **회사 이메일 인증 가입 + 공용 이력 API·PostgreSQL + 팀원 PC의 웹 앱·개인 AI agent·MCP**이다. 향후 웹·Worker·MCP를 필요한 순서대로 공용화한다. 문서 통합과 P1 전 UI·UX 보완은 인증 구현, DB 이관, 외부 서비스 가입, GitHub 게시, 실제 팀 배포를 수행한 기록이 아니다.
 
@@ -602,3 +602,17 @@ API/DB 테스트는 전용 schema 또는 별도 Compose 프로젝트로 격리�
 - 작업/인계 당시 맥락: [work-summary.md](work-summary.md)와 handoff 문서. 새 구현 범위나 배포 승인 근거로 사용하지 않는다.
 
 기술 근거는 2026-09-17 공식 문서와 현재 작업 트리다. 비용·상품 지원·CLI 옵션·패키지 패치 버전은 해당 단계에서 다시 확인한다. 참고: [Auth0 PKCE](https://auth0.com/docs/get-started/authentication-and-authorization-flow/authorization-code-flow-with-pkce), [이메일 인증](https://auth0.com/docs/manage-users/user-accounts/verify-emails), [SMTP](https://auth0.com/docs/customize/email/smtp-email-providers), [openid-client](https://github.com/panva/openid-client), [jose](https://github.com/panva/jose), [Codex 실행](https://developers.openai.com/codex/noninteractive), [Claude Code 실행](https://code.claude.com/docs/en/headless), [PostgreSQL 백업](https://www.postgresql.org/docs/17/backup-dump.html), [Caddy HTTPS](https://caddyserver.com/docs/automatic-https).
+
+## 16. 2026-09-21 후속 보완
+
+사용자가 승인한 1→2→3 순서로 구현·검증하고 작업별로 커밋한다. DB 공통 잠금 부하 측정/변경은 이번 범위에 포함하지 않는다.
+
+| 순서 | 작업 | 상태와 검증 |
+|---|---|---|
+| 1 | v1 스레드 검색 캐시·동시 요청 합치기·MCP 연결 재사용 | 완료. 15초/8개/16MiB 캐시를 사용자·source·MCP instance/endpoint로 구분하고 매 요청 권한·sync revision·수동 연결·분석 상태를 재확인한다. 205개 합성 메일의 다음 페이지는 추가 원본 조회 0회, 최초 3개 검색 페이지는 MCP initialize 1회. 관련 검사 15/15 및 check 통과 |
+| 2 | Runner 일시 통신 오류 재시도와 중단 사유 구분 | 완료. heartbeat의 통신/timeout/일시 HTTP 오류는 5·15·30초 재시도, 마지막 확인 lease 기한 전에 중지. 권한 거절/lease 충돌/명시 취소는 즉시 중지. 네트워크·권한·lease·앱 종료·사용자 취소·실행 실패를 별도 코드로 저장. 관련 최종 검사 17/17 및 check, PostgreSQL 포함 전체 검사 110/110 통과 |
+| 3 | requestId 기반의 안전한 오류 로그 | 완료. 오류 응답 ID와 stderr JSON 로그를 연결하고 로컬→공용 API의 upstreamRequestId도 검증 후 기록. 경로 템플릿·고정 오류 분류·처리 시간만 기록하며 원문·토큰·SQL·동적 URL·stack 제외. 로그 sink 장애와 부분 응답 오류도 검증 |
+
+상세 근거는 [검증 기록](validation.md)의 같은 날짜 항목을 따른다. 기존 candidate.6 ZIP은 9월 18일 산출물이며 후속 수정이 들어간 패키지로 간주하지 않는다.
+
+3건 최종 상태에서 check/build/compat, PostgreSQL 격리 백엔드 116/116, Chrome query-cache·native-ui 2/2 통과. 로그/검증 자료는 `.runtime/20260921-*.log`에 로컬 보존하며 Git에는 합성 테스트와 검증 요약만 반영한다.

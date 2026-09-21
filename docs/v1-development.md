@@ -43,3 +43,11 @@ Runner는 사용자 token + 장치 credential + 실행 lease/generation을 사�
 실전환 전 writer 중지·백업·복제 리허설을 먼저 수행한다. 운영자가 migration 자격의 `MIGRATION_DATABASE_URL`을 설정하고 `node scripts/map-v1-legacy.mjs .runtime/mapping-plan.json`으로 미리보기한다. 검토한 `previewHash`를 `--confirm HASH`로 전달해야 적용된다. 이 명령은 runtime HTTP에 노출하지 않는다.
 
 입력은 `{ "actorId": "확인된 관리자 UUID", "teamId": "팀 UUID", "sources": [{ "sourceId": "등록한 비공개 출처 UUID", "storeId": "기존 store 문자열" }], "documents": [{ "documentId": "기존 문서 UUID", "collectionId": "비공개 collection UUID", "sourceHash": "기존 문서 SHA256" }] }`다. 현재 사용자를 과거 실행 actor로 채우지 않으며, 미확정 문서는 목록에 넣지 않는다. source/collection 공유는 이관을 확인한 뒤 별도로 부여한다. runtime role은 `deploy/runtime-grants.sql`을 따른다.
+
+# 오류 요청 추적
+
+v1 API와 로컬 앱은 HTTP 오류를 stderr에 `event=http_error`인 JSON 한 줄로 출력한다. 호출자가 받은 JSON의 `requestId` 또는 응답 헤더 `X-Request-ID`를 해당 프로세스 로그에서 찾는다. 로컬 앱 항목에 `upstreamRequestId`가 있으면 그 값으로 공용 API 로그의 `requestId`를 찾아 원격 오류 분류를 확인한다. 클라이언트가 전달한 요청 ID는 사용하지 않는다.
+
+`route`는 `/api/v1/runs/:id` 같은 등록 템플릿이며, parser/auth 단계나 없는 경로에서는 `<unmatched>`다. `status`, `code`, `errorType`, `durationMs`, `responseCompleted`로 실패 종류와 소요 시간을 확인한다. `responseCompleted=false`는 응답 전송 중 오류로 연결을 종료한 경우를 포함한다. DB 오류는 알려진 SQLSTATE만 `databaseCode`로 기록하며 SQL이나 detail을 기록하지 않는다.
+
+메일/보고서 본문, 인증 header/cookie, 실제 URL/query 값, 오류 message/stack은 수집하지 않는다. 신규 API 오류 코드를 진단에 사용하려면 `packages/contracts/src/http-log.ts`의 고정 목록에 추가한다. 미등록 코드는 로그에서 `REQUEST_FAILED`로 처리한다. 기본 저장 위치는 실행 환경이 수집하는 stderr이며 별도 외부 수집 서비스는 요구하지 않는다.

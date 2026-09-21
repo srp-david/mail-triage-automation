@@ -14,7 +14,9 @@ export type Principal={userId:string};
 export type Lease={runnerId:string;leaseToken:string;generation:number};
 export const leaseSchema=z.object({runnerId:uuid,leaseToken:z.string().min(32).max(200),generation:z.number().int().positive()});
 export const completionSchema=leaseSchema.extend({requestId:uuid,result:resultSchema}).strict();
+export const runFailureCode=z.enum(['AGENT_FAILED','TIMEOUT','CANCELLED','SOURCE_CHANGED','NETWORK_ERROR','AUTH_REJECTED','APP_STOPPED','LEASE_EXPIRED']);
+export type RunFailureCode=z.infer<typeof runFailureCode>;
 export type Completion=z.infer<typeof completionSchema>;
 export class ApiError extends Error {
-  constructor(public status:number,public code:string){super(code);}
+  constructor(public status:number,public code:string,public upstreamRequestId?:string){super(code);}
 }

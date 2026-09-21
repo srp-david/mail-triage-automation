@@ -3,7 +3,7 @@ import type {PoolClient} from 'pg';
 import {z} from 'zod';
 import {transaction} from './db.js';
 import {lock,member,sourceAccess,deviceAccess,digest,secretMatches} from './directory.js';
-import {ApiError,runInput,leaseSchema,uuid,completionSchema,type Principal,type RunInput} from '../../../packages/contracts/src/v1.js';
+import {ApiError,runInput,leaseSchema,uuid,completionSchema,runFailureCode,type Principal,type RunInput} from '../../../packages/contracts/src/v1.js';
 import {progressSchema} from '../../../src/progress.js';
 import {SharedHistory} from './shared-history.js';
 async function expire(c:PoolClient){
@@ -118,7 +118,7 @@ export class Runs {
     if(r.status==='queued')await c.query("UPDATE analysis_run SET status='cancelled',finished_at=now() WHERE id=$1",[id]);return {id,cancelRequested:true};
   });}
   async fail(actor:Principal,id:string,input:unknown,device:string){
-    const b=leaseSchema.extend({code:z.enum(['AGENT_FAILED','TIMEOUT','CANCELLED','SOURCE_CHANGED'])}).strict().parse(input);
+    const b=leaseSchema.extend({code:runFailureCode}).strict().parse(input);
     return transaction(async c=>{await lock(c);const r=await owned(c,actor,id,b,device);active(r);
       await c.query('UPDATE analysis_run SET status=$2,error=$3,finished_at=now(),lease_until=NULL WHERE id=$1',[id,b.code==='CANCELLED'?'cancelled':'failed',b.code]);return {ok:true};
     });

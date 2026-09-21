@@ -189,6 +189,16 @@ test('v1 sync retries only confirmed transient responses with bounded delays and
   assert.equal((await sync.batch(a,partial.id,{...partialLease,batchId,response:{status:'error',saved:1,failed:1,remaining:10,errors:['POP3_TIMEOUT']}},runner.credential)).status,'failed');assert.equal((await sync.get(a,partial.id)).retry_count,0);
 });
 
+test('transport and app interruption remain failed while explicit cancellation is cancelled',async()=>{
+  for(const [i,code] of ['NETWORK_ERROR','AUTH_REJECTED','APP_STOPPED','LEASE_EXPIRED','TIMEOUT','CANCELLED'].entries()){
+    const job=await runs.start(a,input(600+i)),claim=(await runs.claim(a,ra.id,randomUUID(),ra.credential))!;
+    assert.equal(claim.id,job.id);
+    await runs.fail(a,job.id,{runnerId:ra.id,leaseToken:claim.leaseToken,generation:claim.generation,code},ra.credential);
+    const saved=(await pool.query('SELECT status,error FROM analysis_run WHERE id=$1',[job.id])).rows[0];
+    assert.equal(saved.status,code==='CANCELLED'?'cancelled':'failed');assert.equal(saved.error,code);
+  }
+});
+
 test('HTTP sync runner processes 3200 synthetic mails without DB credentials or duplicate batches',async()=>{
   const {SourceSync}=await import('../apps/history-api/src/source-sync.js'),{syncRoutes}=await import('../apps/history-api/src/sync-routes.js'),{SyncRunner}=await import('../packages/runner/src/sync-runner.js');const sync=new SourceSync();
   const s=await d.registerSource(a,{instanceId:randomUUID(),displayName:'Sync loop'}),r=await d.registerRunner(a,{requestId:randomUUID(),displayName:'Loop',agents:['codex'],sourceIds:[s.id]});
