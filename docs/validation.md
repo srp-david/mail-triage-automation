@@ -2,6 +2,26 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-21 팀 배포 우선 v3.0 재정리와 AWS 읽기 확인
+
+- 사용자 결정에 따라 공용 API·DB와 각 PC의 MCP/AI로 먼저 팀 배포하고, 피드백·안정화 후 원격 SR 자동화를 진행하는 M1~M5로 계획을 재구성했다. AWS API를 우선 검토하되 DB 엔진 선택은 분리했다. 원본 제품/PoC checkout·실행 서비스는 수정하지 않았다.
+- Codex 리뷰 4건과 완료 ID/hash를 확인한 Claude 리뷰 14건을 종합했다. 최신 계획 11절에 항목별 처리와 구현 시점을 기록했다. 구조화 brief, SR 중복/열린 PR 정책, 불변 bundle, service 권한 수명, 테스트 약화/CI 권한, 외부 PR 복원을 후속 단계에 반영했다. 매번 사람 승인 강제와 미확인 Supabase 사설망/도메인 전제는 확정안으로 채택하지 않았다.
+- 기존 `6ceecf2` 계획 본문은 [v2.1 보존본](implementation-plan-history-2026-09-21-v2.1.md)에 그대로 보존했고 현재 기준이 아님을 표시했다. 최신 문서는 통합 계획 하나이며 안내/개발/서버/팀 배포 안내도 맞췄다. 과거 검증 내용은 삭제하지 않았다.
+- 사용자의 AWS CLI 확인 지시로 기존 로그인 환경에서 `sts get-caller-identity`, 서울 리전 `rds describe-db-instances`, 대상의 `cloudwatch get-metric-data`를 읽기 전용 수행했다. 비밀/endpoint/계정 식별자를 Git에 넣지 않았다. RDS/보안 그룹/IAM/백업 설정 변경이나 SQL 접속은 하지 않았다.
+- 사용자가 `cvslog`는 `srp-rds-maria` 내부 DB라고 확인했다. 실조회: MariaDB 10.11.16 / db.t3.micro / Single-AZ / 20 GiB gp2 / 암호화·비공개 / 자동 백업 보존 0일 / 삭제 보호 꺼짐. 별도 백업·DB 내부 권한/테이블·앱 영역은 확인하지 않았다.
+- 2026-09-14T05:55:44Z~2026-09-21T05:55:44Z의 시간별 집계가 지표별 168개, Complete로 반환됐다. CPU Maximum 최대 26.48%, FreeableMemory Minimum 최저 142,995,456 bytes(약 136 MiB), FreeStorageSpace 최저 17,957,457,920 bytes(약 16.7 GiB), 연결 Maximum 최대 9개, CPU credit Minimum 최저 288. 추가 앱의 실제 부하·수용량이나 메모리 압박을 확정한 검증은 아니다. 원자료: Git 제외 `.runtime/aws-cvslog-review/{queries,metrics}.json`.
+- 현재 소스의 `pg`, jsonb, advisory lock, 부분 unique index, ON CONFLICT/RETURNING과 PoC 일반 Node 진입점을 확인했다. AWS RDS 사용과 PostgreSQL→MariaDB 이식은 다른 작업이며 기존 RDS에 연결 주소만 바꾸는 배포는 불가하다고 계획에 기록했다. MariaDB 이식·새 PostgreSQL 자원 생성은 수행하지 않았다.
+- `node .runtime/remote-sr-doc-audit.mjs`: 대상 7문서의 Markdown/fence·로컬 링크·M1~M5 표 구조 검사 및 `git show 6ceecf2:docs/implementation-plan.md`와 역사 본문 대조 통과. `git diff --check` 통과. 문서만 변경했으므로 제품 빌드/테스트·배포·실데이터 이관은 실행하지 않았다.
+
+## 2026-09-21 원격 SR→PR 목표 문서 정합화
+
+- 요청 `77f729a6-a9c3-4b53-9fe5-4dca3deee69f`, 원본 기준 `23863ab`. 착수 시 원본 Git clean과 Orca 터미널 소유 경계를 확인했다. 기존 continuation 체크포인트는 이전 실행 기록으로 보존하고 변경하지 않았다.
+- 통합 계획 v2.1에 원격 최종 구성/과도기 로컬 구성, S1~S7 의존성과 수용 기준, 분석/구현/PR 권한 분리, stage/attempt/lease·보고서/repo/base/head·재시도/PR 중복 방지 계약, D8~D11 외부 입력과 비용 경계를 정리했다. 문서 안내 및 개발/서버 안내의 현재 범위도 맞췄다.
+- 별도 PoC 요청 `b8a5c5dd-8809-4031-8a4f-40ae6a16496d`의 결과/완료 표시에서 ID·succeeded·10,263 bytes·SHA-256 `70fb2381fe6fc1a4d5f0a07994173d36b44d47894dc95f3e50905477fc206225` 일치를 확인했다. 해당 checkout HEAD `8303d52`와 clean 상태도 확인했다. 이는 완료 보고의 무결성 확인이며 보고된 backend 127/127·Edge 등 12군을 이번에 재실행한 것이 아니다. checkout 수정/병합 없음.
+- Mail MCP README를 읽어 Java 21/POP3/SQLite·TLS/UIDL·원격 미지원·자체 MCP 인증 없음의 현재 문서상 경계를 확인했다. MCP 실행/배포 검증은 하지 않았다. Supabase 공식 요금/함수 제한/일시정지/백업 문서를 재확인했으며 출처와 수치는 통합 계획 18.5절에 기록했다.
+- `node .runtime/remote-sr-doc-audit.mjs`: 변경 대상 5문서의 Markdown 파싱, 코드 fence 짝, 로컬 링크/절 링크, S1~S7 표 구조, 폐기한 P8 보류 문구 검사 통과. 검사 스크립트는 Git 제외 로컬 증거다. `git diff --check` 통과. 과거 검증 본문은 보존했다.
+- 문서만 변경했다. 제품 빌드/테스트, hosted Supabase, 원격 MCP/AI, 실메일/ERP, 웹→PR 종단, 배포/실데이터 이관/push는 실행하지 않았다. 기존 DB/Worker/reports/legacy/개인 AI·MCP·SES 설정 및 ERP 읽기 전용 지침을 변경하지 않았다.
+
 ## 2026-09-17 P1 전 UI·UX 보완
 
 - 사용자 지정 우선순위대로 추가 답변 초안, 상태별 분석 행동, 메일 선택/모바일 복귀, 상태 안내, 검색/이전 문서 표시를 개선했다. 현재 API 계약·서버·DB·Worker는 변경하지 않았다.

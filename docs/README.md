@@ -1,55 +1,46 @@
 # 문서 안내
 
-갱신일: 2026-09-18. 현재 방향은 **공용 이력 API·PostgreSQL + 팀원 PC의 웹 앱·개인 AI agent·MCP**이며, 이후 필요한 기능부터 공용화한다. React R0~R6은 구현·검증·로컬 Docker 적용 완료다. 팀 기능 P1~P7은 기반 모듈과 검증 후보를 구현했으며 전체 통합·실환경 검증은 미완료다. 단계별 실제 범위와 남은 항목은 통합 구현 계획 12절을 따른다. P8은 보류다.
+갱신일: 2026-09-21. **공용 API·DB + 팀원 PC의 MCP·AI Agent를 먼저 팀에 배포하고, 피드백과 안정화 후 원격 SR 자동화로 확장한다.** 공용 API는 AWS 배치를 우선 검토한다. 기존 `srp-rds-maria/cvslog`는 MariaDB이므로 현재 PostgreSQL 앱의 DB 재사용 여부는 엔진 이식·권한·부하·백업을 평가한 뒤 결정한다.
 
 ## 먼저 읽을 문서
 
-1. [통합 구현 계획](implementation-plan.md): 앞으로의 범위, 기술 스택, 인증·DB·API·Runner·설치·운영 사양, React 전환 R0~R6(4.3절) 및 P0~P8 작업과 완료 기준.
-2. [프로젝트 README](../README.md): 지금 구현된 단일 사용자 Docker 앱의 실행·사용법. 계획 중인 설치형 앱 명령과 구분한다.
-3. [운영 안내](maintenance.md): 현재 이관·동기화·지식 반영·복구 도구. 사용자별 v1 API 전환 전까지 현재 토큰 방식 기준이다.
-4. [검증 기록](validation.md): 실제로 수행한 검사와 제한. 계획서의 목표 수치나 미구현 기능은 검증 완료를 뜻하지 않는다.
+1. [통합 구현 계획 v3.0](implementation-plan.md): 현재 우선순위와 M1~M5, AWS/DB 판단, 팀 배포·안정화 기준, 두 리뷰 반영 결과의 단일 기준.
+2. [프로젝트 README](../README.md): 현재 단일 사용자 Docker 앱의 사용법. 계획 중인 AWS 팀 서비스의 배포 명령이 아니다.
+3. [검증 기록](validation.md): 실제 확인한 사실·대상·결과와 미검증 경계.
+4. [운영 안내](maintenance.md): 기존 이관·동기화·복구 도구. 새 코드/배포 환경 검증 전에는 기존 실행 경로로만 해석한다.
 
-## 문서별 역할
+## 계획 읽는 순서
 
-| 문서 | 역할 | 갱신 원칙 |
-|---|---|---|
-| [implementation-plan.md](implementation-plan.md) | 최신 통합 계획·의사결정·개발 백로그 | 향후 계획은 여기에서만 관리 |
-| [team-deployment-plan.md](team-deployment-plan.md) | 이전 링크를 위한 통합 안내 | 별도 배포 계획을 중복 유지하지 않음 |
-| [maintenance.md](maintenance.md) | 현재 구현에 맞는 운영 절차 | 해당 기능 구현·검증 후 명령 갱신 |
-| [validation.md](validation.md) | 날짜별 검증 일지 | 과거 사실은 보존하고 후속 결과·제한 추가 |
-| [v1-development.md](v1-development.md) | 분리된 v1 개발 실행 경계 | 기존 서비스와 신규 후보를 구분 |
-| [auth0-setup.md](auth0-setup.md) | 회사 이메일 가입·로그인 설정과 실검증 절차 | 필요한 입력·설정 대응과 실제 인증 완료를 구분 |
-| [server-runbook.md](server-runbook.md) | 공용 서버·복제 DB 복원·전환 준비 | 외부 운영 실검증 전 후보로 표시 |
-| [windows-candidate.md](windows-candidate.md) | Windows 후보 ZIP·설치·롤백 | 미승인 후보를 팀용 완성본으로 배포하지 않음 |
-| [team-pilot.md](team-pilot.md) | 두 PC 파일럿 사례와 기록 | 실제 관찰 근거와 합성 회귀 구분 |
-| [react-transition-validation.md](react-transition-validation.md) | React 전환 대응표·회귀·적용·복귀 근거 | 합성 검증과 실제 읽기 확인을 구분 |
-| [legacy-link-validation.md](legacy-link-validation.md) | 기존 문서 33건의 연결·보존 증거 | 추가 연결 작업이 있을 때 근거와 함께 추가 |
-| [status-filter-validation.md](status-filter-validation.md) | 메일 검색 상태 필터의 구현·합성 검증 | 해당 기능의 실제 검증 범위 기록 |
-| [work-summary.md](work-summary.md) | 기존 작업·인계 맥락 | 역사 기록, 최신 계획의 기준으로 사용하지 않음 |
-| [implementation-history-2026-09-17.md](implementation-history-2026-09-17.md) | 통합 직전 구현 계획·완료 체크리스트 보존 | 당시 본문 보존, 새 계획을 추가하지 않음 |
-| [team-deployment-proposal-2026-09-17.md](team-deployment-proposal-2026-09-17.md) | 통합 전 중앙 실행형 배포 비교안 보존 | 당시 제안, 현재 배포 결정과 다를 수 있음 |
-| [handoff-request-2026-09-16.md](handoff-request-2026-09-16.md) | 2026-09-16 인계 요청 | 당시 요청·미완료 목록 보존 |
-| [handoff-receipt.c9342816-b297-4810-ada3-7bd19a456f7f.md](handoff-receipt.c9342816-b297-4810-ada3-7bd19a456f7f.md) | 당시 인수 확인 | 인수 완료와 구현 완료를 구분 |
-
-## 상태를 읽는 방법
-
-2026-09-18 P1 이후 후속 구현의 최신 로컬 완료 범위와 후보 파일 근거는 [최종 로컬 검증](local-completion-2026-09-18.md)에 모았다. 전체 계획과 외부 검증 대기는 [통합 구현 계획](implementation-plan.md) 12~13절을 따른다.
-
-- **현재 소스:** 코드에 구현된 상태. 실행 중 서비스에 반영되었다는 뜻은 아니다.
-- **검증 기록:** 당시 실행한 명령·대상·결과. 정적/합성/실제 agent/실메일/업무 확인을 구분한다.
-- **설계 기본값:** 구현할 기준안. 팀 인원·계정·인프라 확인으로 조정할 수 있다.
-- **미확정:** 해당 단계 전에 필요한 입력. 계획서 13절의 결정 목록에서 관리한다.
-
-문서가 충돌하면 최신 사용자 결정과 통합 구현 계획을 따른다. 실행 결과의 근거는 검증 기록에서 확인한다. 이전 문서의 ‘현재’, ‘다음 단계’, ‘미완료’는 작성 당시 상태이며 최신 백로그는 통합 계획에서 확인한다.
-
-## 이번 통합에서 바뀐 방향
-
-| 이전 계획 | 현재 기준 |
+| 궁금한 내용 | 통합 계획 위치 |
 |---|---|
-| 초대된 팀원만 가입 | 회사 이메일 도메인·메일 인증 후 자동 가입, 자료 권한은 별도 관리 |
-| 개발자 PC를 팀 공용 실행 서버로 사용 | 상시 공용 이력 서버 + 팀원별 로컬 실행 |
-| API·DB·AI Worker·MCP를 함께 중앙화 | API·DB부터 공용화하고 실행 기능은 이후 단계별 전환 |
-| 공용 이력 서버에 ERP망 접근 필요 | 초기 공용 서버는 ERP/MCP에 직접 접근하지 않음 |
-| 기존 API가 메일 원본을 직접 대조 | 로컬 Runner의 원본 확인과 공용 서버의 권한·식별 검증 분리 |
+| 지금 할 일·완료된 것 | 1~3절: 팀 배포 우선, 현재 소스/PoC 경계, M1~M5 |
+| AWS와 기존 RDS 사용 판단 | 4절: 로컬 실행 구성, 실조회 결과, PostgreSQL 유지와 MariaDB 이식 비교 |
+| 첫 팀 배포의 구현/검증 | 5~6절: PoC 통합, 인증·로컬 Runner, 설치/복원, 파일럿/피드백 |
+| 안정화 이후 원격 자동화 | 7~9절: 원격 자료/서비스 권한, brief·commit 전달·검증·PR·복원 |
+| 필요한 입력과 리뷰 반영 | 10~11절: 결정 시점, Codex/Claude 항목별 처리 |
 
-기존 계획 원문은 별도 이력 파일로 보존했다. 현재 앱 실행 방법과 ERP 읽기 전용·메일 원문/비밀 Git 제외 원칙은 유지한다.
+## 문서별 역할과 현재성
+
+| 문서 | 역할/경계 |
+|---|---|
+| [implementation-plan.md](implementation-plan.md) | 최신 결정·범위·순서·수용 기준. 새 백로그는 여기서만 관리 |
+| [team-deployment-plan.md](team-deployment-plan.md) | 통합 계획으로 가는 안내. 별도 계획을 유지하지 않음 |
+| [v1-development.md](v1-development.md) | 원본의 개발 실행 경로. 자체 인증 PoC 미병합/AWS 미배포 경계 확인 |
+| [server-runbook.md](server-runbook.md) | 기존 서버 리허설 기록과 새 AWS 배포 준비 시 갱신할 항목 |
+| [windows-candidate.md](windows-candidate.md) | 기존 Windows 후보·설치/복귀. 과거 후보를 새 팀 배포 승인본으로 쓰지 않음 |
+| [team-pilot.md](team-pilot.md) | 과거 파일럿 사례/양식. 최신 수용 기준은 통합 계획 6절 |
+| [validation.md](validation.md) | 날짜별 실제 검증. 당시 상태를 최신 구현 상태로 읽지 않음 |
+| [local-completion-2026-09-18.md](local-completion-2026-09-18.md) | P1~P6의 당시 로컬 완료 근거. 새 인증/AWS/원격 SR 완료 근거 아님 |
+| [react-transition-validation.md](react-transition-validation.md) | React 전환·회귀·로컬 적용 근거 |
+| [mail-threads-validation.md](mail-threads-validation.md) | 헤더 기반 스레드·수동 연결 및 화면 검증 |
+| [legacy-link-validation.md](legacy-link-validation.md) | 기존 문서 연결/보존 근거 |
+| [status-filter-validation.md](status-filter-validation.md) | 메일 검색 상태 필터 검증 |
+| [implementation-plan-history-2026-09-21-v2.1.md](implementation-plan-history-2026-09-21-v2.1.md) | v2.1 전체 보존본. 옛 Supabase 우선안·P/A/S 단계는 현재 실행 기준이 아님 |
+| [implementation-history-2026-09-17.md](implementation-history-2026-09-17.md) | 이전 구현 계획/완료 체크리스트 |
+| [team-deployment-proposal-2026-09-17.md](team-deployment-proposal-2026-09-17.md) | 이전 배포 비교안 |
+| [auth0-setup.md](auth0-setup.md) | 폐기한 Auth0 연결안의 역사 자료 |
+| [work-summary.md](work-summary.md) | 당시 작업/인계 맥락. 최신 계획의 기준이 아님 |
+
+별도 Supabase PoC `8303d52`의 로컬 완료 결과는 확인됐지만 원본 통합·AWS 운영·실제 팀 파일럿은 미완료다. 이번 v3.0 정리는 문서 작업이며 실배포가 아니다. 관리자 생성 사용자명 계정·JWT/자료 ACL을 유지하고 Auth0/인증 이메일/SES 연결은 제외한다.
+
+현재 ERP 코드/DB 읽기 전용과 비밀/메일 원문 Git 제외 원칙을 유지한다. 원격 코드 수정·PR은 M5에서 repo/권한을 정한 후 진행한다. 자동 merge·운영 배포·운영 DB 쓰기는 범위 밖이다.

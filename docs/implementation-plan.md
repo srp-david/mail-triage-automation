@@ -1,624 +1,319 @@
 # mail-triage-web 통합 구현 계획
 
-문서 버전: 1.8 · 갱신일: 2026-09-21 · 상태: P1~P6 로컬 구현 이후 조회·Runner·오류 로그 보완 3건과 관련 메일 본문 표시 보완의 구현·검증 완료(16절). P7 파일럿 준비, 실인증·공용 호스트·ERP 읽기 권한·깨끗한 팀 PC 및 두 PC 파일럿은 대기한다. 전체 계획/팀 배포 완료 아님. P8은 P7/D8 결정 전 보류. [이전 로컬 검증](local-completion-2026-09-18.md), [검증 기록](validation.md), [v1 개발 경계](v1-development.md).
+문서 버전: 3.0 · 갱신일: 2026-09-21 · 상태: **팀 배포 → 피드백·안정화 → 원격 분석 → SR 구현·검증·PR 자동화** 순서로 재정리했다. 이번 변경은 계획·리뷰 반영이며 제품 통합이나 AWS 배포 완료가 아니다.
 
-이 문서는 앞으로의 범위·기술 선택·실행 순서의 단일 기준이다. 최신 사용자 결정은 **회사 이메일 인증 가입 + 공용 이력 API·PostgreSQL + 팀원 PC의 웹 앱·개인 AI agent·MCP**이다. 향후 웹·Worker·MCP를 필요한 순서대로 공용화한다. 문서 통합과 P1 전 UI·UX 보완은 인증 구현, DB 이관, 외부 서비스 가입, GitHub 게시, 실제 팀 배포를 수행한 기록이 아니다.
+## 1. 목표와 현재 우선순위
 
-문서 안내는 [문서 목록](README.md), 현재 실행법은 [프로젝트 README](../README.md), 검증 근거는 [검증 기록](validation.md), 기존 운영 명령은 [운영 안내](maintenance.md)를 따른다. 과거 계획과 완료 체크리스트는 [구현 이력](implementation-history-2026-09-17.md), 이전 배포 비교는 [이전 배포 제안](team-deployment-proposal-2026-09-17.md)에 보존한다.
+**당장 제공할 제품은 공용 API·DB에 계정과 분석 이력을 저장하고, 팀원 PC의 웹 앱·Mail/DB MCP·개인 AI Agent로 분석하는 팀용 앱이다.** 먼저 제한된 팀원에게 배포해 피드백을 받고 안정화한다. 공용 웹·원격 MCP·원격 Agent·자동 코드 수정·PR은 다음 제품 단계다.
 
-## 1. 결정과 범위
+최종 목표는 사용자 PC가 꺼져 있어도 웹의 SR/메일 선택에서 분석 보고서, 격리된 코드 구현, 빌드·테스트·리뷰, PR 생성·조회까지 수행하는 것이다. 최종 기능을 최초 배포의 완료 조건으로 묶지 않는다. 최신 사용자 결정과 이 문서가 계획의 단일 기준이며, 이전 P/A/S 단계표는 [v2.1 보존본](implementation-plan-history-2026-09-21-v2.1.md)의 역사 기록이다.
 
-### 1.1 사용자 결정과 이번 설계의 기본값
-
-| 구분 | 내용 |
+| 구분 | 결정/제안 |
 |---|---|
-| 사용자 결정 | 회사 이메일·앱 전용 비밀번호로 가입하고 실제 메일 수신 인증 후 이용한다. Hiworks 계정의 비밀번호를 앱에서 받지 않는다. |
-| 사용자 결정 | 초기 팀원은 각자 PC에 앱·분석 스킬을 설치하고 개인 MCP와 Codex 또는 Claude Code를 사용한다. |
-| 사용자 결정 | 이력 API와 PostgreSQL을 먼저 공용화하고, 이후 실행 기능도 공용화하기 쉽게 분리한다. |
-| 사용자 결정 | 앱·스킬·설치 프로그램을 GitHub 등으로 배포한다. 저장소 공개 범위와 게시 시점은 아직 정하지 않았다. |
-| 설계 기본값 | 한 회사·한 팀으로 시작한다. 회사 도메인 인증 사용자를 자동 가입시키고 일반 분석자 권한을 부여한다. 관리자 수동 승인은 기본 가입 단계에 넣지 않는다. |
-| 설계 기본값 | 가입과 자료 열람 권한을 분리한다. 개인 출처는 소유자만 접근하고, 팀 공유로 지정한 출처의 이력만 해당 팀에 공개한다. |
-| 설계 기본값 | Windows x64 로컬 앱, Node.js 24 + TypeScript + Express, PostgreSQL 17, Auth0를 사용한다. |
-| 설계 기본값 | 초기 공용 서버는 Linux VM 한 대의 Docker Compose로 API·DB·HTTPS 프록시를 운영한다. AI 실행과 개인 MCP는 포함하지 않는다. |
-| 미확정 | 실제 회사 도메인, 팀 인원·공유 출처, 서버 업체·리전·예산·관리자, Auth0·발송 서비스 계정, GitHub 조직·배포 권한. 13절에서 필요한 시점을 정한다. |
+| 확정한 진행 순서 | 공용 API·DB + 로컬 실행을 팀에 배포 → 피드백·안정화 → 원격 실행 → SR→PR |
+| 인증 유지 | 사용자명 + 앱 비밀번호, 관리자 생성 계정, 공개 가입 없음, JWT + 현재 계정/세션/자료 권한 검사 |
+| 호스팅 검토 방향 | API는 AWS 배치를 우선 검토한다. Mail/DB MCP도 이후 AWS에서 운영할 후보이므로 네트워크·운영 체계를 모을 수 있다. 실제 리소스/비용은 D4에서 확정 |
+| DB 검토 방향 | 사용자 제안은 AWS `srp-rds-maria`의 `cvslog` DB 재사용. 확인된 엔진은 MariaDB 10.11이다. PostgreSQL 앱의 이식 비용·앱 DB 분리·부하/백업을 평가한 후 선택. AWS 선택과 엔진 변경은 별도 결정 |
+| 초기 설계 제안 | Node/Express 공용 API + 현재 PostgreSQL 계약 유지가 변경량이 작다. 기존 MariaDB 재사용을 선택하면 DB 이식 작업을 M1에 명시적으로 추가 |
+| Supabase PoC | 자체 인증·계정 관리·Runner/복원 검증의 재사용 자산. Supabase hosted/Edge 운영을 팀 배포의 선행 조건으로 두지 않음 |
+| 현재 허용 경계 | ERP 코드·ERP DB 읽기 전용. 비밀·메일 원문 Git 제외. 기존 DB/Worker/reports/legacy/개인 AI·MCP·SES 설정 보존 |
+| 최종 목표에서도 제외 | 운영 DB 쓰기, 자동 merge, 자동 운영 배포, 메일 발송·삭제·읽음 변경 |
 
-이전의 초대 전용 가입, 개발자 PC를 팀 공용 실행 서버로 사용하는 파일럿, 처음부터 모든 Worker·MCP를 VM으로 옮기는 계획은 이 기본 경로로 대체한다. 회사 SSO, Auth0 Organizations, Redis, Kubernetes, Next.js 전환은 초기 필수 요소가 아니다.
+인프라·인증·DB 엔진·실행 위치를 동시에 바꾸지 않는다. M1의 DB 선택 후 합성/복제본에서 통합하고, M2에서 실제 팀 PC와 지정 업무로 검증한다. ERP 쓰기는 M5의 지정 repo/경로 범위와 AGENTS.md 조정을 명시적으로 정한 후에만 허용한다.
 
-### 1.2 유지할 동작과 경계
+## 2. 실제 구현 상태와 재사용 범위
 
-- ERP 소스와 ERP DB는 읽기 전용이다. 분석 완료·고객 업무 해결·보고서 공유는 별도 상태로 취급한다.
-- 메일 발송·삭제·읽음 변경은 범위 밖이다. 사용자가 누르는 기존 동기화는 유지하되 분석 agent가 자동으로 실행하지 않는다.
-- Claude Code를 기본 분석 엔진으로 선택하는 기능을 추가한다. Codex 결과를 자동으로 Claude에 재검토시키는 기능을 추가한다는 뜻은 아니다. 직접 실행의 기존 명시적 리뷰는 유지한다.
-- 보고서 버전·리뷰·추가 답변·처리 완료/취소·관련 메일·기존 이력·내보내기를 유지한다. 기존 보고서와 미확정 연결을 임의로 변경하지 않는다.
-- 첨부 목록 기본 접힘, 파일당 5 MiB, 기존 이미지·DOCX/PPTX/XLSX 읽기 전용 미리보기, HTML 정제를 유지한다. 첨부 확대·편집은 별도 범위다.
-- 비밀과 메일 원문은 Git에 넣지 않는다. 설치 패키지에는 배포 가능한 규칙·템플릿만 넣고 개인 처리 로그·고객 사례·ERP 소스는 넣지 않는다.
+| 대상 | 현재 확인된 상태 | 다음 작업 |
+|---|---|---|
+| 원본 `6ceecf2` | v0 서비스와 이전 Auth0 기반 v1 코드. 새 원격 기능은 계획뿐 | 사용자명 인증 PoC 통합·선택 DB/배포 경로 검증 |
+| 기존 P1~P6/candidate.6 | 당시 로컬 구현·합성/후보 검증 기록 존재 | 새 인증/배포 환경의 완료로 재사용하지 않음 |
+| 별도 PoC `feat/supabase-free-poc` / `8303d52` | 사용자명/JWT·관리자·ACL·로컬 Runner·DPAPI·복원·후보 로컬 완료 보고, 원본 미병합 | 변경 검토 후 일반 Node API에 필요한 부분을 통합. Edge 전용 코드/설정은 선택적으로 유지 |
+| hosted/팀 파일럿 | AWS 새 API·선택 DB, 깨끗한 팀 PC·실제 두 PC 파일럿 미검증 | M1~M3에서 수행 |
+| 원격 SR 자동화 | 원격 자료·Agent·구현·PR 종단 미구현/미검증 | M3 안정화 판정 뒤 M4~M5 착수 |
 
-### 1.3 P1 전 UI·UX 보완
+PoC 인계 `b8a5c5dd-8809-4031-8a4f-40ae6a16496d`의 완료 ID·10,263 bytes·SHA-256 `70fb2381fe6fc1a4d5f0a07994173d36b44d47894dc95f3e50905477fc206225`는 대조됐다. 보고된 backend 127/127·Edge/DB/Runner/Chrome/복원 12군은 이번 계획 작업에서 재실행하지 않았다. 별도 checkout을 동시에 수정하거나 인증을 처음부터 중복 구현하지 않는다. 세부 근거는 해당 checkout의 `docs/validation.md`와 [원본 검증 기록](validation.md)을 본다.
 
-사용자 요청에 따라 아래 순서로 현재 단일 사용자 화면을 보완했다. 기존 API 계약·DB 구조·Worker는 변경하지 않았다. 검증은 [검증 기록](validation.md)의 2026-09-17 P1 전 UI·UX 항목을 따른다.
+기존 메일/첨부/Office·Markdown, 헤더 기반 스레드/수동 연결, 검색/상태 필터, 보고서 버전/추가 답변/리뷰, 처리 완료/취소, legacy 연결/내보내기, 스크롤/초안 보존은 회귀 대상이다. 제목 일치로 메일을 합치지 않는다. L1 중복 후보 연결, L2 legacy 복수 연결, L3 이력 전환 대조는 미확정 자료를 보존하며 별도 추적한다. 과거 검증 이력은 [문서 안내](README.md)에서 찾는다.
 
-1. 출처·분석별 추가 답변 초안: 탭의 sessionStorage와 메모리로 화면 이동·새로고침·재인증 중 보존. 전송 실패는 유지하고 성공 또는 명시적 삭제 시 제거한다. 저장소 차단 시 제한을 안내한다.
-2. 상태별 기본 행동: 분석 시작 / 진행 상황 보기 / 결과 보기 / 실패 내용 보기. 새 분석은 별도 행동으로 두고 등록 직전에 기존 활성 실행을 재확인한다. 최종 동시성 보장은 기존 서버가 담당한다.
-3. 메일 선택 강조와 모바일 상세·목록 전환: 검색 조건, 목록 스크롤, 복귀 포커스 유지.
-4. 상태 안내: 진행 중 처리 완료 버튼 숨김, 도구 실패와 전체 분석 실패 구분, 분석 결과와 업무 처리 표시 구분, 오래된 등록 알림 제거.
-5. 검색·이전 문서: 적용 조건/초기화/빈 결과/조회 실패 재시도, 파일명 우선 표시와 경로·해시 기본 접힘.
+## 3. 단계와 진입·완료 기준
 
-회사 이메일 인증 진입, 초기 설정, 공유 범위·팀원 표시, Runner 연결/큐 복구 UX는 P2~P4의 Native 세션/API에 연결했다. 초안 키에 사용자 식별자를 포함하고 로그아웃 시 메모리/sessionStorage를 정리한다. 실Auth0 가입·메일 수신은 D1/D3 검증을 기다린다.
+| 단계 | 제공하는 결과 | 주요 작업 | 완료/다음 단계 조건 |
+|---|---|---|---|
+| M1 공용 기반·로컬 앱 통합 | 팀 배포 가능한 후보 | DB 선택, PoC 통합, AWS API·권한·백업/복원, 로컬 설치/연결 검증 | 합성/복제본 통과, 외부 API·DB 격리·운영 담당 확인, 승인된 후보 고정 |
+| M2 제한된 팀 배포 | 팀원이 자기 PC에서 실제 사용 | 최소 2명/2PC, 개인 MCP/Agent 연결, 지정 사례 분석·공유 이력, 설치 지원 | 로그인·권한·실분석/저장·복구·업데이트·백업 복원 성공, 피드백 수집 시작 |
+| M3 피드백·안정화 | 안정된 팀 분석 서비스 | 실패/품질/설치/권한 개선, 사용량/비용 측정, 회귀·릴리스 정리 | 6절 기준을 팀과 확인. 이 판정 전 M4~M5 제품 개발을 배포 선행 과제로 넣지 않음 |
+| M4 원격 분석 전환 | PC 종료와 무관한 웹 분석·보고서 | 공용 웹 세션, 원격 MCP/중계·ERP 읽기 자료, service Runner | PC 종료 종단, 사용자/출처 격리, 원격 취소·회수·비용·복구 검증 |
+| M5 SR 구현·검증·PR | 필요한 SR의 코드 변경과 검증된 PR | 구현 brief/정책, 격리 checkout·불변 commit 전달, 검증/CI·PR/복원 | 9절 실패/중복/권한 검증 포함 종단 수용, 지정 repo/범위/예산에서 운영 가능 |
 
-### 1.4 메일함 스레드 보기 (2026-09-18 사용자 추가 요청)
+M1~M3가 첫 번째 제품 범위다. M4~M5는 호환 계약을 문서로 남기되 stage 테이블·service identity·PR 발행 코드를 미리 완성할 필요는 없다. 최초 공용 배포는 미래 기능이 없어도 독립적으로 수용 가능해야 한다. 문서 준비와 실제 원격 작업 착수는 구분한다.
 
-- 기본 목록은 답장 헤더로 연결된 대화를 묶고, 펼치면 개별 메일을 선택하는 방식이다. 개별 보기 전환을 제공한다.
-- 메일 MCP의 `Message-ID`, `In-Reply-To`, `References`를 사용한다. 제목만 같은 메일은 합치지 않는다. 기존 원본에서 연결 헤더만 보완하며 메일 재수집은 필요 없다.
-- 검색·분석 상태 조건에 맞는 메일을 대화로 묶은 뒤 대화 단위로 페이지를 나눈다. 검색 결과 밖의 메일을 자동으로 끼워 넣지 않는다.
-- 분석 실행·보고서·처리 완료·관련 메일 연결은 기존 개별 메일 기준을 유지한다. 스레드 전체 분석과 상세 화면의 전체 대화 표시는 이번 범위에 포함하지 않는다.
-- MCP와 웹 변경 및 검증 범위는 [스레드 보기 검증](mail-threads-validation.md)에 기록한다.
-- 2026-09-18 추가 화면 요청에 따라 본문 최대 너비 1,460px와 헤더의 중앙 정렬 여백을 제거한다. 창 전체 너비를 사용하고 좌우 여백은 데스크톱 30px·모바일 15px를 유지한다.
-- 최신 추가 요청에 따라 ‘묶기’ 버튼을 없애고 드래그로 수동 연결한다. 연결된 메일을 펼쳐 목록 아래 해제 영역으로 끌어내면 해당 메일에 직접 연결된 수동 관계를 한 번에 해제한다. 자동 답장 관계는 유지하며 저장 직후 되돌리기와 접힌 ‘수동 연결 관리’도 유지한다.
-- 수동 관계는 기존 공용 PostgreSQL의 별도 테이블에 저장소별로 저장한다. 저장 시 양쪽 MCP ID·Message-ID·수집 시각을 다시 확인하며 메일 원본·답장 헤더·개별 분석 이력은 유지한다. 검색에 가려진 연결도 유지하되 결과에는 조건에 맞는 메일만 표시한다.
-- 추가 화면 요청에 따라 검색 조건 영역의 높이를 줄이고 메일함·분석 이력·이전 이력 메뉴를 왼쪽 사이드바로 이동한다. 모바일 메뉴는 버튼으로 펼친다. 검색 설명은 접어서 제공하고 동기화 오류·진행 안내는 유지한다.
-- 스크롤 개선 요청에 따라 데스크톱은 메뉴·검색·목록 하단 조작부를 고정하고 목록과 상세 패널이 각각 스크롤되게 한다. 본문·첨부의 중첩 세로 스크롤을 제거하며 재조회·수동 연결 변경 후 현재 페이지와 목록 위치, 메일별 읽던 위치를 유지한다. 모바일 및 높이 700px 이하 창은 문서 스크롤 하나를 사용한다.
+## 4. 첫 팀 배포 아키텍처와 AWS·DB 선택
 
-## 2. 현재 상태와 변경 지점
-
-아래 표는 2026-09-17의 v0 구성에서 출발한 전환 기준이다. v1 현재 구현·검증 범위는 12절을 따른다. 기존 실행 서비스는 v0를 유지하며 v1 로컬 소스·후보 패키지를 실제 팀 배포 상태로 해석하지 않는다.
-
-| 현재 확인한 구성 | 전환 작업 |
-|---|---|
-| `src/server.ts`가 웹·메일 MCP·이력 API·동기화 처리기를 함께 실행 | 공용 history-api와 로컬 local-app으로 책임 분리 |
-| 하나의 `TRIAGE_TOKEN`을 API와 쿠키에서 공유 | Auth0 사용자 토큰, 로컬 세션, 자료별 권한으로 교체 |
-| `src/worker.ts`·`worker-gate.ts`가 `history.ts`와 DB를 직접 호출. health 확인 뒤에도 claim은 DB 호출 | Runner가 HTTPS API로 claim/heartbeat/result를 호출하도록 전환 |
-| `history.ts`가 실행 예약·불변 결과·lease·중복 요청을 관리 | 서버 내부 서비스로 유지하고 사용자·팀·Runner 범위를 추가 |
-| `config.store`와 기본 `local-mail-v1`, 단일 MCP URL | 등록된 source UUID와 PC별 연결 프로필로 교체 |
-| API가 분석 등록·관련 메일·기존 이력 연결 때 직접 MCP 재조회 | 로컬 원본 확인과 서버의 출처 권한·입력 검증을 분리하고 확인 주체 기록 |
-| `sync.ts`의 공용 DB 상태 + API 내부 스케줄러 | source별 동기화 작업을 등록하고 해당 로컬 프로그램이 묶음별 실행 |
-| Worker 전체에 하나의 DB advisory lock, `worker_state.name='codex'` | 메일·작업 단위 잠금 + Runner별 동시 실행 한도로 교체 |
-| Docker Worker가 전용 Codex home과 인증 seed를 사용 | 설치형 Runner의 개인 CLI 인증 사용. 기존 사용자 설정을 덮어쓰지 않음 |
-
-기록상 구현된 기능은 메일/첨부/Office·Markdown 보기, 분석·재분석·진행 이벤트, 처리 완료, 관련 메일 연결, 동기화 복구, 이전 이력과 직접 CLI 연동이다. 기록상 실메일 1건의 분석·저장·웹/직접 조회 및 실제 동기화 3건을 확인했다. 이는 모든 메일 유형·새 팀 구조의 검증을 뜻하지 않는다.
-
-기존 문서 33건 중 30건의 최초 대상 연결과 미연결 3건 보존은 [이력 연결 검증](legacy-link-validation.md)을 따른다. 중복 후보 1건의 판단과 누적 보고서 6건에 포함된 후속 메일 8건의 복수 연결은 별도 잔여 작업이다. 메일 검색 상태 필터의 구현·검증은 [상태 필터 검증](status-filter-validation.md)에 별도로 기록되어 있다. 진행 이벤트의 실제 agent 종단 검증 등 추가 변경의 완료 여부는 각 검증 기록으로 판단하며 이 문서 작성으로 완료 처리하지 않는다.
-
-기존 잔여 작업은 팀 전환에 묻히지 않도록 별도로 추적한다. L1 중복 후보 연결은 대상 확인 뒤 수행, L2 legacy 복수 연결은 별도 모델·중복 조회 설계 후 구현, L3 기존 로그와 공용 이력의 최종 전환 대조는 P5/P7에서 수행한다. L1/L2 미완료 자료는 제한된 collection에 미연결/기존 연결 상태로 보존해 이관할 수 있으며 완료로 표시하지 않는다. 실제 지식 반영·Outlook 고객 분석은 지정 대상이 있을 때만 수행한다.
-
-## 3. 목표 구성과 데이터 흐름
+### 4.1 M1~M3 구성
 
 ```mermaid
 flowchart LR
-  subgraph PC[팀원 Windows PC]
-    UI[브라우저 웹 화면] --> LOCAL[local-app / loopback API]
-    LOCAL --> RUNNER[Runner / 분석 및 동기화]
-    RUNNER --> AGENT[Codex 또는 Claude Code]
-    AGENT --> MCP[개인 mail MCP / DB MCP]
-    AGENT --> REF[읽기 전용 ERP / 업무 자료]
-    LOCAL --> MCP
+  subgraph PC[팀원 PC]
+    UI[브라우저] --> LOCAL[local-app / 사용자 세션]
+    LOCAL --> RUNNER[로컬 Runner]
+    LOCAL --> MAIL[개인 Mail MCP]
+    RUNNER --> AGENT[개인 AI Agent]
+    AGENT --> MAIL
+    AGENT --> MCP[개인 DB MCP / 읽기 전용]
+    AGENT --> SOURCE[로컬 ERP 코드 / 업무 자료]
   end
-  LOCAL <-->|시스템 브라우저 로그인| AUTH[Auth0]
-  LOCAL <-->|사용자 인증 HTTPS| API[공용 history-api]
-  RUNNER <-->|작업 수신 / 상태 / 결과| API
-  API --> DB[(PostgreSQL)]
-  RELEASE[GitHub Release / 스킬 패키지] --> LOCAL
+  LOCAL <-->|HTTPS / 인증·조회| API[AWS 공용 API]
+  RUNNER <-->|작업·lease·결과| API
+  API --> DB[(선택한 공용 이력 DB)]
 ```
 
-| 데이터 | 기본 저장·처리 위치 | 팀 공유 규칙 |
-|---|---|---|
-| 메일 원문·첨부·동기화 원본 저장소 | 개인 MCP/PC | v1에서 공용 이력 서버로 전체 업로드하지 않음 |
-| 출처 식별·제목 등 최소 메타데이터 | 공용 PostgreSQL | source 권한 적용. 제목도 업무 데이터로 취급 |
-| 보고서·질문·답변·리뷰·연결·처리 상태 | 공용 PostgreSQL | 해당 source 또는 legacy collection 권한 적용 |
-| AI 토큰·MCP 비밀·로컬 경로 | 해당 PC | 서버·Git·설치 패키지에 전송하지 않음 |
-| 실행 임시 결과·진단 로그 | 해당 PC의 보호된 앱 데이터 | 로그에 토큰·원문을 기록하지 않고 실패 결과는 복구 후 정리 |
-| 스킬·보고서 스키마 | 버전이 정해진 배포 패키지 | 업무 데이터와 분리, 분석별 버전 기록 |
-| ERP 원본·업무 참조 자료 | 권한 있는 로컬 경로 | agent가 읽기 전용으로 사용. 배포 패키지에 복제하지 않음 |
+- 공용 API는 계정·세션·source/collection ACL·작업/보고서/리뷰/처리 상태를 관리한다. 팀 PC에 이력 DB 자격·서명키를 배포하지 않는다.
+- Mail/DB MCP와 AI 실행은 각 PC에 남긴다. 공용 API가 각 PC의 localhost MCP에 접근하지 않는다. 이력 DB와 분석 대상 ERP DB는 다른 시스템이며, DB MCP는 ERP 읽기 전용 권한을 유지한다.
+- 원문·첨부는 로컬 MCP에 남고 공용 DB에는 필요한 메타데이터/보고서를 저장한다. 보고서 자체도 업무 자료라서 ACL을 적용한다. 같은 메일함이어도 독립 MCP 저장소의 숫자 ID를 동일시하지 않는다.
+- 다른 PC에서 공유 보고서는 볼 수 있지만 대응 원본이 없으면 원문/첨부를 열 수 없다고 표시한다. 팀원의 PC가 꺼지면 그 PC의 분석만 멈춘다. 공용 API와 다른 PC의 분석은 계속 이용 가능해야 한다.
+- 로컬 origin/Host/CSRF, DPAPI, 개인 설정 보존을 유지한다. 공용 웹 세션 문제는 M4에서 해결하며 첫 배포를 공용 브라우저 제품으로 바꾸지 않는다.
 
-보고서에 원문의 일부가 포함될 수 있으므로 보고서 공유도 데이터 공유다. 다른 PC에 원본 메일이 없으면 보고서는 보되 원문·첨부 열기는 ‘이 PC에 연결된 원본 없음’으로 표시한다. 서버가 사용자가 보낸 임의 MCP URL이나 파일 경로를 대신 열지 않는다.
+### 4.2 AWS와 기존 RDS 재사용 판단
 
-로컬 앱에는 이력용 PostgreSQL 설치를 요구하지 않는다. 공용 서버와 연결되지 않으면 기존 로컬 메일 조회는 가능하지만 새 분석·새 동기화 등록은 막는다. 별도 오프라인 분석과 나중의 이력 병합은 v1 범위에 넣지 않는다.
+AWS에 API와 미래 MCP를 모으면 같은 VPC 안의 사설 연결과 보안 그룹으로 접근 경로를 제한할 수 있다. 이는 운영을 단순화할 수 있다는 설계 판단이며 같은 EC2/같은 DB에 모든 기능을 합치자는 뜻은 아니다. [AWS RDS VPC 연결](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.Scenarios.html).
 
-## 4. 기술 스택과 패키지 구조
+2026-09-21 AWS CLI의 로그인된 default 프로필·서울 리전에서 읽기 전용 조회했고, 사용자가 `cvslog`는 `srp-rds-maria` 내부 DB라고 확인했다. RDS 설정/CloudWatch 조회이며 DB 내부 목록/테이블·SQL 접속 검증은 아니다. 계정 ID·endpoint·자격은 문서에 남기지 않는다.
 
-### 4.1 채택 기술
+| 인스턴스 | 엔진/버전 | 클래스 | 저장소 | 가용성/보호 | 확인된 제한 |
+|---|---|---|---|---|---|
+| srp-rds-maria | MariaDB 10.11.16 | db.t3.micro | 20 GiB gp2 | Single-AZ, 암호화, 비공개 | 자동 백업 보존 0일, 삭제 보호 꺼짐. 다른 백업 존재는 미확인 |
 
-| 계층 | 기술·버전 기준 | 선택 이유·제약 |
-|---|---|---|
-| 공통 런타임 | Node.js 24 계열, ESM, TypeScript 7.0.2 기준 | 현 Dockerfile·package.json 유지. 패치·이미지 digest는 릴리스 시 고정 |
-| API/로컬 서버 | Express 5.2.1, Zod 4 계열 | 기존 라우트와 검증 재사용. DB 모듈은 공용 API에만 포함 |
-| DB | PostgreSQL 17, `pg` 8.23.0 | 기존 SQL·트랜잭션·불변 이력 재사용. 연결 풀 기본 max 8 |
-| UI | React 19.3.0 + TypeScript + Vite SPA | 4.3절 R0~R6 전환 완료. 기존 Express에서 정적 빌드 제공. 인증·source/agent 선택·공유 상태는 후속 P1~P8 |
-| Office/Markdown | 현재 Vite 8.3.0·React 19.3.0 viewer, marked·DOMPurify, extend viewer 버전 유지 | 현재 lockfile 재현. 이번 설계에서 버전 업그레이드하지 않음 |
-| MCP | `@modelcontextprotocol/sdk` 1.30.0 기준, Streamable HTTP 우선 | 기존 MCP와 호환 검증. stdio는 실제 필요가 확인되면 후속 지원 |
-| 로그인 | Auth0 Universal Login + Database Connection | 회사 이메일·비밀번호·메일 인증. Hiworks는 수신함 역할 |
-| OIDC/JWT | `openid-client` 6 계열 + `jose` 6 계열 제안 | Native PKCE 및 공용 API JWT/JWKS 검증. P2에서 패치 버전 고정 후 테스트 |
-| 작업 큐 | PostgreSQL 작업 테이블 + `FOR UPDATE SKIP LOCKED` | Redis/BullMQ 없이 현재 큐 확장. API만 DB를 사용 |
-| 진행 전달 | Runner 폴링 + UI 상태 폴링 | 작은 팀에서 운영 단순화. SSE/WebSocket은 초기 필수 아님 |
-| 로컬 비밀 저장 | Windows DPAPI CurrentUser 보호 + 사용자 전용 파일 ACL | Node에서 제한된 PowerShell helper를 표준입력으로 호출하는 안을 P2에서 검증. 평문 fallback 금지 |
-| 로컬 임시 저장 | 원자적 임시 파일→rename, 결과 hash, 단일 앱 인스턴스 | DB 대체 이력 저장소가 아닌 outbox/receipt. 재시작 복구용 |
-| 서버 운영 | Linux x64 VM + Docker Compose v2 + Caddy 2 | HTTPS·API·DB의 단순 구성. 공용 API 이미지에 AI CLI/ERP 자료 제외 |
-| 배포 | GitHub 비공개 저장소 기본 제안, Releases, Actions | 소스/빌드·패키지 배포. GitHub가 이력 API/DB를 실행하는 것은 아님 |
-| 테스트 | `node:test`/tsx, 격리 PostgreSQL, Playwright | 현 검사·브라우저 스크립트 확장. 고객 데이터 없는 CI |
+최근 7일(2026-09-14~21 UTC)의 CloudWatch 시간별 집계 168개씩을 확인했다. CPU 최대 26.48%, FreeableMemory 최소 약 136 MiB, 여유 저장소 최소 약 16.7 GiB, 연결 최대 9개, CPU credit 최소 288이었다. CPU/디스크 수치만으로 추가 앱 수용을 보장하지 않는다. FreeableMemory만으로 메모리 압박을 확정할 수도 없으며 실제 앱 부하·연결 풀·메모리/IO 지표를 함께 검사해야 한다. 원자료는 Git 제외 `.runtime/aws-cvslog-review/metrics.json`에 보존했다.
 
-표의 기존 버전은 현 소스 스냅샷이며 최신 버전 권고가 아니다. 새 의존성은 POC 때 지원 조건을 확인하고 정확한 버전·lockfile·라이선스를 기록한다. [openid-client](https://github.com/panva/openid-client), [jose](https://github.com/panva/jose), [Windows DPAPI](https://learn.microsoft.com/en-us/dotnet/standard/security/how-to-use-data-protection) 공식 문서를 근거로 선정했다. DPAPI는 저장 시 보호이며 같은 Windows 사용자 권한으로 실행되는 악성 프로세스를 격리하는 장치는 아니다.
+현재 앱은 `pg`, `jsonb`, PostgreSQL advisory lock, 부분 unique index, `ON CONFLICT`, `RETURNING` 등을 사용한다. 특히 큐/세션의 동시성 보장이 DB 구현에 묶여 있다. 따라서 기존 RDS가 MariaDB이면 `DATABASE_URL`만 바꾸는 재사용은 불가능하고 schema·query·잠금·driver·migration·백업/복원 도구와 회귀 테스트를 이식해야 한다. [현재 DB 연결](../apps/history-api/src/db.ts), [migration](../src/migration.sql), [MariaDB 공식 이식 안내](https://mariadb.com/docs/server/server-management/install-and-upgrade-mariadb/migrating-to-mariadb/migrating-to-mariadb-from-postgresql).
 
-### 4.2 목표 디렉터리
-
-기존 파일을 단계적으로 옮기는 npm workspaces 구성이다. 먼저 서비스 경계 테스트를 만든 뒤 이동하며, 전면 재작성하지 않는다.
-
-```text
-apps/history-api/       공용 인증·권한·이력·큐, 유일한 DB 접근 앱
-apps/local-app/         loopback 서버, 로그인, 메일/첨부, UI, Runner 관리
-packages/contracts/    Zod DTO, 결과 스키마, 오류 코드, API 버전
-packages/history-client/ 사용자 인증 API 클라이언트, 멱등 재전송
-packages/runner/       작업 수명·취소·heartbeat·outbox
-packages/agent-adapters/ codex.ts, claude.ts, 공통 이벤트 변환
-packages/skills/        배포 가능한 공통 규칙·템플릿·manifest
-packages/ui/            React 메인 화면과 기존 Office/Markdown 자산·빌드
-deploy/                 compose.server.yaml, Caddyfile, backup/restore
-installer/windows/      설치·시작·중지·진단·업데이트·제거
-docs/                   이 문서, 운영법, 검증 근거
-```
-
-`src/history.ts`, `archive.ts`, `related.ts` 등은 history-api 서비스로 옮긴다. `mcp.ts`, `attachments.ts`, 로컬 검색·미리보기는 local-app에 둔다. `worker.ts`는 runner/adapter로 나누고 `sync.ts`는 서버 상태 관리와 로컬 묶음 처리로 나눈다. ERP 쪽 기존 CLI는 우선 앱 저장소 안의 호환 클라이언트로 검증하고, 외부 저장소 변경이 필요한 배포 작업은 별도 변경 목록으로 관리한다.
-
-### 4.3 React 화면 전환 계획 (2026-09-18)
-
-사용자의 단계별 계획 요청에 따라 먼저 작성한 전환 기준안이다. 기존의 ‘HTML/CSS/JavaScript 유지’ 선택을 이 계획으로 갱신했다. **2026-09-18 R0~R6 구현·검증·로컬 Docker 적용 완료.** 지정 터미널의 선행 작업 완료와 기준 커밋 `97525f6`을 확인한 뒤 구현했다. 단계별 산출물·기능 대응표·합성 및 실제 읽기 검증·복귀 정보는 [React 전환 검증](react-transition-validation.md)을 따른다. 아래 단계는 수행 기준으로 보존하며 팀 배포 P1~P8의 완료를 뜻하지 않는다.
-
-#### 목적과 범위
-
-- 검색·선택 메일·스레드·보고서·분석 진행·답변 초안의 상태를 React 컴포넌트와 훅으로 관리하고, 메인 화면을 TypeScript로 전환한다.
-- 현재 사이드바, 창 전체 너비, 목록/상세 구성, 모바일 전환, 버튼 의미와 CSS를 기준으로 기능을 이관한다. 디자인 개편은 이 전환의 완료 조건에 포함하지 않는다.
-- 현재 `/api/*` 계약, 토큰 로그인, PostgreSQL, Codex Worker, MCP 호출 및 ERP 읽기 전용 경계를 유지한다. 서버 변경은 정적 파일 제공·빌드 연결에 필요한 범위로 한정한다.
-- Auth0, 사용자별 권한, Claude Code 선택, 공용 API 분리, Runner와 설치 프로그램은 P1~P8에서 구현한다. React 전환에서 미래 API를 실제 제공 기능처럼 사용하지 않는다.
-- 전환 순서는 **R0 → R1 → R2 → R3 → R4 → R5 → R6 → P1 → P2~P8**을 기본으로 한다. 서비스 분리 문서·계약 검토는 선행 가능하지만 동일 화면의 팀 기능 개발과 전환 구현을 겹치지 않는다.
-
-#### 구현 구조와 상태 관리 기준
-
-R1에서는 저장소 루트의 `ui/`에 메인 화면을 만들고 기존 `viewer/`를 유지한다. `packages/ui/`로의 위치 이동은 P1 서비스 분리 때 수행하며 React 전환만을 위해 전체 저장소를 workspaces로 재편하지 않는다.
-
-```text
-ui/
-  index.html
-  vite.config.ts
-  tsconfig.json
-  src/
-    main.tsx
-    app/                App, 로그인, 사이드바, 화면 전환, 공유 UI 상태
-    api/                fetch 클라이언트, 현재 API의 DTO, 오류 처리
-    features/
-      mailbox/          검색, 목록, 스레드, 수동 연결, 상세, 동기화
-      analysis/         실행 상태, 보고서, 추가 답변, 처리 상태, 관련 메일
-      history/          전체 분석 이력, 이전 문서
-    components/         Dialog, 상태 안내, Markdown, 첨부·뷰어 연결
-    hooks/              폴링, 초안, 포커스·스크롤 복원
-public/style.css        현재 화면 스타일 재사용
-viewer/                 기존 Office iframe 앱과 WASM, Markdown 변환
-public/                 정제·뷰어 공통 모듈 및 빌드 산출물 제공 위치
-```
-
-| 항목 | 전환 기준 |
-|---|---|
-| 의존성 | 기존 React 19.3.0·Vite 8.3.0·TypeScript 7.0.2와 lockfile을 출발점으로 사용. JSX 빌드에 추가 패키지가 필요하면 R1에서 호환성·정확한 버전·라이선스를 확인하고 고정 |
-| 화면 이동 | 현재 `#mailbox`·`#history`·`#legacy`를 유지. 별도 라우터 없이 hash와 화면 상태를 동기화하고 뒤로/앞으로 이동 검증 |
-| 상태 소유 | 선택 메일·적용 검색 조건·페이지·읽던 위치는 App 아래 공통 상태에 둔다. 입력 중 검색어와 적용된 조건을 구분하고 개별 모달 상태는 해당 기능에서 관리 |
-| 상태 구현 | 로컬 상태는 `useState`, 함께 바뀌는 상태는 `useReducer`, 공유가 필요한 범위만 Context 사용. 서버 응답을 여러 전역 저장소에 복제하지 않음 |
-| 조회 | 출처·검색 조건·페이지·메일 ID·run ID를 요청 식별에 포함. `AbortController`와 요청 식별 확인으로 이전 응답이 새 선택을 덮어쓰지 않게 함 |
-| 폴링 | 기존 실행 상태 3초·목록 상태 10초 등의 동작을 먼저 보존. 요청 중첩 방지, 화면 해제·401·실행 종료 시 타이머/요청 정리. StrictMode 재마운트에서도 중복 루프가 남지 않게 검증 |
-| 변경 요청 | 분석·동기화·연결·추가 답변 POST는 사용자 이벤트에서 호출. 마운트 Effect에서 실행하지 않으며 응답 불확실 시 자동 재전송하지 않고 상태 재조회. 서버의 기존 중복 방지 규칙 유지 |
-| 초안 | 기존 출처·run별 sessionStorage 키와 메모리 fallback 보존. 성공 또는 명시적 삭제 때 제거하고 401 후 재인증·전송 실패 때 유지. 개인 계정 도입 시의 분리는 P2에서 적용 |
-| API 경계 | `/api` 상대 경로와 기존 HttpOnly 쿠키 사용. 토큰을 프런트 빌드·localStorage에 넣지 않으며 DB·MCP용 서버 모듈을 UI 번들에서 import하지 않음 |
-| 개발·빌드 | R1의 기본 확인 경로는 Vite 빌드/watch + Express 동일 origin. HMR을 추가할 경우 현재 Origin 검사·쿠키 경로와의 호환을 검증하고 인증 검사를 완화하지 않음 |
-| Office | `/preview/` iframe과 별도 CSP·WASM 빌드 유지. 메인 React 번들에는 Office 패키지를 직접 포함하지 않고 기존 메시지의 origin/source 검사와 자원 정리를 보존 |
-| HTML·Markdown | 메일 본문 재구성·외부 리소스 차단, marked·DOMPurify 정책을 재사용. 정제되지 않은 HTML을 React에 직접 삽입하지 않음. 메인 화면은 CSS class 기반으로 기존 CSP 준수 |
-
-추가 상태 관리·UI 라이브러리는 초기 필수 의존성으로 넣지 않는다. 실제 중복이나 사용성 문제가 확인되면 해당 단계에서 도입 근거와 검증 비용을 기록한다.
-
-#### R0. 현재 동작과 검증 기준 확정
-
-- 현재 작업 트리의 미커밋 스레드·수동 연결·사이드바 변경까지 포함해 이관 기준을 기록한다. 기존 변경을 덮어쓰거나 이전 커밋으로 되돌려 기준을 만들지 않는다.
-- `public/app.js`와 기능별 JS의 화면 상태·이벤트·API 호출·타이머·DOM 의존성을 목록화한다. 로그인, 메일함, 보고서, 이력, 미리보기별 동작과 실패 경로를 대응시킨다.
-- 기존 Playwright 합성 검증을 실행해 현재 통과/실패를 분리하고 데스크톱·모바일 화면을 합성 데이터로 기록한다. 기존 실패는 원인과 처리 범위를 정한 뒤 비교 기준으로 사용한다.
-- **산출물:** 기능/기존 파일/대상 컴포넌트/API/검증 스크립트 대응표, 현재 검증 결과, 화면 기준 자료.
-- **완료 기준:** 아래 회귀 검증 표의 각 기능에 재현 가능한 시나리오가 있고, 기존 결함과 전환 결함을 구분할 수 있다.
-
-#### R1. React 앱과 빌드 연결
-
-- `ui/`에 React + TypeScript + Vite 앱, AppShell, 오류 경계, 최소 로그인/연결 확인, API 클라이언트와 DTO를 만든다.
-- 과도기에는 기존 `/` 화면과 후보 `/react/`를 분리한다. 후보 빌드 출력은 `public/react/`로 제한하고 생성물을 Git에서 제외한다. Vite의 출력 정리가 `public/preview/`, `public/markdown/`, 기존 화면을 삭제하지 않게 한다.
-- 기존 루트 package.json의 타입 검사·전체 빌드에 UI를 연결하고 Dockerfile에 UI 소스 복사·빌드 단계를 추가한다. `viewer/`의 독립 빌드는 유지한다.
-- 후보와 기존 화면은 서로 다른 문서에서 실행한다. 같은 DOM 하위 영역을 기존 JS와 React가 함께 수정하지 않으며 두 화면에서 변경 작업을 동시에 실행하는 것을 비교 검증 방식으로 사용하지 않는다.
-- **산출물:** 후보 진입점, UI 디렉터리·빌드 구성, 타입이 있는 API 호출 계층, 기존/후보 화면 선택 방법.
-- **완료 기준:** 타입 검사·전체 빌드와 합성 로그인/401/상태 조회 통과, 기존 화면과 Office/Markdown 자산 경로 정상, 프로덕션 빌드에서 CSP 오류 없음.
-
-#### R2. 메일함·검색·스레드·동기화 이관
-
-- 사이드바, 검색 폼, 분석 상태 필터, 페이지 이동, 스레드/개별 보기, 선택 강조, 모바일 메뉴와 빈 목록/재시도 상태를 컴포넌트로 옮긴다.
-- 자동 답장 관계는 현재 서버 결과를 사용한다. 수동 드래그 연결·해제·되돌리기·수동 연결 관리와 검색에 가려진 관계 보존을 유지하며, 프런트에서 제목으로 재그룹화하지 않는다.
-- 검색/페이지 전환 시 요청 취소와 늦은 응답 무시, 화면을 왕복할 때 검색 조건·스레드 펼침·스크롤 복원을 구현한다.
-- 동기화 시작·중지·이어가기와 부분 실패 표시를 옮긴다. 실제 메일 수집 없이 모의 API로 상태 전이를 검증한다.
-- **산출물:** MailboxPage, SearchForm, MailList, ThreadList, 수동 연결 UI, SyncStatus와 상태 훅.
-- **완료 기준:** 필터·페이지 건수·스레드 동작이 현재 API와 일치하고 빠른 검색/선택에서도 이전 결과가 섞이지 않는다. 드래그 요청 중복과 화면 이동 후 폴링 누수가 없다.
-
-#### R3. 메일 상세·첨부·문서 표시 이관
-
-- 메일 상세의 텍스트/HTML fallback, CID 이미지, 첨부 기본 접힘, 원본 다운로드를 이관한다. 선택 메일 변경 중 늦은 본문·첨부 응답이 새 상세에 표시되지 않게 한다.
-- 이미지·Office 미리보기의 열기/닫기/Escape·재시도·다운로드를 React dialog와 연결한다. 기존 Office iframe을 재사용하고 요청·이벤트·파일 자원을 닫을 때 정리한다.
-- 공통 Markdown 표시를 React 컴포넌트에서 사용하도록 감싼다. 외부 이미지·문서 HTML·링크 처리 정책을 유지하고 표/코드의 좁은 화면 표시를 확인한다.
-- **산출물:** MailDetail, MailBody, AttachmentList, PreviewDialog, MarkdownView.
-- **완료 기준:** 합성 본문·이미지·DOCX/PPTX/XLSX·Markdown 검증 통과. 5 MiB 초과·손상 파일·조회 실패 안내, CSP·외부 리소스 차단, 닫기 후 포커스 복귀와 모바일 목록 복귀 확인.
-
-#### R4. 분석·보고서·이력 이관
-
-- 분석 시작/진행 상황/결과/실패 버튼, 기존 활성 실행 재확인, 보고서와 메일별·전체 이력 레이어를 옮긴다. 재분석은 기존 보고서를 보존하는 새 실행으로 유지한다.
-- 진행 이벤트 폴링, 추가 답변과 초안, 처리 완료/취소, 관련 메일 연결·해제, 리뷰·지식 제안 표시, Markdown 내보내기 및 이전 문서를 이관한다.
-- 도구 실패와 전체 분석 실패, 분석 완료와 업무 처리 완료를 구분한다. 401 재인증과 전송 실패 시 초안을 보존하고 통신 실패를 저장 성공으로 표시하지 않는다.
-- **산출물:** AnalysisActions, RunProgress, ReportDialog, AnswerForm, HandlingActions, RelatedMails, HistoryPage, LegacyPage.
-- **완료 기준:** 기존 보고서·질문·리뷰·연결의 표시/요청 계약 유지, 빠른 보고서 전환 시 내용 혼합 없음, 초안 보존·성공 후 제거 확인. 버튼 연속 클릭과 StrictMode에서도 분석/답변 POST가 의도치 않게 중복되지 않음.
-
-#### R5. 전체 회귀 검증과 기본 화면 전환 준비
-
-- 기존 브라우저 스크립트의 API 모의 응답·행동 검증을 재사용한다. DOM 구조 변경에 필요한 선택자만 수정하고 실패를 피하기 위해 검증 항목을 제거하지 않는다.
-- 아래 표의 정상/실패/경합 시나리오를 React 후보에서 실행한다. 키보드 이동, dialog 포커스, Escape, 모바일, 401 복귀, 콘솔 오류·미처리 Promise를 확인한다.
-- R0와 같은 합성 목록 크기·브라우저에서 초기 로딩, 목록/상세 전환, 네트워크 요청 수를 비교한다. 중복 폴링·뷰어의 초기 번들 유입·응답 역전은 해결하고 성능 차이는 측정 조건과 함께 기록한다.
-- 기본 `/`를 React로 바꿀 빌드와 명시적으로 선택 가능한 기존 UI 빌드를 준비한다. 두 빌드 모두 최근 서버/API 변경을 포함하며, `/api`, `/preview/`, `/markdown/`, 다운로드 경로를 유지한다.
-- **산출물:** `validation.md`의 React 전환 검증 결과, 기본 전환용 빌드, 기존 UI 복귀용 빌드와 절차.
-- **완료 기준:** 관련 타입 검사·전체 빌드·합성 회귀 통과. 미해결 기능 손실이 없고 자산 404·인증 실패·콘솔 오류가 없다. 기본 전환과 복귀를 격리된 환경에서 확인한다.
-
-#### R6. 기본 화면 적용·확인·기존 구현 정리
-
-- 배포 실행이 요청된 시점에 R5의 검증된 React 빌드를 API 서비스에 반영한다. API 이미지와 기존 UI 복귀 이미지의 식별자를 보존하고 기존 DB·Worker·볼륨을 재생성하지 않는다.
-- 기존 운영 방식에 따라 API만 `--no-deps`로 교체한다. UI 복귀 시에도 최신 API 기능을 포함하는 기존 UI 빌드를 사용하며 DB 복원으로 화면을 되돌리지 않는다.
-- 반영된 기본 URL, 인증, 정적 자산, 목록/상세/기존 보고서의 읽기 동작을 확인한다. 실제 분석·동기화는 별도 지정된 대상과 실행 범위가 있을 때 확인하고 합성 결과와 구분해 기록한다.
-- 기본 화면 안정성과 복귀 절차가 확인된 후 참조되지 않는 기존 DOM 조작 파일·임시 후보 경로를 정리한다. 재사용 중인 정제·뷰어 자산을 함께 삭제하지 않는다. 운영 README와 빌드/검증 명령을 갱신한다.
-- **산출물:** 반영 버전·확인 범위·복귀 정보, 정리된 프런트 소스, 최신 운영 안내.
-- **완료 기준:** 실제 적용 확인까지 기록되어야 ‘React 전환 완료’로 표시한다. R5까지 끝나고 적용하지 않았다면 ‘구현·합성 검증 완료, 적용 대기’로 기록한다. 팀 인증·Runner 전환 완료와는 별도다.
-
-#### 회귀 검증 대응표
-
-아래는 기존 스크립트의 재사용 후보다. R0에서 실행 의존성·현재 커버리지·실제 외부 접근 여부를 확인한다. 스크립트가 존재한다는 사실만으로 통과나 전체 커버리지를 인정하지 않는다.
-
-| 기능 | 우선 확인할 기존 스크립트 | 추가로 확인할 전환 위험 |
-|---|---|---|
-| 인증·검색·상태·초안·모바일 | `verify-pre-p1-ux.mjs`, `verify-status-filter.mjs` | 401 후 복귀, 초안 키 호환, 저장소 차단, 뒤로/앞으로 이동 |
-| 스레드·수동 연결·읽던 위치 | `verify-mail-threads.mjs`, `verify-manual-threads.mjs`, `verify-mail-scroll.mjs` | 늦은 검색 응답, 숨겨진 연결, 드래그 중복, 펼침·포커스·스크롤 유지 |
-| 본문·첨부·미리보기 | `verify-inline-images.mjs`, `verify-downloads.mjs`, `verify-image-preview.mjs`, `verify-preview.mjs` | 메일 변경 중 응답, 닫은 뷰어의 이벤트, 5 MiB, 외부 요청 차단, CSP |
-| 분석·진행·업무 처리 | `verify-mail-analysis.mjs`, `verify-analysis-progress.mjs`, `verify-handling-ui.mjs`, `verify-related-mails.mjs` | 연속 클릭, 폴링 정리, 잘못된 완료 표시, 전송 실패 후 입력 보존 |
-| 이력·문서·동기화 | `verify-history-ui.mjs`, `verify-markdown.mjs`, `verify-maintenance-ui.mjs`, `verify-sync-refresh.mjs` | 보고서 응답 역전, 미연결 문서 보존, 동기화 중 화면 이동·재로그인 |
-| 빌드·서비스 제공 | 기존 `npm run check`, `npm run build` 확장 | Docker에 UI 소스 포함, 출력 디렉터리 충돌, 기본/후보 URL과 iframe 자산 경로 |
-
-검증에는 합성 메일·문서를 사용한다. 기존 live Worker/sync 검증은 UI 전환의 자동 실행 항목으로 넣지 않는다. 고객 원문·인증값·실제 화면 캡처를 Git에 추가하지 않는다. 단계별로 관련 검사를 수행하고 R5에서 전체 UI 회귀를 한 번 묶어 실행하며, 변경이 없는 ERP/DB 전체 검사를 반복하지 않는다.
-
-기술 참고: 기존 서버에 React를 점진적으로 도입하는 방식은 [React 공식 안내](https://react.dev/learn/add-react-to-an-existing-project)를 참고한다. 요청·구독 정리와 개발 중 재마운트 대응은 [Effect 동기화 안내](https://react.dev/learn/synchronizing-with-effects)를 따른다. 이 문서의 디렉터리·단계·기존 동작 보존 기준은 현재 프로젝트를 위한 설계이며 React가 정한 필수 구조는 아니다.
-
-### 4.4 React Query 및 스레드 조회 개선 (2026-09-18)
-
-React 전환 후 사용자 요청으로 추가한 성능 개선 범위다. 2026-09-18 구현·검증·로컬 Docker 적용을 완료했다. R0~R6의 기존 API 계약 보존 원칙을 유지하면서 메일 목록 캐시와 스레드 조회 내부 구현을 개선한다. P1~P8 팀 전환과는 별도다.
-
-1. `@tanstack/react-query` 5.103.1(React 18/19 지원, MIT)을 정확한 버전으로 고정한다. 메일 목록의 출처·보기·검색·상태·페이지를 query key로 사용하고 기존 화면·스크롤 상태는 유지한다.
-2. 목록 결과는 브라우저 메모리에서 15초간 fresh, 비활성 캐시는 60초간 보관한다. 명시적 검색, 동기화 변화, 수동 연결 변경은 캐시를 무효화한다. 401에는 캐시를 제거한다. 자동 재시도·창 포커스 재조회·디스크 영속화는 사용하지 않는다.
-3. 서버는 완성된 upstream 검색 결과만 15초간 메모리에 재사용한다. 출처·검색 조건으로 구분하고 최대 8개/직렬화 크기 합계 16 MiB로 제한한다. 동시에 들어온 동일 조회는 Promise를 공유한다. 전체 메일을 읽는 동안 MCP 세션 하나를 사용한다.
-4. 페이지와 분석 상태 필터는 같은 원본 스냅샷을 재사용하되 현재 DB의 분석 상태·수동 연결로 다시 계산한 뒤 페이지를 자른다. sync 실행/배치 상태가 바뀌면 서버 캐시를 제거한다. `refresh=1` 조회로 명시적 검색 시 원본을 다시 읽는다. 앱 밖의 MCP 변경은 TTL 뒤 다음 조회에 반영되며 프런트/서버 TTL이 겹치면 약 30초의 지연이 가능하다.
-5. 캐시·동시 요청·만료·동기화·인증 및 기존 스레드 정확성 검증, 전체 UI 회귀, 적용 전후 실제 읽기 성능과 데이터 보존을 확인한다. API만 교체하며 실메일 동기화·분석은 실행하지 않는다.
-
-일반적인 이력·보고서 조회와 진행 폴링을 전부 React Query로 재작성하는 작업은 이번 범위가 아니다. 페이지별 불필요한 prefetch는 서버 전체 스캔을 늘릴 수 있어 도입하지 않는다. 근거는 [React Query 기본 동작](https://tanstack.com/query/latest/docs/framework/react/guides/important-defaults), [취소](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation), [캐시 무효화](https://tanstack.com/query/latest/docs/framework/react/guides/query-invalidation)이며, 실제 결과는 [검증 기록](validation.md)에 추가한다.
-
-## 5. 로그인·권한·로컬 연결
-
-### 5.1 가입과 로그인
-
-1. 실제 회사 도메인을 서버 설정에 정확히 등록한다. 문자열 부분 일치·`hiworks.com` 일반 허용을 사용하지 않는다.
-2. Auth0 가입 전 Action에서 도메인을 검사한다. Database Connection의 이메일 인증을 설정한다. v1 기본 UX는 인증 링크이며, 미인증 Auth0 계정이 만들어져도 앱의 활성 회원은 생성하지 않는다.
-3. Post-login Action에서 도메인과 `email_verified`를 검사하고 미인증 접근을 차단한다. 인증 후 새 로그인에서 앱 이용을 허용한다. OTP로 계정 생성 전 확인하는 UX는 테넌트 기능 검증 후 선택 가능하지만 v1의 필수 조건은 ‘인증 전 앱/API 이용 불가’다.
-4. 신뢰된 Action이 API access token에 서비스 namespace의 이메일·인증 상태 claim을 넣는다. API는 JWT 검증 후 이 claim으로 자동 등록한다. 클라이언트가 전달한 `email_verified`, `userId`, `role`은 신뢰하지 않는다.
-5. `(issuer, subject)`를 사용자 키로 사용한다. 검증된 도메인을 고정 팀에 연결하고 `analyst`로 자동 등록한다. 최초 admin은 서버 운영자가 지정한 subject로 한 번만 등록하며 첫 가입자 자동 admin은 금지한다.
-6. 비밀번호 재설정·인증 재발송은 Auth0 화면에서 처리한다. 운영 인증 메일은 외부 발송 서비스로 보내고 Hiworks 실수신을 검증한다. Hiworks SMTP를 발송용으로 사용할 수 있다고 가정하지 않는다.
-
-Auth0의 [이메일 인증](https://auth0.com/docs/manage-users/user-accounts/verify-emails)과 [운영 SMTP 설정](https://auth0.com/docs/customize/email/smtp-email-providers)에 따른다. 개발·합성 검증 테넌트와 팀 운영 테넌트/계정은 분리한다. 회사 메일 소유 확인은 재직 여부의 지속적인 확인이 아니므로 관리자 비활성화 기능을 둔다.
-
-### 5.2 설치형 인증과 세션
-
-- Auth0 Native Application public client + Authorization Code/PKCE S256 + state/nonce. 시스템 브라우저에서 로그인하고 `http://127.0.0.1:3080/auth/callback`을 정확히 등록한다. 기본 포트 충돌 시 실행 전에 안내하며 임의 wildcard callback을 열지 않는다.
-- callback은 로컬 프로그램이 처리한다. Client Secret을 설치 파일에 넣지 않고 비밀번호·refresh token을 UI나 localStorage에 전달하지 않는다. [Auth0 PKCE](https://auth0.com/docs/get-started/authentication-and-authorization-flow/authorization-code-flow-with-pkce)를 따른다.
-- 요청 scope는 `openid profile email offline_access`와 공용 API audience를 명시한다. 공용 API는 access token만 받고 ID token을 API 자격으로 사용하지 않는다. `jose`로 issuer·audience·서명·허용 algorithm·exp/nbf와 JWKS key를 검증하고, 알려지지 않은 key는 제한적으로 갱신하되 검증 실패를 허용으로 처리하지 않는다.
-- 제안 수명: access token 60분, refresh token rotation 사용 및 최대 14일, 로컬 UI 세션 유휴 8시간. 이는 구현 기본값이며 P2에서 재로그인·폐기 동작을 검증한다.
-- refresh token은 DPAPI CurrentUser로 저장, access token은 메모리 우선. 사용자가 로그아웃하면 refresh token 폐기·로컬 세션/outstanding claim 정리를 수행한다. 이미 발급한 JWT의 잔여 수명과 앱 권한 폐기는 별개이므로 모든 API에서 활성 membership과 Runner 상태를 확인한다.
-- 로컬 서버는 `127.0.0.1`에만 bind한다. Host·Origin 검사, 변경 요청 CSRF 토큰, 무작위 HttpOnly/SameSite=Strict 로컬 세션을 적용한다. HTTP loopback의 Secure 쿠키 처리를 공용 HTTPS와 동일하다고 가정하지 않고 실제 브라우저에서 검증한다. 로컬 세션 자체로 공용 API에 접근할 수는 없다.
-- 향후 공용 웹 서버는 별도 Auth0 Web Application + 서버 세션/Secure 쿠키로 연결한다. Native client의 비밀 없는 인증 구성을 공용 웹의 서버 비밀 설정과 섞지 않는다.
-
-### 5.3 자료 권한과 실행 등록
-
-| 역할 | 허용 범위 |
-|---|---|
-| viewer | 부여된 source/collection의 이력·보고서·export 조회 |
-| analyst | viewer + 자신의 승인된 출처 분석·답변·리뷰·동기화. 공유 출처 편집은 write 권한 필요 |
-| admin | 사용자·source 공유·Runner 폐기·팀 설정 관리. 모든 개인 출처 열람 권한을 자동 부여하지 않음 |
-
-로그인된 analyst는 개인 source와 자기 Runner를 등록할 수 있다. 개인 source 기본 ACL은 본인 read/write, 팀 공유는 명시적 설정 후 해당 범위에 적용한다. 보고서·질문·리뷰·관련 메일·legacy·검색·건수·export에 같은 권한 검사를 적용한다. 모델이 분류한 프로젝트명으로 접근 권한을 확장하지 않는다.
-
-Runner 등록에는 사용자 access token과 서버가 발급하는 폐기 가능한 device credential을 함께 사용한다. 서버는 device 소유자·활성 상태와 사용자 subject의 일치를 확인한다. run마다 별도 lease token을 발급해 결과 쓰기 범위를 해당 실행으로 제한한다. machine name이나 body의 `requestedBy`만으로 권한을 부여하지 않는다. 장치 폐기는 다음 API 요청부터 차단한다. 향후 서비스 Worker는 별도의 서비스 주체로 등록한다.
-
-## 6. PostgreSQL 모델과 메일 식별
-
-아래 이름은 구현 시 사용할 논리 스키마 기준이다. 기존 PK·보고서 본문·해시는 보존하며 버전 migration으로 확장한다.
-
-| 테이블/확장 | 핵심 필드·제약 |
-|---|---|
-| `app_user` | id, issuer, subject, email, active. `UNIQUE(issuer, subject)` |
-| `team`, `membership` | user/team/role/status. 서버가 소속 결정, body의 teamId로 가입 불가 |
-| `source` | UUID, team_id, owner_user_id, kind, display_name, instance identity, active. 표시 이름은 식별 키가 아님 |
-| `source_access` | source_id, user 또는 team principal, read/write, unique grant. 기본 비공개 |
-| `runner`, `runner_source` | owner, device credential hash, executor kind, agent capabilities, version, seen_at, active, 허용 source |
-| `mail_identity` 확장 | source_id + local numeric mail ID에 unique. 기존 store_id는 이관 mapping으로 보존. Outlook 별도 external key 유지 |
-| `analysis_run` 확장 | requested_by, team_id, executor_kind, target_runner_id, claimed_runner_id, agent, model, skill_version, contract_version, cancel_requested_at |
-| `report_version`·`review` | 기존 불변 결과 유지. 새 리뷰 author는 인증 사용자에서 결정. 옛 author는 legacy 표기로 보존 |
-| `legacy_collection`, 문서 ACL | 미연결 legacy도 권한 있는 collection에 귀속. 전역 공개 목록 금지 |
-| `sync_run` 확장 | source_id, runner_id, requested_by, lease/heartbeat, 묶음별 request ID·응답 여부 |
-| `audit_event`, `schema_migration` | actor/action/대상 ID/시각/결과, migration ID/checksum. 원문·비밀 제외 |
-
-`source`는 PC의 이름이 아니라 **MCP 저장소 인스턴스**를 나타낸다. 같은 원격 저장소를 두 PC가 사용하면 권한을 확인한 뒤 동일 source에 연결한다. 서로 독립적으로 수집한 메일 DB는 별도 source를 발급한다. MCP가 안정적 instance ID를 제공하면 대조하고, 없으면 로컬 프로필 UUID와 관리자 확인으로 등록하며 한계를 기록한다.
-
-같은 주소·같은 메일함이라도 저장소를 새로 만들면 숫자 ID가 재사용될 수 있으므로 새 source를 만들거나 명시적 매핑을 거친다. `Message-ID`는 보조 확인이며 단독 병합 키로 쓰지 않는다. 기존 `local-mail-v1`은 기존 저장소 한 개에만 매핑한다. 신규 설치가 이 값을 공용 식별자로 재사용하지 못하게 한다.
-
-SQL 접근은 인증 컨텍스트를 필수로 받는 서버 repository 함수로 모은다. run ID를 아는 것만으로 조회·수정할 수 없으며 연결된 mail/source ACL까지 검사한다. source/team 관계는 FK·unique 제약과 트랜잭션으로 일치시킨다. PostgreSQL superuser는 앱 런타임에 사용하지 않고 migration 계정과 최소 DML 계정을 분리한다.
-
-## 7. API 계약과 작업 수명
-
-### 7.1 통신 계약
-
-- 공용 경로는 `/api/v1`, JSON UTF-8, UUID, UTC ISO 8601 시간이다. Zod와 같은 원본에서 OpenAPI 3.1/JSON Schema를 생성하고 계약 테스트를 한다.
-- 실행할 shell 문자열이나 SQL을 서버 작업 본문에 넣지 않는다. 정해진 작업 종류·메일 식별·agent 선택·자료 버전만 전달한다. agent 실행 파일은 로컬 설치 목록에서 선택한다.
-- 변경 요청은 `requestId`를 고정한다. 멱등 키는 `(team, actor, operation, requestId)`에 unique, body hash가 다르면 409다. client 재시도마다 새 키를 만들지 않는다.
-- 응답 오류는 `{code, message, requestId}`. 인증 401, 권한 403 또는 존재 은닉용 404, 충돌/lease 만료 409, 크기 초과 413, 제한 429, 일시 장애 503을 구분한다.
-- 초기 한도 제안: 목록 기본 50/최대 100, 필터는 허용된 source 내부에만 적용, batch 메일 상태 최대 100개. 메타데이터 64 KiB, 결과 JSON 최대 4 MiB 및 기존 보고서 필드 문자 제한을 함께 적용한다. 첨부 5 MiB는 로컬 경로다.
-- 초기 rate limit 제안: 사용자별 일반 API 120회/분, 작업 등록 10회/분, Runner heartbeat/claim 60회/분. 지수 대기·jitter·Retry-After 적용. 수치는 부하 검증 후 조정한다.
-- v1 minor 변경은 추가 필드 중심으로 한다. `minClientVersion`, `contractVersion`으로 호환성을 확인하며 미지원 클라이언트는 새 작업 시작 전에 갱신 안내한다.
-
-### 7.2 엔드포인트 초안
-
-| 경로 | 동작·권한 |
-|---|---|
-| `GET /api/v1/me` | 검증된 identity, 활성 소속·자료 권한·기능 반환 |
-| `POST /api/v1/sources`, `GET /sources` | 개인 source 등록/허용된 출처 목록. 공유·grant 변경은 별도 권한 검사 |
-| `POST /api/v1/runners`, `POST /runners/:id/revoke` | 자기 장치 등록/폐기, admin 운영 경로 분리 |
-| `POST /api/v1/runs` | source·메일 ID·원본 메타데이터·agent·targetRunner·parentId·답변으로 등록 |
-| `POST /api/v1/runners/:id/claim` | 해당 Runner에 지정되고 현재 권한이 유효한 작업 하나 반환. 없음은 204 |
-| `POST /api/v1/runs/:id/heartbeat`, `/progress` | 사용자+device+run lease 검증, 제한된 진행 이벤트 저장 |
-| `POST /api/v1/runs/:id/result`, `/fail`, `/cancel` | 불변 결과 저장, 실패, 취소 요청. result는 lease 소유 실행만 가능 |
-| `GET /api/v1/runs`, `/runs/:id`, `/runs/:id/export` | ACL 적용 목록·상세·내보내기 |
-| `POST /api/v1/runs/:id/reviews`, `/handling`, `/related-mails` | 기존 업무 동작 유지, 공유 쓰기 권한과 메일 관계 확인 |
-| `POST /api/v1/sync-runs` 및 claim/heartbeat/batch/stop/resume | source별 동기화 예약·로컬 수행·상태 저장 |
-| `/api/v1/legacy/*`, `/knowledge/*` | collection/source ACL을 적용한 기존 이관·지식 기능 |
-| 로컬 `/local-api/*`, `/auth/*` | 메일/첨부 조회, 연결 점검, UI 세션. 공용 API 토큰은 로컬 백엔드가 사용 |
-
-경로는 구현 계약 초안이며 아직 존재하는 API가 아니다. 기존 `/api/*`는 localhost 단일 사용자 개발 모드에만 한시적으로 유지한다. 공용 서버에서 `TRIAGE_TOKEN`으로 v1 사용자 인증을 우회할 수 없게 하고, 직접 CLI·운영 스크립트도 v1 사용자 인증으로 이행한다.
-
-현재 서버의 MCP 재확인 로직은 로컬 프로그램으로 옮긴다. 로컬 프로그램이 원본을 조회해 source/ID/Message-ID·조회 시각·필요한 hash를 제출하고 실행 직전 다시 확인한다. 서버는 등록된 Runner/source 권한과 식별 일관성을 검증하고 **확인 주체를 Runner로 기록**한다. 개인 PC가 보낸 증거를 공용 서버의 독립적인 원본 검증으로 표시하지 않는다. agent가 출력한 `verified: true`만으로 완료하지 않는다.
-
-### 7.3 분석 상태와 장애 처리
-
-상태는 `queued → running → completed | needs_input | failed | cancelled`로 정의한다. 취소 요청 플래그와 최종 취소를 구분한다. `handled_at`은 메일의 업무 처리 상태로 유지한다.
-
-| 조건 | 규칙 |
-|---|---|
-| 작업 배정 | UI에서 선택한 Runner에 고정. 다른 팀원 PC가 임의 claim하지 못함. source 접근·agent capability를 등록·claim·결과 저장 시 재검사 |
-| claim 응답 유실 | claim requestId에 연결된 동일 작업을 같은 Runner에 반환. 필요하면 lease generation/token을 회전해 이전 자격을 무효화하며 새 작업을 중복 배정하지 않음 |
-| 동시 실행 | Runner당 분석 1개, 메일당 활성 분석 1개. 팀 파일럿 전체 동시 분석 기본 2개. 기존 전역 singleton lock 제거 |
-| 폴링 | claim 3초, 빈 큐에서 최대 15초+jitter로 완화. UI 실행 상태 3초, 목록 상태 10초 |
-| lease | v1 신규 실행은 heartbeat 30초, lease 120초 제안. 서버가 기한 반환, 만료/인증 거절 시 실행 중지. v0 실행의 기존 15분 lease는 이관 때 임의 축소하지 않음 |
-| 일시 통신 오류 | 5·15·30초로 재시도하되 마지막으로 확인한 lease 기한 전에 중지. API 연결 없이 신규 작업을 시작하지 않음 |
-| 실행 제한 | 기존 30분 기본 유지. 시간 초과·명시적 취소 시 자식 프로세스 트리 종료와 receipt 보존 |
-| 진행 기록 | 최근 20건, 시간·작업 종류·성공 여부만 저장. 모델 사고 내용·SQL·도구 인수·결과 원문 제외 |
-| PC 절전/종료 | heartbeat 만료로 실패 처리. 재접속 시 자동 재분석하지 않고 사용자에게 재시도/결과 복구 제시 |
-| 완료 응답 유실 | 같은 run·결과 hash·requestId로 재전송. 이미 같은 결과가 저장되어 있으면 성공 반환, 다른 결과면 충돌 |
-| 만료 후 늦은 결과 | 완료로 덮어쓰지 않음. 원본·근거 재확인 후 기존 실행을 부모로 새 복구 버전 등록 |
-| 권한 회수 | 조회·claim·heartbeat·저장 모두 거부. 로컬 결과는 보호된 경로에 보존하고 다른 계정으로 자동 업로드하지 않음 |
-| 대기 작업 | Runner 오프라인 표시. 24시간 지난 queued는 만료시키고 사용자가 새 요청으로 재등록 |
-
-lease token은 충분한 무작위 값으로 생성하고 서버에는 hash와 generation을 보관한다. heartbeat/result는 현재 generation과 token을 모두 검증한다. 재전송에 필요한 token은 PC의 보호된 receipt에 저장하며 AI 자식 프로세스에 전달하지 않는다. result에는 구조 검증과 adapter의 원본 조회 증거 확인이 모두 필요하다. 통신 실패로 저장되지 않은 보고서를 UI에서 ‘저장 완료’로 표시하지 않는다.
-
-### 7.4 동기화·관련 메일·지식
-
-- 동기화는 source별 lease 1개와 로컬 실행 프로세스 1개로 직렬화한다. 분석과 분리하고 기존 100건 묶음·부분 실패·사용자 중지·명시적 이어받기를 유지한다.
-- 기존 API 시작 시 전체 sync를 복구하던 방식을 제거한다. 중앙 스케줄러는 자기 lease가 만료된 작업만 일시 중지 처리하며 다른 PC의 활성 작업을 건드리지 않는다.
-- 묶음 ID·시작 receipt·MCP 응답을 원자적으로 저장한다. 응답 유실은 ‘결과 불확실’로 보존하고 MCP의 UIDL 중복 방지를 확인한 뒤 명시적으로 재개한다. 불확실한 건수를 완료로 합산하지 않는다.
-- 관련 메일 등록은 로컬 원문 미리보기·명시적 선택 후에만 한다. 초기에는 동일 source 안에서 연결하며 원본이 없어도 기존 연결·보고서는 보존한다.
-- 메일 검색 상태 필터는 로컬 MCP의 전체 후보와 공용 API의 권한 있는 메일 상태를 batch 대조한 뒤 건수·페이지를 계산한다. 화면의 현재 페이지만 필터링하는 방식으로 축소하지 않는다. 데이터 증가 시 검색 인덱스 도입은 source별 공유 범위를 먼저 정한 뒤 검토한다.
-- 지식 제안은 기존 해시·버전·단일 반영 절차를 유지한다. 여러 PC의 다른 원본 파일에 같은 제안을 무조건 적용하지 않고 대상 문서 버전과 반영 담당자를 확인한다. 자동 배포 스킬과 고객 업무 지식은 별도 패키지/권한이다.
-
-## 8. Codex·Claude 연결과 스킬 배포
-
-공통 adapter 계약은 `probe`, `prepare`, `execute`, `cancel`, `normalizeEvent`, `validateResult`이다. 입력은 분석 대상·읽기 전용 자료·스킬 버전·결과 스키마, 출력은 공통 진행 이벤트와 구조화 결과다. 두 agent의 원래 JSON 이벤트 형식을 UI나 DB 코드에 노출하지 않는다.
-
-- Codex는 `codex exec`의 JSON 이벤트·최종 스키마 출력을 사용한다. 현재 Docker의 0.154.0은 기존 환경의 고정값이며 Windows 지원 버전으로 자동 인정하지 않는다. P4에서 최소/검증 버전을 정한다. [Codex 공식 실행 문서](https://developers.openai.com/codex/noninteractive).
-- Claude Code는 `claude -p`와 구조화 출력으로 연결한다. 스킬·MCP 로딩과 인증 방식은 실행 옵션에 따라 달라진다. 특히 `--bare`가 구독 로그인·자동 설정 로딩을 생략하는 점을 반영해 개인 계정 모드와 API 모드를 별도로 검증한다. 구독만 있으면 모든 실행 방식이 무료라고 안내하지 않는다. [Claude Code 공식 실행 문서](https://code.claude.com/docs/en/headless).
-- API·DB 자격은 agent 환경에서 제외한다. 개인 CLI의 기존 인증은 공식 로그인 경로를 사용하며 인증 파일을 Git·공용 서버에 복사하지 않는다. 에이전트 실행에 필요한 권한/도구만 제공한다.
-- ERP DB는 읽기 전용 계정과 MCP 도구 제한을 사용한다. 파일 쓰기 차단은 프롬프트만으로 주장하지 않고 각 agent의 권한·샌드박스와 실제 쓰기 거부 테스트로 확인한다. 해당 플랫폼에서 보장하지 못하는 adapter는 팀 릴리스에서 제외한다.
-- 공통 스킬은 개인정보·내부 절대경로를 제거하고 설정 키로 자료 위치를 받는다. 각 agent에 필요한 설치 형식만 adapter에서 생성한다. 기존 전역 설정·개인 스킬을 일괄 덮어쓰지 않는다.
-- manifest에는 skill ID, version, 파일 hash, 지원 agent/contract, 필요한 MCP 도구와 참조 자료 목록을 넣는다. 실행 도중 업데이트하지 않고 실행별 스킬·모델·자료 버전을 기록한다.
-- 같은 합성 업무 사례로 Codex/Claude의 도구 사용·근거·공통 출력·금지 작업 준수를 비교한다. 설치 파일 존재만으로 스킬 적용 또는 분석 품질 검증을 완료 처리하지 않는다.
-- 앱이 읽을 자료와 접근 권한은 같아도 agent/model에 따라 보고서는 달라질 수 있다. 같은 결과 보장이 아니라 같은 업무 절차·검증 기준과 이력 형식을 목표로 한다.
-
-## 9. Windows 설치·업데이트 사양
-
-### 9.1 초기 배포물
-
-Windows 11 x64를 1차 검증 대상으로 한다. 기타 Windows 버전·ARM64·macOS·Linux는 지원 확인 전 배포 대상에 포함하지 않는다. 서버는 Linux x64이며 로컬 OS와 별개다.
-
-초기 배포는 버전이 고정된 ZIP에 portable Node.js 24 런타임, 빌드된 local-app/UI, 앱 관리 스킬, 시작/진단 스크립트를 묶는다. `install.ps1`과 시작 바로가기로 사용자 디렉터리에 설치한다. Electron/Tauri·MSI 제작은 v1의 선행 조건으로 삼지 않는다. 서명·회사 PowerShell 실행 정책을 팀 PC에서 확인하고 전역 실행 정책 변경으로 우회하지 않는다.
-
-| 경로 제안 | 내용 |
-|---|---|
-| `%LOCALAPPDATA%/MailTriage/releases/<version>/` | 앱·Node·viewer·배포 스킬. 버전별 분리 |
-| `%LOCALAPPDATA%/MailTriage/config/` | 공용 API 주소, source/agent 설정, 사용자별 로컬 참조 경로 |
-| `%LOCALAPPDATA%/MailTriage/secrets/` | DPAPI 보호 refresh/device 자격. 현재 사용자 ACL |
-| `%LOCALAPPDATA%/MailTriage/work/<runId>/` | 보호된 결과·receipt·복구 outbox |
-| `%LOCALAPPDATA%/MailTriage/scratch/` | 실행 중 agent 임시 작업. DPAPI receipt와 분리 |
-| `%LOCALAPPDATA%/MailTriage/staging/` | 설치 검증 후 releases로 게시하기 전 임시 폴더 |
-| `%LOCALAPPDATA%/MailTriage/logs/` | 민감정보 제외 진단 로그, 기본 7일 순환 |
-
-AI CLI와 개인 MCP는 팀원이 관리한다. installer는 설치 유무·버전·로그인·MCP 도구·ERP 경로를 점검하고 부족한 항목을 안내한다. 팀원의 Docker·AI 구독을 대리 생성하거나 기존 설정을 통째로 바꾸지 않는다. 로컬 앱 자체에는 Docker가 필요하지 않지만 개인 MCP가 Docker를 사용하면 해당 환경은 필요하다.
-
-### 9.2 설치 경험과 업데이트
-
-1. 앱 배포 버전 확인 → 사용자 폴더 설치 → 시스템 브라우저에서 회사 이메일 가입/로그인.
-2. Codex/Claude 선택 → 각 CLI의 개인 로그인 상태·지원 버전 확인.
-3. MCP 연결 프로필·필요 도구 확인 → source 등록/기존 source 연결 → ERP·업무 문서 읽기 점검.
-4. 공통 스킬과 실행 권한 확인 → 합성 샘플 분석 → 이력 저장/재조회 성공 후 사용 가능 표시.
-5. 시작 바로가기는 로컬 서버를 숨김으로 실행하고 웹 화면을 연다. 종료는 분석/동기화 진행 여부를 안내하고 중지 절차를 따른다. 기본 자동 시작은 끈다.
-6. 업데이트는 사용자가 실행한다. 릴리스 version·checksum·계약 호환성을 확인하고 별도 폴더에 설치한 뒤 진단 성공 시 활성 버전을 바꾼다. 실행 중 작업이 있으면 연기한다.
-7. 설정·개인 인증·outbox는 업데이트에서 보존한다. 직전 앱 버전을 유지해 되돌릴 수 있게 한다. 새 DB schema가 구버전 API/client와 호환되는지도 확인한다.
-8. 제거는 앱과 앱 소유 스킬만 대상으로 한다. 공유 이력과 개인 CLI/MCP를 삭제하지 않으며 미전송 결과·설정 제거는 별도 선택이다.
-
-비공개 GitHub Release 다운로드는 사용자의 기존 GitHub 인증 또는 운영자가 전달하는 검증된 배포 ZIP을 사용한다. 공유 PAT를 installer에 넣지 않는다. checksum은 손상 확인 수단이며 배포자 신뢰를 대체하지 않으므로 승인된 저장소·릴리스에서만 받는다. 자동 다운로드 인증 UX와 코드 서명은 P6에서 결정한다.
-
-## 10. 공용 서버 배포와 운영 사양
-
-### 10.1 초기 자원과 네트워크
-
-아래는 **소수 팀원 2~5명 파일럿의 측정 시작값**이며 실제 수용량 보장이 아니다. 팀 규모가 확인되면 부하 검증 조건과 함께 조정한다.
-
-| 항목 | 기본안 |
-|---|---|
-| 호스트 | Linux x64 VM, 2 vCPU / RAM 4 GiB / SSD 40 GiB 시작, CPU·메모리·DB 증가량 측정 |
-| 컨테이너 | Caddy 2 + history-api(Node 24) + PostgreSQL 17. 서버에 Codex/Claude/개인 MCP 미설치 |
-| 외부 접속 | 공용 API HTTPS 443, 인증서 발급 방식에 필요한 제한된 80 또는 DNS 검증. SSH는 운영자 경로로 제한 |
-| DB | Docker 내부 네트워크만, 5432 외부 publish 금지, named volume 사용 |
-| API 주소 | 실제 서비스 도메인과 TLS 인증서 필요. source/MCP 주소와 분리 |
-| 설정·비밀 | 서버 환경/secret 파일, 이미지·Git·Actions 로그에 넣지 않음. dev/test/prod 분리 |
-| 초기 제한 | API replica 1, Runner당 분석 1/팀 합계 2, 동일 source sync 1 |
-| 상태 확인 | `/health/live` 프로세스, `/health/ready` DB·schema 호환성. 민감한 구성 정보 미노출 |
-
-GitHub는 코드와 패키지 배포 위치다. 실제 상시 API/DB 호스트는 별도로 확보한다. 이 초기 서버는 ERP망에 접근하지 않으므로 ERP망 연결이 공용 이력 구축의 선행 조건은 아니다. 개발자 PC에서 공용 서버 구성을 재현할 수는 있지만 PC가 꺼져도 사용하는 팀 파일럿의 완료로 인정하지 않는다.
-
-Caddy의 [자동 HTTPS](https://caddyserver.com/docs/automatic-https)는 실제 DNS·인증서 발급 조건을 충족해야 한다. VM 업체·리전과 Auth0/발송 요금은 구매 직전 공식 조건으로 확인한다. 무료 요금제를 전제로 완료 조건을 정하지 않는다. Vercel은 후속 웹 호스팅 후보로 남기며 초기 API/DB의 필수 구성에서 제외한다.
-
-### 10.2 백업·장애·관측
-
-- PostgreSQL `pg_dump -Fc` 일 1회와 migration 직전 백업. 매일 14개 + 주간 8개를 초기 보존안으로 하고 암호화된 다른 저장 위치에 보관한다. 같은 VM 디스크 사본만으로 백업 완료 처리하지 않는다. [PostgreSQL 백업 문서](https://www.postgresql.org/docs/17/backup-dump.html).
-- 파일럿 목표 RPO 24시간 / RTO 4시간. 매월 및 첫 배포 전에 격리 DB 복원, 건수·관계·보고서 hash·권한 대조를 수행하고 실측을 기록한다. 미검증 목표를 운영 보장으로 표시하지 않는다.
-- API 상태·DB 디스크 70/85%·백업 나이 26시간·연속 5xx·대기 작업 지연을 점검한다. 알림 수신처와 담당자는 P5 전에 정한다. Runner 오프라인은 서버 장애와 분리한다.
-- 로그는 requestId, actor/runner/run ID, 처리 시간, 오류 코드만 기본 수집한다. 토큰·메일/보고서 본문·SQL 결과·로컬 절대경로는 기록하지 않는다. 감사 로그 초기 보존안 90일, 보고서와 업무 이력 삭제 정책은 팀 운영 정책으로 별도 확정한다.
-- 서버 재시작은 claim 중복 없이 복구하고, 만료 실행만 정리한다. 기본 동작으로 기존 큐를 전부 재실행하지 않는다.
-- 공용 서버 장애 중에도 로컬 원본 조회를 제공할 수 있지만 공용 이력·신규 작업은 사용 불가로 표시한다. 원래 MCP 저장소와 개인 업무 파일의 백업은 이력 DB 백업과 별도로 담당자를 정한다.
-- 사용자 AI 계정과 MCP에 접근하는 것은 로컬 agent다. 로컬 실행이어도 분석 입력 일부는 선택한 AI 제공자에게 전달될 수 있으므로 해당 계정의 업무 이용·데이터 설정을 파일럿 조건에 포함한다.
-
-## 11. 기존 이력·API 이관과 롤백
-
-1. **기준 확보:** 진행 중 분석·sync를 확인하고 전환 창을 정한다. 기존 DB 백업과 보고서·legacy·관계·처리 상태의 건수/hash를 보존한다. 현재 작업 트리의 미커밋 변경은 별도이며 이관 명목으로 reset하지 않는다.
-2. **schema 확장:** numbered SQL migration과 checksum ledger를 도입한다. 기존 `migration.sql` 상태를 baseline으로 인식하고 복제 DB에서 검증한다. 시작 시 매번 DDL을 실행하는 방식에서 배포 전 migration 명령으로 전환한다. 실행 API와 migration DB 계정을 분리한다.
-3. **식별 매핑:** 기존 store를 하나의 등록 source에 연결하고 원래 메일/run ID를 유지한다. 과거 요청자·실행 agent가 불확실하면 `legacy/unknown`으로 둔다. 현재 사용자가 과거 모든 실행을 했다고 추정하지 않는다.
-4. **권한 부여:** 기존 개인 보고서·legacy는 제한된 소유자/보관 collection으로 가져온다. 팀 공유 범위를 검토한 뒤 공개한다. 미연결 3건이나 후속 메일 연결 미완료를 삭제·강제 병합으로 해결하지 않는다.
-5. **복제본 검증:** 두 사용자·두 Runner·합성 source로 계약과 권한을 먼저 검증한다. 실제 고객 분석은 사용자가 지정한 메일 ID가 있을 때만 한다.
-6. **단일 쓰기 전환:** 기존 작업을 마친 뒤 쓰기를 잠시 중지하고 최종 백업/복원·hash 대조·API URL 전환을 수행한다. 구 서버는 읽기 전용으로 보관한다. 양쪽 DB에 동시 쓰기하며 임의 병합하는 전환은 하지 않는다.
-7. **안정화:** 웹·직접 CLI·Runner가 같은 공용 결과를 읽는지 확인한다. 기존 v0 ownerToken은 팀 공용 인증으로 인정하지 않고 남은 복구 건을 전환 전에 정리하거나 제한된 운영 절차로 처리한다.
-8. **롤백:** 공용 쓰기 전 문제면 원래 서버로 복귀한다. 공용 쓰기 후에는 새 결과부터 백업하고 writer를 멈춘 뒤 역이관을 검토한다. 오래된 DB 백업을 덮어 최신 보고서를 버리는 롤백은 금지한다. 앱 롤백과 DB 롤백은 별도로 기록한다.
-
-schema는 추가→채움→검증→사용 전환→후속 정리 순서로 바꾸며 기존 컬럼 제거는 파일럿 안정화 이후로 미룬다. 어떤 단계에서도 `docker compose down -v`로 이력을 초기화하지 않는다.
-
-## 12. 단계별 작업·산출물·완료 기준
-
-최신 인계 지시에 따라 작업별로 구현·검증·커밋했다. 아래 현재 상태가 실제 완료 범위다. React R0~R6 완료와 P1~P8 팀 기능 완료를 구분한다. 최초 예상 공수와 목표 완료 기준은 다음 표에 보존한다.
-
-| 단계 | 2026-09-18 현재 검증된 범위 | 남은 구현·검증 |
-|---|---|---|
-| P1 | workspace/모듈·UI 이동·호환 export, DB 없는 클라이언트, legacy/리뷰/처리/관련 메일/검색/수동 링크/지식 제안 ACL·React facade, UI 15개 및 Native 브라우저 회귀 | 외부 통합 환경에서 기존 기능 수용 검증 |
-| P2 | JWT/PKCE·Auth0 Action, 사용자/source/collection/Runner, DPAPI, 일회용 browser bootstrap·cookie/CSRF·refresh/logout, 공유 UI·사용자별 초안·명시적 원본 재연결 | D1/D3 실Auth0·메일 인증/재설정/재발송, 실계정·다른 Windows 사용자, D5 upstream instance 식별 |
-| P3 | 지정 Runner 큐/lease/progress/outbox, 지속 loop·중지·복구 UI/CLI, 부모 보고서·답변 연결, HTTP sync 3,200건, 실제 agent 저장 종단 및 Windows 부모/자식 취소 | 실제 PC 절전/종료·다중 장치·실제 권한 회수 현장 검증 |
-| P4 | 두 개인 CLI 실제 MCP 합성 읽기→Runner→HTTP API→DB, 스킬/결과 근거 대조, 파일·환경 제한·scratch 분리 | D5 ERP DB 읽기 전용 계정/고정 query provider 연결, 실제 금지 쓰기 거부·Windows sandbox 설정/깨끗한 PC 검증 |
-| P5 | 공용 API 이미지/Compose·Caddy/SMTP 템플릿, 명시적 매핑 preview/hash/apply·DML 권한 검사, 기존 DB 복제 migration·재복원 11테이블 hash 보존 | D1~D4 실제 source/legacy 귀속 결정·운영 계정 적용, 외부 접근/TLS/메일·외부 암호화 백업·실전환 |
-| P6 | 고정 Node 후보 ZIP, 파일 hash/import 진단, staging 설치·롤백·복구, 실행/브라우저/바로가기/중지·보존 제거, DPAPI 한글 경로 검사 | D5/D6 깨끗한 팀 PC·회사 실행 정책/서명·비공개 배포 접근 및 릴리스 승인/게시 |
-| P7 | 합성 두 사용자/Runner 회귀, 파일럿 사례·기록 양식·누락 검사 | D5/D7 시험자·두 PC·지정 메일·실제 업무 관찰. 현장 미착수 |
-| P8 | v1 local 경계 유지, service 입력 거부 검사 | P7 및 D8 결정 전 전체 보류 |
-
-승인된 범위에서 독립적으로 수행할 수 있는 로컬 구현·합성 검증·후보 산출물을 완료했다. 실제 계정/자료/호스트에 종속된 연결과 현장 검증은 위 표에 남겼다. 현재 ZIP은 releaseApproved=false이며 팀 배포용 완성본이 아니다. 실행 중 기존 v0 서비스는 교체하지 않았다. 기존 잔여 L1~L3 자료 판정/후속 설계도 자동 완료하거나 임의 매핑하지 않는다.
-
-| 단계 | 선행 조건 | 작업·산출물 | 완료 기준 | 예상 공수 |
-|---|---|---|---|---|
-| P0 문서 통합 | 현재 문서·소스 대조 | 이 통합 계획, 문서 목록, 기존 계획 보존, 상태/근거 구분 | 문서 링크·보존 대조 및 상충 계획 정리 | 이번 문서 작업 |
-| P1 서비스 분리 | P0, React R0~R6 | contracts/history-client, history-api/local-app 골격, v1 계약, 기존 기능 경계 이동 및 UI 패키지 이동 | 합성 Runner가 DB 자격 없이 API로 등록·저장·조회. 기존 기능 회귀 통과 | 3~5일 |
-| P2 인증·권한·다중 출처 | P1, Auth0 개발 설정 | Native PKCE, 이메일 인증 Actions, 사용자/source/Runner/ACL, migration | 도메인·미인증·타인 데이터 차단, 자동 가입·비활성화·재설정·두 저장소 ID 충돌 검증 | 4~6일 |
-| P3 로컬 Runner·sync | P1/P2 | claim/lease/progress/cancel/outbox, source별 sync, 직접 CLI v1 | 두 Runner 배정·중복 방지, API 중단·PC 종료·만료·재전송·sync 복구 통과 | 3~5일 |
-| P4 agent·스킬 | P3, 각 agent의 시험 계정·자료 | Codex/Claude adapter, 공통 스킬 manifest, 권한·결과 검증 | 두 agent로 같은 합성 업무 종단 검증, 금지된 ERP 쓰기 차단, 로그인/스킬 적용 확인 | 3~5일 |
-| P5 공용 서버·이관 리허설 | P2/P3, 서버·DNS·운영 계정 | Compose/Caddy, 운영용 메일 발송, 배포·백업·복원·전환 runbook | 외부 두 환경에서 인증 API 접근, DB 비공개, 복제 DB 이관/hash 및 복원 시간 확인 | 2~4일 |
-| P6 설치·배포 패키지 | P4/P5의 계약 안정화 | Windows ZIP/설치기/진단/업데이트/제거, Actions·Release 초안 | 깨끗한 팀 PC에서 설치·분석·갱신·복구, 개인 설정/비밀 보존 | 3~5일 |
-| P7 두 PC 팀 파일럿 | P6, 시험 사용자·공유 출처 확정 | 실제 설치 안내, 결함 목록, 사용량·속도·복구 기록 | 아래 파일럿 기준 통과 후 팀 확대 판단 | 실제 업무 5일 이상 관찰 제안 |
-| P8 선택적 공용 실행 | P7 및 공용 자료/AI 계정·예산 결정 | 공용 웹, service Runner, 공용 MCP·자료 연결 | 같은 v1 이력·권한 유지, PC 종료 상태에서도 서버 대상 작업 성공 | 별도 산정 |
-
-P1은 기능 경계와 mock 계약을 로컬에서 시작할 수 있다. Auth0 실가입은 P2, 실제 상시 호스트는 P5, 패키지 외부 게시와 사용자 배포는 P6/P7에 필요하다. 외부 준비가 없으면 해당 실검증을 미완료로 남기며 합성 성공으로 대체하지 않는다.
-
-### 12.1 테스트 매트릭스
-
-| 검증 축 | 필수 사례 | 증거 |
-|---|---|---|
-| 인증 | 회사/외부 도메인, 미인증 접근, 재설정·재발송, state/nonce 불일치, token 만료·audience 오류·서명 오류 | Auth0 시험 사용자 + API/브라우저 테스트 |
-| 권한 | A가 B의 run/source/legacy/export/관련 메일 ID 직접 요청, 건수·검색 유출, 비활성 사용자, 폐기 Runner | 두 사용자·별도 source·collection의 격리 DB 테스트 |
-| 식별 | 동일 숫자 ID/Message-ID의 다른 저장소, MCP 재설치, 기존 source 재연결 | mapping과 보고서 hash 보존 |
-| 큐 | 동시 claim, 다중 API 트랜잭션, 다른 Runner 탈취, agent 미지원, source ACL 회수 | 합성 Runner 이벤트·DB 상태 |
-| 장애 | claim/완료 응답 유실, heartbeat 실패, lease 만료 뒤 저장, 앱/PC 종료, 취소·30분 제한 | 프로세스 장애 주입, outbox/복구 결과 |
-| 동기화 | partial 지속, 100개 묶음, 멈춤·재개, 응답 불확실, source 동시 실행 차단 | 기존 합성 3,200건 시나리오의 새 구조 회귀 |
-| UI·첨부 | 기존 메일/보고서/추가 답변/처리 상태, 원본 없는 PC, 5 MiB·WASM·CSP·외부 요청 차단 | Playwright 합성 화면·모바일 검증 |
-| agent | 실제 스킬 로딩, MCP 도구 조회, 읽기 전용 준수, 공통 결과/실패 이벤트 | Codex/Claude 각각의 합성 업무 실행 결과 |
-| 패키지 | 새 Windows 사용자, 비ASCII 경로, 포트 충돌, CLI 없음/만료, 기존 설정 보존·업데이트·롤백 | 깨끗한 PC 체크 결과와 파일 hash |
-| 운영 | schema baseline, dump/restore, source ACL 이관, 백업 암호화·다른 위치, DB 외부 접속 차단 | 리허설 결과·건수/hash·복원 시간 |
-
-API/DB 테스트는 전용 schema 또는 별도 Compose 프로젝트로 격리한다. CI는 합성 자료만 사용하고 운영 DB·MCP·개인 AI 인증을 넣지 않는다. 단계 변경에 관련된 검사만 실행하고 결과·제한을 `validation.md`에 남긴다.
-
-### 12.2 파일럿 합격 기준
-
-- 서로 다른 두 PC에서 개인 AI/MCP로 분석하고 동일 공용 API·DB에 기록된다. 최소 Codex 1개 환경과 Claude Code 1개 환경을 포함한다.
-- 같은 공유 source의 보고서는 두 사용자가 볼 수 있고 개인 source/collection은 타인이 볼 수 없다. 원본이 없는 PC는 원본 열기 제한을 정확히 표시한다.
-- 개발자 PC가 꺼져도 공용 이력 조회와 다른 팀원의 분석이 가능하다. 해당 팀원 PC가 꺼지면 그 PC 대상 분석만 중단된다.
-- 중복 클릭·네트워크 끊김·결과 재전송으로 보고서가 중복 저장되거나 이전 결과가 덮어써지지 않는다.
-- 설치/업데이트가 개인 agent·MCP 설정을 훼손하지 않고 실패 시 되돌릴 수 있다.
-- 백업을 실제 복원해 결과·권한을 확인하며, 운영 담당자와 AI/서버 사용량 확인 방법이 정해져 있다.
-- 실메일 분석 검증은 사용자가 지정한 대상에 한정한다. 합성 테스트 통과, 실제 실행 성공, 업무 판단 확인을 별도 항목으로 기록한다.
-
-## 13. 결정 대기 항목과 변경 관리
-
-| ID | 필요한 결정 | 필요한 시점 | 미확정 상태에서 가능한 일 |
+| 후보 | 이점 | 비용/추가 작업 | 현재 판단 |
 |---|---|---|---|
-| D1 | 실제 회사 이메일 도메인, 최초 admin, 가입 후 기본 팀 | P2 실인증 전 | 예시 도메인·합성 사용자로 계약/권한 개발 |
-| D2 | 공유할 source/legacy·지식, read/write 사용자 | P2 권한 fixture 확정, P5 이관 전 | 기본 비공개 및 명시적 ACL로 개발 |
-| D3 | Auth0 테넌트·요금제·발송 서비스·From 주소·DNS 담당 | P2 실메일 인증/P5 운영 전 | mock 인증·화면과 설정 템플릿 |
-| D4 | VM 업체·리전·예산·DNS·백업 위치·운영/알림 담당 | P5 | 로컬 Compose 재현·배포 runbook |
-| D5 | 팀 PC OS·agent 종류/버전·계정 방식·MCP 형태·자료 경로 | P4/P6 | Windows x64·HTTP MCP 기준 adapter와 진단 구현 |
-| D6 | GitHub 조직/비공개 여부·Release 접근·코드 서명 정책 | P6 게시 전 | 로컬 빌드·배포 ZIP·manifest·CI 초안 |
-| D7 | 두 PC 시험자·합성 사례·실메일 지정·팀 확대 기준 | P7 | 합성 종단/장애/격리 테스트 |
-| D8 | 공용 agent 계정·비용·MCP 권한·서버 자료 동기화 | P8 | local/service executor 경계·계약 유지 |
+| AWS API + PostgreSQL 유지 | 현재 코드·PoC·동시성 계약 재사용, 팀 배포까지 변경량이 작음 | AWS PostgreSQL 운영 자원/백업 비용. 기존 호스트 자체 운영안은 운영 부담 별도 비교 | 우선 권고안. 실제 RDS 신규 생성은 별도 대상/예산 확정 후 |
+| AWS API + 기존 MariaDB RDS | 기존 DB 인프라 활용 가능 | 엔진 이식·권한/성능/백업 검증 및 기존 업무 영향. 총비용이 더 작다는 보장 없음 | 기존 DB 재사용을 더 우선할 경우 M1에 별도 이식 단계 추가 후 선택 |
+| AWS API + Supabase PostgreSQL | PostgreSQL 계약 유지, 기존 PoC 플랫폼 활용 | 클라우드 간 연결·비밀·장애/egress 운영, 이후 AWS 통합 시 이관 | 대안으로 보존. 첫 배포의 필수 경로 아님 |
 
-새 결정은 이 표와 해당 사양을 함께 고친다. 이전 안은 역사 문서에만 남기고 여러 계획서에서 서로 다른 다음 단계를 유지하지 않는다. 외부 계정 생성·서비스 구매·실제 이관·배포·게시가 필요한 단계는 구체적인 산출물과 대상이 준비된 시점에 사용자 지시 범위를 확인한다.
+기존 RDS 재사용과 기존 `cvslog` 업무 테이블 공유를 구분한다. 같은 인스턴스를 쓰더라도 앱 전용 database와 runtime/migration 계정을 우선 분리하고, PostgreSQL에서 같은 database가 필요하면 schema/search_path/권한을 분리한다. schema 이름만으로 격리가 보장되지 않으므로 타 영역 접근 거부를 검증한다. CPU/메모리/IO·연결·유지보수·장애 영향은 같은 인스턴스에서 공유한다. [PostgreSQL schema와 권한](https://www.postgresql.org/docs/current/ddl-schemas.html).
 
-## 14. 향후 공용 실행으로의 전환
+### 4.3 최초 운영 기본안
 
-첫 후속 단계는 공용 웹에서 이력 조회·공유 관리 기능을 제공하는 것이다. 공용 웹이 브라우저에서 임의로 팀원 PC의 localhost에 접근하게 만들지 않는다. 분석 요청은 서버 큐에 등록하고 인증된 로컬 Runner가 outbound 연결로 받아 처리한다. 원문 미리보기는 로컬 앱에서 계속 제공한다.
+- 기존 코드와 맞는 Node/Express API를 AWS 호스트에 배치한다. 초기에는 작은 EC2/컨테이너를 후보로 비교하며 ECS/Kubernetes/멀티 리전을 선행 조건으로 두지 않는다. API와 DB를 같은 VPC/리전의 사설 경로로 연결하는 안을 우선한다.
+- 팀 PC는 HTTPS API만 사용한다. DB는 API 보안 그룹/승인된 관리 경로에만 열고, 팀 PC마다 DB 포트를 공개하지 않는다. TLS 인증서 검증·최소 DML runtime 계정·별도 migration 계정을 적용한다.
+- 기존 `deploy/compose.server.yaml`은 자체 DB 컨테이너/Auth0를 가정한 과거 템플릿이다. 그대로 RDS 배포 명령으로 쓰지 않는다. 선택 엔진·RDS 연결/TLS·사용자명 인증·readiness에 맞춰 M1에서 배포 구성을 갱신한다.
+- API 호스트에 개인 AI 인증/메일 자격을 복사하지 않는다. 향후 비신뢰 빌드 Runner와 API/DB/MCP는 자격·파일시스템·네트워크를 분리한다.
+- 비용은 API compute·디스크, DB/백업 증가, 로그, 데이터 전송, 실제 필요한 프록시/네트워크 자원, 운영 시간을 함께 비교한다. 기존 RDS를 사용해도 증설·저장·백업과 타 업무의 성능 비용이 생길 수 있다. 무료 또는 정확한 월 요금을 확정하지 않는다. [RDS PostgreSQL 요금](https://aws.amazon.com/rds/postgresql/pricing/).
+- 운영자와 백업/복원 담당을 정한다. RDS 자동 백업은 인스턴스 전체 단위이므로 앱 장애 때문에 다른 업무 DB를 함께 되돌리지 않게 별도 복원 인스턴스·앱 단위 논리 복구 절차를 검증한다. 자동 백업 0일인 후보를 현재 설정 그대로 팀 운영 가능으로 판정하지 않는다. [RDS 백업 범위](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html).
 
-서버 실행이 필요한 source부터 service Runner와 공용 MCP를 등록한다. 개인 AI 인증을 서버로 복사하지 않고 공용 실행 자격·비용 한도·source grant를 별도로 준다. 공용 ERP 자료의 버전·읽기 권한·네트워크를 확보한 작업만 `executor_kind=service`로 배정한다. 서버 Worker도 같은 v1 API·lease·결과 스키마를 사용하며 DB에 직접 접근하지 않는다.
+## 5. M1 통합 계약과 검증
 
-웹을 중앙에 올리는 것, AI 실행을 중앙으로 옮기는 것, 원본 MCP/자료를 공유하는 것은 각각의 전환이다. 이 중 하나만 끝난 상태를 전체 상시 분석 운영 완료로 표시하지 않는다. 로컬 source와 공용 source의 메일 ID는 자동 통합하지 않고 별도 매핑 검증을 거친다.
+### 5.1 PoC에서 가져올 것과 환경 차이
 
-## 15. 문서 관리와 확인 근거
+재사용 대상은 자체 사용자명 인증/관리자 UI, 현재 계정·세션·자료 권한 검사, 로컬 로그인/DPAPI/HistoryClient, 사용자 UUID 매핑·복원 후 세션 폐기, outbox 복구다. 일반 Node 실행 진입점도 PoC에 있으므로 Supabase Edge를 사용해야만 인증을 쓸 수 있는 구조로 취급하지 않는다. Edge 전용 gateway·bundle·Supavisor·Free 사용량 튜닝은 AWS Node 배포와 구분한다.
 
-- 앞으로의 결정·백로그·단계 상태: 이 문서만 갱신한다. 완료 표시는 해당 검증 기록 링크와 함께 한다.
-- 기존 구현 세부 체크리스트: [implementation-history-2026-09-17.md](implementation-history-2026-09-17.md). 이전 배포 비교: [team-deployment-proposal-2026-09-17.md](team-deployment-proposal-2026-09-17.md). 두 문서는 통합 직전 내용을 보존한 역사 자료다.
-- 기능 사용법: [프로젝트 README](../README.md). 현재 운영 명령: [maintenance.md](maintenance.md). P5/P6 완료 시 실제 배포·설치 명령으로 갱신한다.
-- 검증 일지: [validation.md](validation.md), 이력 연결 상세: [legacy-link-validation.md](legacy-link-validation.md). 기록 당시의 미완료를 최신 미완료로 오독하지 않도록 날짜·후속 기록을 함께 본다.
-- 작업/인계 당시 맥락: [work-summary.md](work-summary.md)와 handoff 문서. 새 구현 범위나 배포 승인 근거로 사용하지 않는다.
+PoC 사양을 무비판적으로 배포하지 않고 아래 차이를 통합 체크리스트로 고정한다. 채택값과 검증 버전은 M1에서 기록하며 서로 다른 기본안을 동시에 현재 사양으로 남기지 않는다.
 
-기술 근거는 2026-09-17 공식 문서와 현재 작업 트리다. 비용·상품 지원·CLI 옵션·패키지 패치 버전은 해당 단계에서 다시 확인한다. 참고: [Auth0 PKCE](https://auth0.com/docs/get-started/authentication-and-authorization-flow/authorization-code-flow-with-pkce), [이메일 인증](https://auth0.com/docs/manage-users/user-accounts/verify-emails), [SMTP](https://auth0.com/docs/customize/email/smtp-email-providers), [openid-client](https://github.com/panva/openid-client), [jose](https://github.com/panva/jose), [Codex 실행](https://developers.openai.com/codex/noninteractive), [Claude Code 실행](https://code.claude.com/docs/en/headless), [PostgreSQL 백업](https://www.postgresql.org/docs/17/backup-dump.html), [Caddy HTTPS](https://caddyserver.com/docs/automatic-https).
-
-## 16. 2026-09-21 후속 보완
-
-사용자가 승인한 1→2→3 순서로 구현·검증하고 작업별로 커밋한다. DB 공통 잠금 부하 측정/변경은 이번 범위에 포함하지 않는다.
-
-| 순서 | 작업 | 상태와 검증 |
+| 항목 | 기존 계획/PoC 차이 | 통합 시 기준 |
 |---|---|---|
-| 1 | v1 스레드 검색 캐시·동시 요청 합치기·MCP 연결 재사용 | 완료. 15초/8개/16MiB 캐시를 사용자·source·MCP instance/endpoint로 구분하고 매 요청 권한·sync revision·수동 연결·분석 상태를 재확인한다. 205개 합성 메일의 다음 페이지는 추가 원본 조회 0회, 최초 3개 검색 페이지는 MCP initialize 1회. 관련 검사 15/15 및 check 통과 |
-| 2 | Runner 일시 통신 오류 재시도와 중단 사유 구분 | 완료. heartbeat의 통신/timeout/일시 HTTP 오류는 5·15·30초 재시도, 마지막 확인 lease 기한 전에 중지. 권한 거절/lease 충돌/명시 취소는 즉시 중지. 네트워크·권한·lease·앱 종료·사용자 취소·실행 실패를 별도 코드로 저장. 관련 최종 검사 17/17 및 check, PostgreSQL 포함 전체 검사 110/110 통과 |
-| 3 | requestId 기반의 안전한 오류 로그 | 완료. 오류 응답 ID와 stderr JSON 로그를 연결하고 로컬→공용 API의 upstreamRequestId도 검증 후 기록. 경로 템플릿·고정 오류 분류·처리 시간만 기록하며 원문·토큰·SQL·동적 URL·stack 제외. 로그 sink 장애와 부분 응답 오류도 검증 |
+| JWT/세션 | v2.1 기본안 RS256/10분/14일, PoC ES256/5분/30일 | PoC 동작을 재사용 후보로 검토, 수명·키 교체·로그아웃/폐기 테스트와 함께 결정 |
+| 비밀번호 | 구 기본안 15~128자, PoC 최소 12자/UTF-8 최대 128 bytes | Unicode/길이 단위를 명시해 UI·API·운영 안내 일치. 선택 정책에 맞춰 재검증 |
+| 사용자명 | PoC ASCII 영문 시작 3~32자·소문자 정규화 | 관리자 발급·중복·불변 UUID·이름 재사용 정책 검증 |
+| hash/자원 | PoC Argon2id WASM·동시 실행 제한 | AWS Node의 동시 로그인·CPU/RAM·rate limit 실측. 약한 hash fallback 없음 |
+| DB | PostgreSQL 트랜잭션·schema·advisory lock | 선택 엔진/버전·TLS·최소 권한·migration/restore 재현. MariaDB 선택 시 전용 이식 검증 |
+| 큐/관측 | 기존 전역 lock·30분 분석·Runner 1개/팀 2개 시작값 | 첫 파일럿의 작은 규모에서 측정. API 지연·lock 대기/timeout·pool 사용량으로 개선 여부 결정 |
 
-상세 근거는 [검증 기록](validation.md)의 같은 날짜 항목을 따른다. 기존 candidate.6 ZIP은 9월 18일 산출물이며 후속 수정이 들어간 패키지로 간주하지 않는다.
+### 5.2 계정·자료 권한
 
-3건 최종 상태에서 check/build/compat, PostgreSQL 격리 백엔드 116/116, Chrome query-cache·native-ui 2/2 통과. 로그/검증 자료는 `.runtime/20260921-*.log`에 로컬 보존하며 Git에는 합성 테스트와 검증 요약만 반영한다.
+운영자 전용 bootstrap으로 첫 관리자를 만든다. 첫 접속자 자동 admin, 공개 가입, 가짜 이메일 가입, Auth0/인증 이메일/SES 연결을 사용하지 않는다. 관리자가 사용자명 계정과 임시 비밀번호를 발급하고, 임시 자격은 한 번만 표시한다. 첫 변경 전에는 비밀번호 변경/로그아웃/최소 상태 외의 업무·관리·Runner 접근을 막는다.
 
-같은 날 추가 UI 요청: 처리 완료 보고서의 관련 메일 연결 전 미리보기/연결 후 ‘메일 보기’를 메일함과 같은 `MailContent`로 통일했다. 확인된 메일 ID의 HTML 본문을 조회해 문단·줄바꿈·표·CID 이미지를 보존하고, 서식 조회 실패 시 전체 텍스트의 줄바꿈을 보존한다. 원문 식별 검사와 HTML 안전 처리, 닫힌 미리보기의 늦은 응답 차단은 유지한다. check·UI build, Chrome related-mails/image-preview/mail-scroll/history-ui 4/4 통과. 기존 로컬 v0 화면 반영과 데이터 보존 근거는 검증 기록을 따른다.
+비밀번호 초기화/변경·계정 비활성화·역할 변경 시 관련 세션을 폐기한다. 마지막 활성 admin의 동시 강등/비활성화를 막고 운영자 복구 절차를 둔다. JWT 서명/issuer/audience/만료와 서버의 현재 세션·계정·소속·source/collection ACL을 검사한다. 변경은 트랜잭션에서도 재검사한다. DB 장애 시 우회 인증하지 않는다.
 
-같은 날 잔여 작업 1: 검색어·발신자 입력에서 Enter로 검색하고 한글 조합 중 Enter는 제출하지 않도록 정리했다. 데스크톱 검색어/발신자 폭은 최대 280/220px이며 모바일 배치를 유지한다. check·UI build, Chrome pre-p1-ux/query-cache/native-ui 3/3과 별도 Enter·IME 이벤트·폭 검증을 통과했다. 이 후속 변경의 실행 중 Docker 서비스 반영과 Windows ZIP 갱신은 수행하지 않았다.
+일반 사용자는 부여된 개인/공유 자료만 볼 수 있다. admin 역할은 다른 사람의 개인 메일·보고서를 자동 열람하게 하지 않는다. 목록·검색·건수·export·첨부·리뷰에도 동일 권한을 적용한다. 앱 admin 권한과 DB/OS/백업 운영자의 실제 접근 가능성은 다른 신뢰 경계이며 운영자 접근/감사를 문서화한다.
 
-같은 날 잔여 작업 2: [실제 이메일 인증 연결 절차](auth0-setup.md)와 별도 43180 포트의 Native 설정 예시를 준비했다. 실제 배포할 Auth0 Action의 도메인/인증 차단과 API claim 호환 검사를 추가하고 인증·세션 9/9 및 check를 통과했다. D1/D3 회사 도메인·최초 관리자·팀·Auth0·발송 서비스 입력 대기이며 실테넌트 연결·실메일 수신·실가입/로그인은 아직 미완료다. 재발송 버튼은 현재 없으며 Auth0 관리자 재발송과 사용자 셀프서비스를 구분한다.
+### 5.3 로컬 실행과 복구
+
+- local-app은 loopback에만 bind하고 Host/Origin·HttpOnly/SameSite cookie·CSRF·launcher bootstrap을 유지한다. access token은 앱 메모리, refresh/device는 DPAPI와 사용자 ACL로 보호하고 서버 주소/issuer에 묶는다. 브라우저 저장소·Agent 환경·Git에 자격을 넣지 않는다.
+- refresh는 직렬 회전하고 사용된 token 재사용을 거절한다. 응답 유실/보호 저장 실패는 재로그인으로 처리한다. 계정 전환 시 캐시·초안·source·outbox 소유자를 분리한다. 다른 사용자로 미전송 결과를 올리지 않는다.
+- 작업은 지정 local Runner에만 배정한다. 등록/claim/heartbeat/result에서 현재 사용자·장치·source·capability를 확인한다. `requestId`/입력 hash, claim receipt, lease token+generation, 결과 hash로 재전송과 실제 재실행을 구분한다. 늦은 결과가 새 실행을 덮어쓰지 못한다.
+- PC 종료/절전·네트워크 단절·lease 만료를 실패/복구 가능 상태로 표시한다. 명시적 재시도 없이 Agent를 중복 실행하지 않는다. 완료 응답 유실은 같은 결과 ID/hash로 재전송한다. 저장 전 보고서를 ‘저장 완료’로 표시하지 않는다.
+- source는 MCP 저장소 인스턴스를 식별한다. Message-ID만으로 저장소를 합치지 않는다. 새 MCP DB/ID 재사용은 새 source 또는 명시적 매핑으로 처리한다. 관련 메일과 동기화는 source별 권한·멱등성을 유지하고 분석 Agent가 임의로 전체 수집을 실행하지 않는다.
+- agent/model 선택, 공통 스킬 버전/hash, 허용 도구·자료 경로를 기록한다. ERP 파일/DB 쓰기 차단은 프롬프트만으로 주장하지 않고 실제 거부를 검증한다. 개인 AI 계정·구독·MCP 설정을 설치기가 덮어쓰지 않는다.
+
+### 5.4 배포 후보와 이관
+
+Windows x64의 고정 런타임/앱/스킬/launcher·진단을 패키징하고 지원 OS·서명/실행 정책을 확인한다. 설치→사용자명 로그인/첫 변경→개인 Agent 로그인 확인→MCP/source·ERP 읽기 연결→합성 분석→보고서 재조회가 초기 사용 흐름이다. 로컬 앱은 별도 이력 DB를 요구하지 않는다. MCP가 Docker를 필요로 하면 그 전제만 안내한다.
+
+버전·checksum·계약 호환성을 확인한 후 업데이트하고 실행 중 작업은 먼저 정리한다. 사용자 설정/개인 자격/outbox를 보존한다. 제거는 앱 소유 파일만 대상으로 하며 공유 DB·개인 MCP/CLI를 지우지 않는다. 배포물에 토큰·메일·ERP 원본·개인 처리 로그를 포함하지 않는다.
+
+기존 DB의 복제본에서 UUID·보고서 hash·관계·ACL·legacy를 대조한다. 기존 사용자 매핑은 명시적으로 수행하며 미확정 귀속을 새 admin에게 넘기지 않는다. 실전환은 writer 정지→최종 백업→검증→API 주소 전환으로 하고 두 DB에 동시 쓰지 않는다. 복원 후 폐기된 세션이 되살아나지 않게 재로그인시킨다. 앱 롤백과 DB 롤백은 분리하고 새 보고서를 오래된 dump로 덮어쓰지 않는다. `docker compose down -v` 같은 기존 DB 초기화는 금지한다.
+
+M1 완료 근거는 check/build/compat, 자체 인증/관리자/ACL·동시성/복구 테스트, 로컬 브라우저/DPAPI·설치/업데이트·복제 DB 복원, 실제 API HTTPS/TLS·DB 접근 제한·백업 복원으로 구성한다. 로컬/합성과 외부 운영 검증을 구분한다. 실배포 검증 전 `releaseApproved=false`를 유지한다.
+
+## 6. M2 팀 배포와 M3 안정화
+
+처음에는 최소 2명/서로 다른 PC의 제한된 파일럿으로 시작한다. 실제 지원할 Agent별 대표 환경을 포함하고 지정된 합성/실메일 사례만 분석한다. 시험자·버전·source·실행 ID·관찰 결과·조치/재검증을 기록하되 피드백 티켓에 원문/비밀을 붙이지 않는다.
+
+| 확인할 것 | 수용 기준 |
+|---|---|
+| 설치/초기 설정 | 깨끗한 팀 PC에서 관리자의 상시 원격 조작 없이 안내대로 로그인·MCP·Agent 연결 및 샘플 완료 |
+| 계정/권한 | 관리자·일반 사용자 구분, 첫 비밀번호 변경, 타인 개인 자료/API·건수·export 거절 |
+| 분석/공유 | 두 PC가 자기 Agent로 분석, 같은 공용 이력 저장/조회. 원본이 없는 PC의 열기 제한 표시 |
+| 지속 사용 | 개발자 PC 종료 상태에서도 공용 API 조회와 다른 팀원의 분석 성공 |
+| 장애/복구 | 통신 단절·중복 클릭·앱 재시작·응답 유실·lease 만료에서 결과 보존/중복 방지 |
+| 배포/복원 | 업데이트 실패 시 설정/outbox 보존 복귀, 별도 복원 대상에서 보고서·권한 대조 및 복원 시간 실측 |
+| 품질/운영 | 팀원이 보고서의 근거·업무 유용성을 평가. 설치 지원 건수, 실패 원인, 대기/실행 시간, API/DB 부하·비용 기록 |
+
+안정화 관찰은 **최소 실제 업무 5일을 초기 제안**으로 하되 팀 규모/사용량에 따라 D7에서 확정한다. 달력 기간만 지나면 안정화됐다고 하지 않는다. 데이터 유실/권한 누출·반복 실패가 없고, 주요 피드백의 수정과 회귀가 끝나며, 미해결 제한·운영/복원 담당·다음 단계 진행 판단을 팀과 기록해야 M3를 완료한다. 성능/실패율 목표 수치는 첫 사용량 측정으로 정한다.
+
+M3의 산출물은 안정 버전·배포/복구 안내·피드백 조치표·사용량/비용·남은 제한이다. 그 결과를 바탕으로 M4/M5 범위를 조정한다. 원격 자동화 리뷰 항목은 아래에 보존하지만 팀 파일럿에 stage/PR UI를 억지로 추가하지 않는다.
+
+## 7. M4 원격 웹·MCP·분석 전환
+
+M3 이후 공용 웹과 원격 실행을 도입한다. Mail/DB MCP의 AWS 배치는 후보이며 첫 배포의 요구가 아니다. 기존 source와 local Runner를 유지하면서 검증된 원격 source만 service executor로 보낸다. 명시적 매핑 없는 기존 메일 ID 통합이나 양쪽의 중복 동기화를 하지 않는다.
+
+```mermaid
+flowchart LR
+  WEB[공용 웹 / 같은 origin 세션] --> API[AWS 공용 API / 권한·작업]
+  API --> DB[(공용 이력 DB)]
+  API --> BROKER[권한 검사 중계]
+  BROKER --> MAIL[사설 Mail MCP / 계정별 저장소]
+  ANALYSIS[원격 분석 Runner] <-->|claim·lease·보고서| API
+  ANALYSIS --> BROKER
+  ANALYSIS --> DBMCP[DB MCP / ERP 읽기 전용]
+  ANALYSIS --> MIRROR[ERP 코드 mirror / commit 고정]
+```
+
+- 공용 웹의 기본안은 같은 origin의 API/BFF가 HttpOnly cookie 세션을 관리하는 방식이다. local-app의 DPAPI 흐름을 브라우저에 옮기지 않는다. 다른 site 쿠키를 전제로 삼지 않고 실제 도메인에서 CSRF·로그아웃·캐시·브라우저 호환을 검사한다.
+- 현재 Mail MCP는 단일 POP3 계정/SQLite·로컬 신뢰 경계·자체 MCP 인증 없음·원격 접속 미지원이다. 인증된 중계와 사설 네트워크·Host 검사 호환을 별도 구현한다. 원문 조회마다 사용자/source/mail 목적 권한을 검사하며 임의 URL/경로를 열지 않는다. 계정별 저장소/자격·UIDL·ID/첨부 바이트 매핑과 백업을 검증한다.
+- DB MCP는 ERP 읽기 전용 계정/허용 query로 연결한다. 네트워크 경로·읽기 계정 발급 주체, 코드 mirror의 읽기 자격/갱신 정책과 분석 commit을 D12에서 정한다. MCP를 AWS로 옮긴다는 이유로 ERP DB를 이관하거나 쓰기 가능하게 만들지 않는다.
+- 브라우저 원문/첨부는 권한 검사 API/중계를 통해 전달한다. API와 MCP의 AWS 사설 연결을 우선 설계하고 다운로드/스트리밍 용량·시간·비용을 측정한다. Supabase Free에 사설 연결이 불가하다는 미검증 주장이나 특정 도메인 요금 가정은 설계 근거로 채택하지 않는다.
+- service identity는 사람 세션과 별도로 등록하고 역할별 짧은 수명 자격, 발급·교체·폐기·호스트 보호 보관을 정의한다. DB master/API 서명키/개인 refresh를 Runner에 주지 않는다. 실제 service 계약은 M4 스키마/API 구현 전에 확정한다.
+- **원격 작업은 일반 로그아웃·브라우저 종료로 취소하지 않는다.** 요청자 계정 활성·membership·source/repo grant와 서비스 권한을 매 단계/heartbeat/result/발행에서 검사한다. 비활성화·권한 회수·명시적 취소는 새 단계/발행 차단 및 기존 작업 중지로 이어진다. 이미 끝난 외부 효과는 별도로 대조한다. M1의 사람 세션 기반 local Runner와 구분한다.
+- 실행 정책에 단계별 최대 시간·lease/heartbeat·동시성·예산을 둔다. 기존 분석 30분/팀 2개 상수를 모든 원격 단계에 적용하지 않는다. lock 범위를 변경할지는 실제 경합·timeout 측정으로 판단한다.
+- 상시 폴링은 월 근무시간만으로 계산하지 않는다. 예: 30일·60초·4개 역할이면 대기 claim만 172,800회다. 단일 dispatcher/배정 API·idle backoff 등 대안을 비교하며 신뢰 경계를 합치지 않는다. AWS에서도 DB 연결·로그·compute 비용을 측정하고 Edge long-poll을 기본값으로 채택하지 않는다.
+
+M4 수용은 PC 종료 상태의 등록→원격 조회→보고서 저장/웹 조회, 타 사용자 거절, ERP 쓰기 거절, 서비스 자격 폐기, 장애/취소/재개, 비용·백업/복원까지다. 코드 수정이나 PR은 아직 필요하지 않다.
+
+## 8. M5 SR 구현·검증·PR 계약
+
+다음은 두 리뷰를 반영한 후속 설계 기준이다. M1에서 전부 구현하지 않으며 M5 구현 전에 상세 schema/명령/provider 계약을 확정한다. 실제 repo·쓰기 자격·허용 경로·예산·리뷰 정책은 D10으로 명시하고 현재 ERP 읽기 전용 지침을 자동 해제하지 않는다.
+
+### 8.1 분석에서 구현으로 넘기는 조건
+
+분석 보고서와 별도로 불변 `implementation_brief`를 만든다. 필수 내용은 `needs_code_change`, 변경 의도/확인된 원인·미확정 항목, 근거 참조, repo·허용 경로 부분집합, 수용/회귀 사례, 비목표, `analysis_code_commit`, report/brief hash, policy 버전, 작성 주체와 진행 결정 근거다. 메일 자유 텍스트가 서버 정책·비밀·repo allowlist를 바꾸지 못한다.
+
+| 판단 | 다음 동작 |
+|---|---|
+| 코드 수정 불필요 | 이유와 보고서를 저장해 `resolved_without_change`로 정상 종결. PR을 만들지 않음 |
+| 근거/요구 불충분·권한 범위 밖 | `needs_input`/`awaiting_authorization`으로 보류. 답변/범위 결정 후 새 brief revision |
+| 허용된 수정·수용 기준 충족 | 서버가 검사한 정책 조건에 따라 implementation queued |
+| 보호 경로/위험도/리뷰 조건상 사람 확인 필요 | 권한 있는 사용자가 특정 brief hash를 승인한 뒤 진행 |
+
+매 SR에 사람 승인을 강제하지 않는다. 자동 진행 조건은 버전이 고정된 정책에 명시하고, 조건 밖인 경우만 승인을 요구한다. 사람이 승인했더라도 서버의 source/repo 권한을 대신하지 않는다. 보고서 수정은 기존 승인을 재사용하지 않는다. 분석 commit과 구현 base가 다르면 영향 확인/재분석 없이 자동 진행하지 않는다.
+
+### 8.2 SR 식별·revision·상태·멱등성
+
+| 계약 | 필수 내용과 규칙 |
+|---|---|
+| 업무 식별 | 안정적인 `sr_id` + source/명시적 메일 연결 + 대상 repo. 제목 일치로 묶지 않음. 기본은 같은 SR/repo의 활성 구현 하나 |
+| 작업 | `job_id`, actor/team/source, requestId/입력 hash, contract/policy 버전. 같은 키·다른 본문은 충돌 |
+| revision | report/brief 버전과 hash, analysis/base/head commit, 자료/스킬 버전. 새 입력이면 revision 증가, 기존 결과/검증을 덮어쓰지 않음 |
+| 단계/시도 | stage 종류·의존 관계, executor kind/identity, attempt ID/번호, 활성 attempt 하나, lease token hash/generation/기한, 취소 시각 |
+| 불변 결과 | attempt·입력 digest·artifact ID/sha256/크기·검증/오류·저장 receipt. 결과 URI에도 ACL 적용 |
+| 발행 | publication ID, SR/repo의 PR identity, revision별 push intent·expected ref·검증 ID·provider PR 번호/URL/base/head |
+
+다른 사용자·새 requestId로 같은 SR을 등록해도 기존 구현/검증/발행이 활성 상태이면 기존 작업을 안내하거나 충돌을 반환한다. 이 검사는 서버 트랜잭션에서 보장하며 메일당 활성 분석 잠금만으로 대체하지 않는다. 재분석 자체는 별도 revision으로 보존하되 진행 중 구현과 경쟁하지 않는다.
+
+**기본 정책은 SR/repo당 열린 자동화 PR 하나**다. 열린 PR이 있고 추가 답변으로 revision이 바뀌면 그 PR을 갱신한다. 기존 automation head를 부모로 이어가는 commit과 새 validation을 만들며 자동 force-push/rebase를 하지 않는다. branch에 예상 밖 commit·사람 수정·비-fast-forward 필요가 있으면 중단하고 명시적 결정을 받는다. 닫힘/merge된 PR에 후속 작업이 필요하면 별도 successor 작업을 명시적으로 만들고 이전 PR과 연결한다. 요청 재전송으로 새 PR을 만들지 않는다.
+
+단계는 `queued/running/succeeded/failed/needs_input/awaiting_authorization/cancelled/reconciling`을 구분한다. 전체 PR 경로 `completed`는 필수 검사와 실제 PR 연결까지 확인한 경우만 사용한다. `resolved_without_change`는 별도 정상 종결이다. 기존 분석의 completed·메일 `handled_at`·고객 업무 해결은 자동 동기화하지 않는다.
+
+### 8.3 commit 전달과 검증
+
+구현 Runner는 작업별 격리 checkout과 읽기 전용 repo 자격 또는 검증된 base bundle을 사용한다. 원격 push·PR 토큰과 운영 DB 자격은 없다. 선택한 base/head/tree 및 prerequisites를 담은 **불변 git bundle**과 sha256을 보호된 artifact 저장소에 제출한다. 객체 검증·용량/경로 제한·쓰기 1회 규칙을 적용한다.
+
+검증 Runner는 bundle을 별도 쓰기 가능한 scratch checkout에 복원해 지정 head/tree를 확인한다. 원본 bundle은 읽기 전용으로 두고, 검증 코드가 바꿀 수 없는 제어 경로에 hash/검증 결과를 저장한다. 발행 서비스는 검증된 동일 객체를 확인해 그대로 push하며 patch를 다시 commit하거나 base 전진을 이유로 rebase하지 않는다. base 변경/충돌 대응은 새 revision과 재검증이다.
+
+검증은 고정 명령/환경 버전, 필수 빌드·테스트·리뷰 각각의 pass/fail/skipped, head/tree/diff hash, 안전한 로그 참조를 기록한다. 명령 exit 0만으로 수용 조건 충족을 판정하지 않는다. 기존 테스트 삭제/skip, 빌드/lint/CI 정책 약화, 보호 경로 변경은 diff로 분류해 발행 차단 또는 정책상 사람 검토로 보낸다. Agent의 자기 보고만으로 보호 검사 통과를 선언하지 않는다.
+
+로컬 검증 격리는 원격 CI까지 포함해야 한다. 대상 repo 등록 시 push/PR workflow·참조 secrets·GITHUB_TOKEN/OIDC 권한·배포 trigger·runner 격리를 확인한다. `.github/workflows`를 막아도 호출되는 빌드/테스트 스크립트가 변경될 수 있다. 비신뢰 head를 실행하는 CI에 운영 비밀/배포 권한을 주지 않고 권한 있는 승격 workflow와 분리한다. [GitHub의 CI 권한 경계](https://docs.github.com/en/actions/concepts/security/compromised-runners).
+
+### 8.4 발행·취소·복원
+
+발행은 전용 서비스가 SR/repo별 직렬화한다. 짧은 수명의 최소 repo 자격으로 허용 branch/PR만 처리하고 merge/배포 권한을 주지 않는다. push 직전 및 PR 생성/갱신 직전에 현재 권한·취소·lease·검증 head를 확인한다. 정책으로 정한 원격 CI가 pending/fail이면 PR 존재와 전체 완료를 구분한다. 원문·비밀과 공개 범위를 검사한 PR 요약만 게시한다.
+
+앱의 source ACL이 Git provider의 repo 열람 권한을 대신하지 않는다. PR을 볼 수 있는 repo 사용자의 범위를 D10에서 확인하고 개인 메일/보고서 내용을 PR 본문·commit 메시지·CI 로그로 옮기지 않는다. 웹의 PR 링크도 원래 source 권한으로 조회한다.
+
+DB와 Git provider의 외부 효과는 원자적이지 않다. `intent_saved → push_confirmed → pr_confirmed`와 `reconciling`을 기록한다. 응답 유실 시 stable publication 표식, branch ref, PR ID/base/head를 조회하고 이미 수행된 단계는 재사용한다. head 불일치를 PR 부재로 해석하지 않는다. 부재/처리 종료를 확정할 수 없으면 발행을 보류하고 새 ID로 우회하지 않는다.
+
+취소/권한 회수 후 새 단계와 새 발행을 차단한다. 이미 제출된 외부 요청은 되돌렸다고 주장하지 않고 결과를 대조한다. 생성된 PR을 자동 삭제/닫지 않고 상태와 취소 시점을 보존한다. 재개는 마지막 검증된 산출물부터 시작하되 입력/현재 권한을 재검사한다. 네트워크 재전송은 기존 ID/hash를 쓰고 실제 재실행만 새 attempt를 만든다.
+
+DB 복원 시 신규 claim/발행을 먼저 중지한다. DB에 남은 intent만 보는 대신 외부 branch/PR 표식과 별도 보존한 발행 원장을 대조해 **백업 이후 생성돼 DB 행이 사라진 PR도 발견**한다. 원장을 자동 복구하지 못하면 고아 외부 효과로 격리해 확인한다. 서비스 자격·lease의 복원 epoch를 갱신해 복원 전 실행을 차단하고 권한/세션을 재검사한 후 재개한다. 오래된 DB의 ‘미발행’ 상태만 보고 같은 SR을 다시 발행하지 않는다.
+
+## 9. 후속 자동화의 수용 검증
+
+| 시나리오 | 필요한 결과 |
+|---|---|
+| 구현 분기 | 코드 수정 필요/불필요/불확실/보호 경로 사례의 단계 진입·종결 구분, brief 수정 시 결정 무효화 |
+| 중복/추가 답변 | 서로 다른 사용자/requestId의 동일 SR에서 활성 구현 하나, 열린 PR 하나, revision 갱신 기록 |
+| 객체 전달 | bundle 변조·tree/head 불일치·base 전진 거부/재검증, 검증 head 그대로 발행 |
+| 검증 약화/CI | 테스트 삭제·skip·설정 약화 감지, 합성 canary로 원격 CI의 secret/배포 권한 격리 확인 |
+| 실패/응답 유실 | claim/result 재전송, push 성공 후 PR 실패/응답 유실, 바뀐 branch head에서 중복 발행 없음 |
+| 권한 수명 | 일반 로그아웃은 원격 작업 유지, 비활성화/source·repo 회수/service 폐기에서 신규 실행/발행 차단 |
+| 취소/lease | 실행 중 프로세스 중지·늦은 결과 거절, 외부 제출 직후 취소는 실제 결과 대조 |
+| 백업 시점 차이 | T0 dump→T1 새 job/PR→T0 restore에서 T1 PR 발견·격리/재연결, 복원 전 service/lease 차단 |
+| 자원/운영 | 단계별 시간·동시성·예산, 분석과 빌드의 슬롯 분리, 24시간 대기량·DB pool/lock·비용 실측 |
+| 실제 종단 | 사용자 PC 종료 상태의 웹→분석→필요한 구현→검증→PR 확인, 업무 수용 결과와 실행 성공 구분 |
+
+합성 repo/모의 provider, 실제 원격 실행, 지정 실메일/실repo 수용은 각각 기록한다. 원격 자료/이력 DB/산출물/키의 백업은 서로 구분한다. 테스트 성공을 고객 업무 해결이나 전체 운영 완료로 과장하지 않는다.
+
+## 10. 필요한 결정과 시점
+
+| ID | 결정 | 필요한 시점 | 미확정이어도 가능한 일 |
+|---|---|---|---|
+| D1 | 최초 관리자·팀·계정 발급 담당 | M1 외부 계정 생성 전 | 합성 인증/관리자 검증 |
+| D2 | 개인/공유 source·legacy 귀속·ACL | M1 이관/M2 지정 사례 전 | 기본 비공개·미확정 자료 보존 |
+| D3 | 임시 자격 전달·본인 확인·admin 복구 담당 | M2 계정 발급 전 | 발급/만료/복구 절차 검증 |
+| D4 | AWS API 호스트·리전/VPC/TLS·DB 엔진/인스턴스 선택·앱 영역 분리·예산·백업 담당 (`cvslog` 위치는 확인 완료) | M1 배포 경로 확정 전 | 현재 자원 읽기 조회·코드 호환성/비용 비교·복제본 설계 |
+| D5 | 팀 PC/Agent/MCP·읽기 자료·지원 버전 | M1 후보/M2 배포 전 | 로컬 진단·회귀·개인 설정 보존 |
+| D6 | 배포 접근·서명/회사 정책·릴리스/롤백 담당 | M2 게시 전 | 후보 패키지·checksum/설치 검증 |
+| D7 | 파일럿 팀원·사례·관찰 기간/목표·피드백/안정화 판정 | M2 시작/M3 종료 | 시험표·피드백 양식·합성 검증 |
+| D8 | 원격 호스트/서비스 자격 보관·AI 자격/비용·단계 예산 | M4 실행 전 | 역할·권한 수명·자원 정책 명세 |
+| D9 | Mail/DB MCP 배치·인증 중계·메일 계정/저장소·운영자 신뢰·백업 | M4 연결/이관 전 | 매핑/권한 계약·합성 연결 |
+| D10 | repo/base·checkout 읽기/발행 쓰기·허용/보호 경로·자동/사람 리뷰 정책·CI/PR 가시성·ERP 지침 조정 | M5 실제 수정/push 전 | brief·bundle·중복/발행 모의 검증 |
+| D11 | 원격 사용량·로그/첨부 보존·운영 장애/복구 담당·수용 기준 | M4~M5 운영 수용 전 | 비용/복원 시나리오 |
+| D12 | 원격 ERP 코드 mirror/commit·DB 읽기 계정·망 경로·갱신 담당 | M4 분석 전 | 자료 버전·쓰기 차단 명세 |
+
+M1~M3의 다음 작업은 D4 호환성/인프라 결정 → PoC 통합·후보/복원 검증 → 제한 팀 배포 → 피드백 안정화다. D8~D12 미확정을 이유로 첫 팀 배포 개발을 멈추지 않는다. 비밀번호·개인키·DB 자격을 채팅/Git으로 요구하지 않는다. 외부 자원 생성·실데이터 이관·실제 repo 쓰기는 구체적 대상과 실행 범위가 마련됐을 때 수행한다.
+
+## 11. 두 리뷰의 반영 결과
+
+리뷰 기준은 원본 `6ceecf2`다. Codex F1~F4와 Claude P1 2건/P2 8건/P3 4건을 아래처럼 정리했다. 리뷰 보고서는 로컬 `.runtime/reviews/`에 보존한다. ‘반영’은 계획 반영이며 제품 수정/테스트 완료를 뜻하지 않는다.
+
+| 리뷰 항목 | 처리 | 반영 위치/시점 |
+|---|---|---|
+| Codex F1 원격 CI 권한 | 채택 | 8.3 대상 repo의 CI/secret/배포 경계, M5 |
+| Codex F2 / Claude P2-1 SR·revision·PR 중복 | 통합 채택 | 8.2 업무키·활성 구현·열린 PR 하나·부분 발행 상태, M5 |
+| Codex F3 / Claude P1-1 구현 입력/불필요 수정 | 수정 채택 | 8.1 구조화 brief·no-change 종료·정책 기반 자동 진행. 매번 사람 승인 강제는 채택하지 않음 |
+| Codex F4 복원 후 외부 PR | 채택 | 8.4/9절 백업 이후 고아 PR·원장·복원 epoch, M5 |
+| Claude P1-2 commit 전달 | 채택 | 8.3 bundle/base/head/tree/hash·재commit 금지, M5 |
+| Claude P2-2 서비스 자격/요청자 수명 | 채택 | 7절 로그아웃/회수 구분·역할별 서비스 주체, M4 |
+| Claude P2-3 중계/사설망 | 배치 전제 변경 | 7절 AWS 사설 MCP·인증 중계. Supabase Free 연결 불가 단정은 미확인으로 미채택 |
+| Claude P2-4 상시 폴링 | 채택 | 7절 24시간 호출/DB/비용 측정. dispatcher/backoff 비교, long-poll 확정 안 함 |
+| Claude P2-5 웹 세션/도메인 | 후속 단계 채택 | 7절 same-origin API/BFF 기본안. M1 로컬 세션과 구분, Supabase 유료 도메인 가정 제거 |
+| Claude P2-6 ERP 읽기 연결/버전 | 채택 | D12·7절·8.1 분석 commit과 구현 base 대조 |
+| Claude P2-7 테스트 약화 | 채택 | 8.3 보호 경로/diff 분류·정책에 따른 리뷰/차단 |
+| Claude P2-8 시간/동시성 | 채택 | 5.1 현재 분석값과 7절 원격 단계 정책 분리 |
+| Claude P3-1 VM/Supabase 표 충돌 | 구조 정리 | 1·4절 AWS 우선 검토·DB 별도 선택. 옛 기술 표는 역사 자료 |
+| Claude P3-2 공통 lock | 측정 후 결정 | 5.1 첫 파일럿·7절 원격 부하 검증. 지금 lock 재설계하지 않음 |
+| Claude P3-3 운영자 신뢰 | 채택 | 5.2·D9/D11 앱 admin과 호스트/DB 운영자 구분 |
+| Claude P3-4 checkout 읽기 자격 | 채택 | 8.3·D10 읽기 전용 자격/base bundle, 발행 토큰 분리 |
+
+## 12. 문서와 변경 관리
+
+현재 계획은 이 문서 하나에서 관리한다. [v2.1 보존본](implementation-plan-history-2026-09-21-v2.1.md)은 기존 본문/검증 연결을 보존한 역사 자료이며 실행 기준이 아니다. 과거 단계 ID로 작성된 기록은 당시 문맥으로 읽고 M1~M5 완료로 환산하지 않는다.
+
+- 최신 안내: [문서 목록](README.md), [팀 배포 통합 안내](team-deployment-plan.md).
+- 현재 코드 실행 경계: [v1 개발 안내](v1-development.md), [서버 안내](server-runbook.md), [Windows 후보](windows-candidate.md), [팀 파일럿](team-pilot.md). 명령은 해당 코드/환경 검증 후 갱신한다.
+- 검증/기존 업무: [검증 기록](validation.md), [기존 로컬 완료](local-completion-2026-09-18.md), [운영 안내](maintenance.md), [legacy 연결](legacy-link-validation.md), [상태 필터](status-filter-validation.md), [스레드 검증](mail-threads-validation.md).
+
+2026-09-21 이번 정리는 제품/DB/서비스를 변경하지 않았다. AWS 조회는 읽기 전용이며 IAM/보안 그룹·백업·DB 내용·리소스 생성/배포를 변경하지 않았다. 비용/버전/실제 권한은 해당 구현 단계에서 재확인한다. 완료 표시는 소스·검증 대상·증거와 함께 남긴다.
