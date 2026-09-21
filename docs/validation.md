@@ -561,3 +561,18 @@
 - HTTP 로그 신규 검사 5개, 기존 계약·local-app·session과 함께 13/13 통과. 합성 비밀을 header/body/query/URL/오류 name/message/stack/DB detail에 주입해 로그에서 제외됨을 확인했다. 로컬→공용 API 요청 ID 연결과 완료/close 중복 방지를 확인했다.
 - 최종 `node scripts/test-backend.mjs` **116/116**, `npm.cmd run check`, `npm.cmd run build`, `node scripts/verify-build-compat.mjs` 통과. 실제 Chrome에서 `node scripts/verify-react-suite.mjs query-cache native-ui` **2/2** 통과: Query 캐시/무효화와 Native 로그인·출처 선택·원본 없는 공용 이력·계정 간 초안 격리·로그아웃을 검사했다. Auth0와 메일은 합성 fixture다.
 - 로컬 상세 로그: `.runtime/20260921-backend.log`, `.runtime/20260921-build.log`, `.runtime/20260921-browser.log`. 실행 중 v0 서비스, 기존 DB/Worker, 개인 AI 설정을 교체하지 않았고 배포 ZIP/Release/실서비스 배포는 이번 수정에 포함하지 않았다.
+
+# 2026-09-21 관련 메일 본문 서식 통일
+
+- 원인: 메일함은 `/mails/:id/body`의 HTML을 안전한 본문 renderer로 표시하지만, 관련 메일 연결 전/후 미리보기는 `mail.body` 텍스트만 `<pre>`에 넣어 표시했다. upstream 텍스트에서 문단 구분이 소실된 HTML 메일은 한 줄로 이어져 보일 수 있었다.
+- `MailContent`를 공통화하고 관련 메일의 기존 식별 검사를 통과한 뒤 HTML을 조회한다. 문단·줄바꿈·표·CID 이미지가 메일함과 같은 방식으로 표시된다. HTML 조회 실패 시 전체 텍스트의 줄바꿈을 유지하고 안내한다. 외부 이미지·스크립트·위험 링크 차단은 기존 renderer를 그대로 사용한다. 관련 본문의 중첩 세로 스크롤을 제거하고 보고서 대화상자 안에서 읽도록 정리했다.
+- `npm.cmd run check`, `npm.cmd run build:ui` 통과. `node scripts/verify-react-suite.mjs related-mails image-preview mail-scroll history-ui`: Chrome **4/4** 통과. 합성 메일의 연결 전/후 본문 DOM이 메일함 본문과 동일함, 문단 높이·표·br·CID 이미지·모바일 폭·텍스트 fallback을 확인했다. 원본 조회 실패 시 HTML 후속 조회 없음, 닫힌 미리보기의 늦은 HTML 응답 무시, 연결/해제·처리 취소·중복 방지·이미지/스크롤/이력 회귀도 확인했다.
+- 합성 모바일 화면 `.runtime/related-mails-html-mobile.png`를 육안 확인했다. 외부 이미지 요청 0, pageerror 0, 분석/동기화 실행 0. 상세 로그는 `.runtime/20260921-related-ui.log`, `.runtime/react-validation/react/related-mails.log`에 로컬 보존한다.
+- 기존 로컬 서비스에 적용: 진행 중 분석/동기화 0건을 확인하고 `docker compose build api`, `docker compose up -d --no-build --no-deps --wait api` 실행. API healthy, 배포된 HTML/JS/CSS와 검증 빌드의 SHA-256 일치, 분석 이력 7건의 보고서/리뷰/처리 상태/관련 메일 및 이전 문서 33건·수동 스레드 연결의 전후 hash 일치를 확인했다. DB/Worker 컨테이너 ID 유지, Worker online, 실제 브라우저 메일/보고서 읽기·모바일 폭·pageerror 0 확인. 로그인 외 변경 요청 없이 검증했다. 전후 증거는 `.runtime/related-body-deployment-20260921/`에 보존한다. 이는 기존 로컬 v0 API 화면 반영이며 팀용 v1 실서비스 배포나 Windows 후보 ZIP 갱신은 아니다.
+
+# 2026-09-21 검색 입력과 배치 마무리
+
+- 기존 미커밋 변경 2개 파일을 검토했다. 검색어/발신자 Enter는 폼 제출로 연결하고 `isComposing` 또는 keyCode 229인 조합 이벤트는 검색하지 않는다. 검색 버튼의 submit 타입을 명시했다. 데스크톱 입력 폭을 280/220px로 제한하고 모바일 규칙을 유지했다.
+- `npm.cmd run check`, `npm.cmd run build:ui` 통과. `node scripts/verify-react-suite.mjs pre-p1-ux query-cache native-ui` Chrome 3/3 통과.
+- Git 제외 `.runtime/verify-search-entry.mjs`로 검색어·발신자 Enter 후 API 조건, 조합 이벤트 동안 추가 검색 0회, 조합 완료 후 검색, 실제 입력 폭 280/220px, 390px 화면 가로 넘침 없음, pageerror 0 확인. 초기 검증 스크립트의 발신자 파라미터명을 `from`에서 실제 API 계약 `from_address`로 정정한 뒤 통과했다. 합성 데스크톱/모바일 스크린샷을 육안 확인했다.
+- 증거: `.runtime/search-entry-result.json`, `.runtime/search-entry-desktop.png`, `.runtime/search-entry-mobile.png`, `.runtime/react-validation/react/` 로그. 실제 OS IME 수동 입력 검증과는 구분한다. 기존 실행 중 Docker 서비스·DB·Worker 및 Windows 후보 ZIP은 변경하지 않았다.

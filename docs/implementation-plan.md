@@ -1,6 +1,6 @@
 # mail-triage-web 통합 구현 계획
 
-문서 버전: 1.7 · 갱신일: 2026-09-21 · 상태: P1~P6 로컬 구현 이후 조회·Runner·오류 로그 보완 3건의 구현·검증 완료(16절). P7 파일럿 준비, 실인증·공용 호스트·ERP 읽기 권한·깨끗한 팀 PC 및 두 PC 파일럿은 대기한다. 전체 계획/팀 배포 완료 아님. P8은 P7/D8 결정 전 보류. [이전 로컬 검증](local-completion-2026-09-18.md), [검증 기록](validation.md), [v1 개발 경계](v1-development.md).
+문서 버전: 1.8 · 갱신일: 2026-09-21 · 상태: P1~P6 로컬 구현 이후 조회·Runner·오류 로그 보완 3건과 관련 메일 본문 표시 보완의 구현·검증 완료(16절). P7 파일럿 준비, 실인증·공용 호스트·ERP 읽기 권한·깨끗한 팀 PC 및 두 PC 파일럿은 대기한다. 전체 계획/팀 배포 완료 아님. P8은 P7/D8 결정 전 보류. [이전 로컬 검증](local-completion-2026-09-18.md), [검증 기록](validation.md), [v1 개발 경계](v1-development.md).
 
 이 문서는 앞으로의 범위·기술 선택·실행 순서의 단일 기준이다. 최신 사용자 결정은 **회사 이메일 인증 가입 + 공용 이력 API·PostgreSQL + 팀원 PC의 웹 앱·개인 AI agent·MCP**이다. 향후 웹·Worker·MCP를 필요한 순서대로 공용화한다. 문서 통합과 P1 전 UI·UX 보완은 인증 구현, DB 이관, 외부 서비스 가입, GitHub 게시, 실제 팀 배포를 수행한 기록이 아니다.
 
@@ -616,3 +616,7 @@ API/DB 테스트는 전용 schema 또는 별도 Compose 프로젝트로 격리�
 상세 근거는 [검증 기록](validation.md)의 같은 날짜 항목을 따른다. 기존 candidate.6 ZIP은 9월 18일 산출물이며 후속 수정이 들어간 패키지로 간주하지 않는다.
 
 3건 최종 상태에서 check/build/compat, PostgreSQL 격리 백엔드 116/116, Chrome query-cache·native-ui 2/2 통과. 로그/검증 자료는 `.runtime/20260921-*.log`에 로컬 보존하며 Git에는 합성 테스트와 검증 요약만 반영한다.
+
+같은 날 추가 UI 요청: 처리 완료 보고서의 관련 메일 연결 전 미리보기/연결 후 ‘메일 보기’를 메일함과 같은 `MailContent`로 통일했다. 확인된 메일 ID의 HTML 본문을 조회해 문단·줄바꿈·표·CID 이미지를 보존하고, 서식 조회 실패 시 전체 텍스트의 줄바꿈을 보존한다. 원문 식별 검사와 HTML 안전 처리, 닫힌 미리보기의 늦은 응답 차단은 유지한다. check·UI build, Chrome related-mails/image-preview/mail-scroll/history-ui 4/4 통과. 기존 로컬 v0 화면 반영과 데이터 보존 근거는 검증 기록을 따른다.
+
+같은 날 잔여 작업 1: 검색어·발신자 입력에서 Enter로 검색하고 한글 조합 중 Enter는 제출하지 않도록 정리했다. 데스크톱 검색어/발신자 폭은 최대 280/220px이며 모바일 배치를 유지한다. check·UI build, Chrome pre-p1-ux/query-cache/native-ui 3/3과 별도 Enter·IME 이벤트·폭 검증을 통과했다. 이 후속 변경의 실행 중 Docker 서비스 반영과 Windows ZIP 갱신은 수행하지 않았다.

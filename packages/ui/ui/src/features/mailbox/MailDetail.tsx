@@ -3,7 +3,7 @@ import {useSession} from '../../api/client';
 import {activeRun,date,labels,type Attachment,type Body,type Mail,type Run,type Summary} from '../../api/types';
 import {useResource} from '../../hooks/async';
 import {Action} from '../../components/Common';
-import {MailBody,PreviewDialog} from '../../components/Documents';
+import {MailContent,PreviewDialog} from '../../components/Documents';
 import {previewFormat} from '../../../../../../public/office-preview.js';
 const LIMIT=5*1024*1024;
 const emptyAttachments:Attachment[]=[];
@@ -43,7 +43,7 @@ export function MailDetail({id,summary,unavailable,refreshSummary,onHistory,onAn
   <button className="history-button" onClick={()=>onHistory(id,mail.subject)}>이 메일 분석 이력</button></div>
   <p className="meta" role="status">{unavailable?'분석 이력을 확인하지 못했습니다. 다시 확인한 뒤 분석할 수 있습니다.':`분석: ${labels[summary?.latestStatus??'']??'미분석'} · 업무 처리: ${summary?.handledAt?'처리 완료':'완료 표시 없음'}`}</p>
   {!!attachments.length&&<details className="mail-attachments"><summary>첨부파일 · {attachments.length}개</summary><ul className="attachment-list">{attachments.map((a,i)=><AttachmentRow key={a.attachmentId??i} file={a} download={download} preview={a=>setPreview({...a})}/>)}</ul>{attachments.some(a=>a.size>LIMIT)&&<p className="attachment-limit">현재 파일당 다운로드 한도는 5 MiB입니다.</p>}</details>}
-  {body.html?<MailBody body={body} attachments={attachments} fetchAttachment={fetchAttachment}/>:<><pre>{mail.body}</pre>{(body.unavailable||!!body.warnings?.length)&&<p className="meta">본문 서식을 불러오지 못해 텍스트로 표시합니다. 이미지는 첨부파일 목록의 미리보기로 확인할 수 있습니다.</p>}</>}
+  <MailContent body={body} text={mail.body} attachments={attachments} fetchAttachment={fetchAttachment} fallbackHint="본문 서식을 불러오지 못해 텍스트로 표시합니다. 이미지는 첨부파일 목록의 미리보기로 확인할 수 있습니다."/>
   {!!mail.warnings?.length&&<p>조회 경고: {mail.warnings.join(', ')}</p>}
   <PreviewDialog attachment={preview} loadFile={loadFile} download={download}/></>;
 }

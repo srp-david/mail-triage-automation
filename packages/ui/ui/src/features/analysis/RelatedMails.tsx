@@ -1,16 +1,34 @@
-import {useEffect,useRef,useState} from 'react';
-import {date,type Mail,type MailPage,type Run} from '../../api/types';
+import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
+import {date,type Attachment,type Body,type Mail,type MailPage,type Run} from '../../api/types';
 import {errorText,SessionContext,useSession} from '../../api/client';
 import {Action} from '../../components/Common';
+import {MailContent} from '../../components/Documents';
+const emptyAttachments:Attachment[]=[];
+function RelatedMailContent({mail,body}:{mail:Mail;body:Body}){
+ const {api}=useSession(),cache=useMemo(()=>new Map<string,Promise<unknown>>(),[mail]);
+ const fetchAttachment=useCallback((file:Attachment)=>{
+  const key=file.attachmentId!;
+  if(!cache.has(key))cache.set(key,api('/mails/'+mail.id+'/attachments/'+encodeURIComponent(key)).then((result:unknown)=>{
+   const value=result as {isError?:boolean;structuredContent?:{code?:string}};if(value.isError||value.structuredContent?.code)cache.delete(key);return result;
+  }).catch(error=>{cache.delete(key);throw error;}));
+  return cache.get(key)!;
+ },[api,mail.id,cache]);
+ return <div className="related-body"><MailContent body={body} text={mail.body} attachments={mail.attachments??emptyAttachments} fetchAttachment={fetchAttachment}/></div>;
+}
 const addresses=(items:Mail['from'])=>(items??[]).map(x=>x.name?x.name+' <'+x.address+'>':x.address).join(', ');
 const metadata=(mail:Mail)=>'보낸 사람: '+(addresses(mail.from)||'미확인')+' · 받는 사람: '+(addresses(mail.to)||'미확인')+' · '+date(mail.sentAt);
 export function RelatedMails({run,reload}:{run:Run;reload:()=>Promise<unknown>}){
  const session=useSession(),{api,storeId}=session,[picker,setPicker]=useState(false),[query,setQuery]=useState(''),[sender,setSender]=useState(''),[status,setStatus]=useState('');
- const [results,setResults]=useState<MailPage|null>(null),[offset,setOffset]=useState(0),[busy,setBusy]=useState(false),[preview,setPreview]=useState<{mail?:Mail;selectable:boolean;error?:string}|null>(null);
+ const [results,setResults]=useState<MailPage|null>(null),[offset,setOffset]=useState(0),[busy,setBusy]=useState(false),[preview,setPreview]=useState<{mail?:Mail;body?:Body;selectable:boolean;error?:string}|null>(null);
  const searchVersion=useRef(0),previewVersion=useRef(0),trigger=useRef<HTMLElement|null>(null),previewRef=useRef<HTMLDivElement>(null),queries=useRef({query:'',sender:''});
  const links=run.relatedMails??[];useEffect(()=>()=>{++searchVersion.current;++previewVersion.current;},[]);
  async function showPreview(path:string,selectable:boolean){const version=++previewVersion.current;trigger.current=document.activeElement as HTMLElement;setPreview({selectable});
-  try{const mail=await api<Mail>(path);if(version===previewVersion.current)setPreview({mail,selectable});}catch(e){if(version===previewVersion.current)setPreview({selectable,error:'메일을 열 수 없습니다. '+errorText(e)});}}
+  try{
+   const mail=await api<Mail>(path);if(version!==previewVersion.current)return;
+   // Linked previews first pass the existing link/source identity check above.
+   const body=await api<Body>('/mails/'+mail.id+'/body').catch(()=>({html:'',unavailable:true} as Body));
+   if(version===previewVersion.current)setPreview({mail,body,selectable});
+  }catch(e){if(version===previewVersion.current)setPreview({selectable,error:'메일을 열 수 없습니다. '+errorText(e)});}}
  useEffect(()=>{if(preview?.mail)previewRef.current?.focus();},[preview]);
  const close=()=>{++previewVersion.current;setPreview(null);trigger.current?.focus();};
  async function search(start:number){const version=++searchVersion.current;++previewVersion.current;setPreview(null);setBusy(true);setStatus('');setResults(null);
@@ -22,5 +40,5 @@ export function RelatedMails({run,reload}:{run:Run;reload:()=>Promise<unknown>})
  <div className="related-picker" hidden={!picker}><p className="meta">웹 앱에서 조회 가능한 메일을 검색하고 본문을 확인한 뒤 연결하세요.</p><form onSubmit={e=>{e.preventDefault();queries.current={query:query.trim(),sender:sender.trim()};void search(0);}}><input type="search" aria-label="관련 메일 검색어" placeholder="제목·본문 검색어" maxLength={1000} value={query} onChange={e=>setQuery(e.target.value)}/><input aria-label="관련 메일 발신자" placeholder="발신자 이메일" maxLength={320} value={sender} onChange={e=>setSender(e.target.value)}/><button type="submit" disabled={busy}>검색</button></form>
  <div className="related-results">{busy?<p>메일을 검색하는 중입니다…</p>:results?.emails.length?results.emails.map(mail=>{const own=run.identity_kind!=='outlook'&&run.store_id===storeId&&Number(run.mail_id)===Number(mail.id),linked=links.some(x=>x.store_id===storeId&&Number(x.mail_id)===Number(mail.id));return <button key={mail.id} className="related-candidate" disabled={own||linked} onClick={()=>void showPreview('/mails/'+mail.id,true)}>{mail.subject}<span className="meta">{metadata(mail)}</span>{(own||linked)&&<span className="meta">{own?'현재 분석 메일':'이미 연결됨'}</span>}</button>;}):results&&<p>검색된 메일이 없습니다. 검색어나 발신자를 바꿔 주세요.</p>}</div>
  <div className="related-controls"><Action disabled={busy||offset===0} onAction={()=>search(Math.max(0,offset-20))}>이전 후보</Action><Action disabled={busy||results?.nextOffset==null} onAction={()=>search(results!.nextOffset!)}>다음 후보</Action></div><button onClick={()=>{++searchVersion.current;close();setPicker(false);setBusy(false);}}>선택 취소</button></div></>:<p className="meta">새 메일 연결은 처리 완료 후 가능합니다.</p>}
- <div className="related-preview" ref={previewRef} tabIndex={-1} hidden={!preview}>{preview&&<><button onClick={close}>본문 닫기</button>{preview.mail?<><h4>{preview.mail.subject}</h4><p className="meta">{metadata(preview.mail)}</p><pre className="related-body">{preview.mail.body??'본문이 없습니다.'}</pre>{!!preview.mail.warnings?.length&&<p className="meta">조회 경고: {preview.mail.warnings.join(', ')}</p>}{preview.selectable&&<Action disabled={!preview.mail.messageId||!Number.isSafeInteger(Number(preview.mail.id))} onAction={async()=>{await api('/runs/'+run.id+'/related-mails',{storeId,mailId:Number(preview.mail!.id),messageId:preview.mail!.messageId});await reload();}}>이 메일 연결</Action>}</>:<p>{preview.error||'메일 본문을 불러오는 중입니다…'}</p>}</>}</div></details></section></SessionContext.Provider>;
+ <div className="related-preview" ref={previewRef} tabIndex={-1} hidden={!preview}>{preview&&<><button onClick={close}>본문 닫기</button>{preview.mail&&preview.body?<><h4>{preview.mail.subject}</h4><p className="meta">{metadata(preview.mail)}</p><RelatedMailContent mail={preview.mail} body={preview.body}/>{!!preview.mail.warnings?.length&&<p className="meta">조회 경고: {preview.mail.warnings.join(', ')}</p>}{preview.selectable&&<Action disabled={!preview.mail.messageId||!Number.isSafeInteger(Number(preview.mail.id))} onAction={async()=>{await api('/runs/'+run.id+'/related-mails',{storeId,mailId:Number(preview.mail!.id),messageId:preview.mail!.messageId});await reload();}}>이 메일 연결</Action>}</>:<p>{preview.error||'메일 본문을 불러오는 중입니다…'}</p>}</>}</div></details></section></SessionContext.Provider>;
 }

@@ -43,7 +43,8 @@
 .related-controls{display:flex;flex-wrap:wrap;gap:8px}.related-controls button,.related-picker>button{background:#edf3fd;color:#244d8a;border-color:#b8cceb}.related-picker{margin-top:12px}.related-picker form{display:flex;flex-wrap:wrap;gap:8px}.related-picker input{flex:1;min-width:140px;width:100%}
 .related-results{max-height:320px;overflow:auto;margin:12px 0}.related-candidate{display:block;width:100%;text-align:left;background:white;color:#203341;border:1px solid #dce4df;margin:0 0 6px;overflow-wrap:anywhere}.related-candidate:hover{background:#edf5f0}.related-candidate span{display:block}
 .related-picker .related-controls{margin-bottom:12px}.related-preview{margin-top:16px;padding:14px;border:1px solid #cbd8d0;border-radius:8px;background:white}.related-preview:focus{outline:2px solid #9bbdb1;outline-offset:2px}.related-preview h4{font-size:16px;margin:16px 0 8px}
-.history-body .related-body{white-space:pre-wrap;overflow-wrap:anywhere;max-height:400px;overflow:auto;font-family:inherit;font-size:13px;line-height:1.7;padding:12px}
+.history-body .related-body{min-width:0;overflow-wrap:anywhere;font-family:inherit}
+.history-body .related-body .mail-body,.history-body .related-body>pre{max-height:none;overflow:visible}
 .mail .analysis-badge.pending{background:#eaf1fc;color:#295997}
 .mail .analysis-badge.attention{background:#fff2d8;color:#81540c}
 .mail .analysis-badge.failed{background:#fbecec;color:#9a3535}
@@ -142,7 +143,7 @@ body.preview-open{overflow:hidden}
 #view-mailbox,#view-history,#view-legacy{grid-column:2;grid-row:1;min-width:0}
 #menu-toggle{display:none}
 .toolbar{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:12px 14px;margin-bottom:14px}
-#search-form{display:grid;grid-template-columns:minmax(160px,1fr) minmax(120px,.7fr) 140px 140px auto auto;gap:8px;flex:none}
+#search-form{display:grid;grid-template-columns:minmax(160px,280px) minmax(120px,220px) 140px 140px auto auto;justify-content:start;gap:8px;flex:none}
 #search-form input,#search-form select,#search-form button{min-width:0;width:100%;height:36px;padding:7px 10px;font-size:13px}
 .toolbar-footer{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;min-width:0}
 .toolbar-footer>button{padding:5px 9px;min-height:30px;font-size:12px;flex:none}
