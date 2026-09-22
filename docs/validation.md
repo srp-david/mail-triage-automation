@@ -2,6 +2,13 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-22 메일 스레드 상태 배지
+
+- 스레드의 `N개 메일` 옆에 분석 완료·처리 완료·분석 대기/중·확인 필요·실패·이전 이력 배지를 표시한다. 개별 메일과 같은 기준으로 집계하고 `분석 완료 2/6`처럼 현재 표시된 메일 중 해당 상태의 메일 수를 표시한다. 분석 실행 횟수나 이전 문서 수가 아닌 메일 수이며, 한 메일이 여러 상태에 포함될 수 있다.
+- 접힌 대화에서도 확인 가능하며 이력 조회 실패 시 완료 배지 대신 `이력 확인 불가`를 표시한다. 모바일에서는 배지를 줄바꿈한다.
+- `npm run check`, `build:ui` 통과. Playwright `mail-threads`, `manual-threads`, `handling-ui` **3/3 통과**: 접힌 대화의 상태별 집계, 개별 상태 유지, 접기/펼치기, 수동 연결/해제, 처리 완료/취소, 모바일 가로 넘침 및 브라우저 오류를 확인했다. 합성 화면은 `.runtime/mail-threads-desktop.png`, `.runtime/mail-threads-mobile.png`에 보관한다.
+- 로컬 Docker API를 재빌드하고 `up -d --no-deps --wait api`로 반영했다. `/health` 200, 제공 JS/CSS의 SHA-256과 로컬 빌드 일치를 확인했다. DB/Worker 컨테이너는 유지했으며 hosted 서비스 및 Windows 설치본 갱신은 수행하지 않았다.
+
 ## 2026-09-22 Docusaurus 기술 문서 사이트
 
 - `website/`의 별도 package/lockfile에 Docusaurus 3.10.2, Mermaid와 로컬 검색을 구성했다. 기존 `docs/` Markdown을 직접 사용하며 현재 제품·개발·운영·참조·검증·보존 메뉴로 구분한다. 문서 도구와 산출물은 제품 Docker 빌드에서 제외한다.

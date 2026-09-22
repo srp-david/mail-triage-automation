@@ -21,6 +21,45 @@ const identity = (mail: Mail) => ({
   messageId: mail.messageId ?? null,
   fetchedAt: mail.fetchedAt,
 });
+function mailBadges(summary?: Summary): [string, string][] {
+  const states: Record<string, [string, string]> = {
+    queued: ['분석 대기', 'pending'],
+    running: ['분석 중', 'pending'],
+    needs_input: ['확인 필요', 'attention'],
+    failed: ['최근 분석 실패', 'failed'],
+  };
+  const badges: [string, string][] = [];
+  if (summary) {
+    if (summary.handledAt) badges.push(['✓ 처리 완료', 'handled']);
+    if (summary.completedCount > 0) badges.push(['✓ 분석 완료', 'completed']);
+    if (states[summary.latestStatus ?? ''] && !summary.handledAt)
+      badges.push(states[summary.latestStatus!]);
+    if (summary.legacyCount > 0) badges.push(['이전 이력 ' + summary.legacyCount + '건', 'legacy']);
+  }
+  return badges;
+}
+function StatusChips({ badges }: { badges: [string, string][] }) {
+  return badges.map(([text, kind]) => (
+    <Chip
+      component="span"
+      key={text}
+      className={'analysis-badge ' + kind}
+      color={
+        kind === 'handled' || kind === 'completed'
+          ? 'success'
+          : kind === 'failed'
+            ? 'error'
+            : kind === 'attention'
+              ? 'warning'
+              : kind === 'pending'
+                ? 'info'
+                : 'default'
+      }
+      variant={kind === 'handled' ? 'filled' : 'outlined'}
+      label={text}
+    />
+  ));
+}
 export function Badges({
   summary,
   unavailable,
@@ -30,21 +69,9 @@ export function Badges({
   unavailable: boolean;
   mailId: number;
 }) {
-  const states: Record<string, [string, string]> = {
-    queued: ['분석 대기', 'pending'],
-    running: ['분석 중', 'pending'],
-    needs_input: ['확인 필요', 'attention'],
-    failed: ['최근 분석 실패', 'failed'],
-  };
-  const badges: [string, string][] = [];
-  if (unavailable) badges.push(['이력 확인 불가', 'unavailable']);
-  else if (summary) {
-    if (summary.handledAt) badges.push(['✓ 처리 완료', 'handled']);
-    if (summary.completedCount > 0) badges.push(['✓ 분석 완료', 'completed']);
-    if (states[summary.latestStatus ?? ''] && !summary.handledAt)
-      badges.push(states[summary.latestStatus!]);
-    if (summary.legacyCount > 0) badges.push(['이전 이력 ' + summary.legacyCount + '건', 'legacy']);
-  }
+  const badges: [string, string][] = unavailable
+    ? [['이력 확인 불가', 'unavailable']]
+    : mailBadges(summary);
   return (
     <span
       className="mail-analysis"
@@ -58,26 +85,40 @@ export function Badges({
             : undefined
       }
     >
-      {badges.map(([text, kind]) => (
-        <Chip
-          component="span"
-          key={kind}
-          className={'analysis-badge ' + kind}
-          color={
-            kind === 'handled' || kind === 'completed'
-              ? 'success'
-              : kind === 'failed'
-                ? 'error'
-                : kind === 'attention'
-                  ? 'warning'
-                  : kind === 'pending'
-                    ? 'info'
-                    : 'default'
-          }
-          variant={kind === 'handled' ? 'filled' : 'outlined'}
-          label={text}
-        />
-      ))}
+      <StatusChips badges={badges} />
+    </span>
+  );
+}
+function ThreadBadges({
+  emails,
+  summaries,
+  unavailable,
+}: {
+  emails: Mail[];
+  summaries: Map<number, Summary>;
+  unavailable: boolean;
+}) {
+  const counts = new Map<string, { kind: string; count: number }>();
+  for (const mail of emails) {
+    for (const [label, kind] of mailBadges(summaries.get(mail.id))) {
+      const text = kind === 'legacy' ? '이전 이력' : label;
+      counts.set(text, { kind, count: (counts.get(text)?.count ?? 0) + 1 });
+    }
+  }
+  const badges: [string, string][] = unavailable
+    ? [['이력 확인 불가', 'unavailable']]
+    : Array.from(counts, ([text, { kind, count }]) => [`${text} ${count}/${emails.length}`, kind]);
+  return (
+    <span
+      className="thread-analysis"
+      hidden={!badges.length}
+      title={
+        unavailable
+          ? '분석 이력을 불러오지 못했습니다. 잠시 후 자동으로 다시 확인합니다.'
+          : '현재 대화에 표시된 메일 중 각 상태에 해당하는 메일 수입니다. 한 메일에 여러 상태가 표시될 수 있으며, 분석 완료는 고객 업무 해결 여부와 별개입니다.'
+      }
+    >
+      <StatusChips badges={badges} />
     </span>
   );
 }
@@ -383,6 +424,11 @@ export function ThreadList({
                             component="span"
                             className="thread-count"
                             label={thread.emails.length + '개 메일'}
+                          />
+                          <ThreadBadges
+                            emails={thread.emails}
+                            summaries={summaries}
+                            unavailable={unavailable}
                           />
                           <span className="thread-meta">
                             {(mail.from ?? []).map((x) => x.name || x.address).join(', ')} ·{' '}

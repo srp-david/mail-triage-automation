@@ -35,6 +35,8 @@ try{
  await page.goto('http://127.0.0.1:'+server.address().port);
  await page.getByText('36개 대화 · 140개 메일',{exact:true}).waitFor();
  assert.equal(await page.locator('.mail-thread').count(),1);assert.equal(await first().getAttribute('open'),null);
+ await first().locator('summary .analysis-badge.completed').getByText('✓ 분석 완료 1/105',{exact:true}).waitFor();
+ await first().locator('summary .analysis-badge.handled').getByText('✓ 처리 완료 1/105',{exact:true}).waitFor();
  assert.equal(await page.locator('#mails > .thread-singleton').count(),29);
  await first().locator('summary').focus();await page.keyboard.press('Enter');
  await first().locator('.mail').first().waitFor({state:'visible'});
@@ -57,7 +59,7 @@ try{
  await page.locator('#mail-view').selectOption('individual');await page.getByText('140건',{exact:true}).waitFor();
  missingMetadata=false;await page.locator('#mail-view').selectOption('threads');await first().waitFor();
  await first().locator('summary').click();await first().locator('.mail').first().waitFor({state:'visible'});
- await first().locator('.analysis-badge.completed').waitFor();await first().locator('.analysis-badge.handled').waitFor();
+ await first().locator('.mail .analysis-badge.completed').waitFor();await first().locator('.mail .analysis-badge.handled').waitFor();
  await mkdir('.runtime',{recursive:true});await page.screenshot({path:'.runtime/mail-threads-desktop.png'});
  await page.setViewportSize({width:390,height:844});await button('메일 목록으로').click();
  await first().locator('.mail').first().click();await page.locator('#mail-list').waitFor({state:'hidden'});
