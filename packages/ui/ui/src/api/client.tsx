@@ -24,6 +24,20 @@ export function createApi(unauthorized: () => void, csrf: () => string = () => '
     const value = await response.json();
     if (!response.ok) {
       const messages: Record<string, string> = {
+        LOCAL_MCP_NOT_CONFIGURED:
+          'Mail MCP 주소가 설정되지 않았습니다. 개인 연결의 연결 설정 안내를 확인하세요.',
+        RUNNER_REQUIRED: '이 PC의 실행 장치를 선택하고 저장하세요.',
+        RUNNER_DENIED:
+          '이 PC에서 사용할 수 없는 실행 장치입니다. 이 PC를 새 장치로 등록하고 선택하세요.',
+        ORIGINAL_UNAVAILABLE:
+          '이 PC에 선택한 출처의 원본이 없습니다. 메일 출처와 원본 연결을 확인하세요.',
+        ADAPTER_NOT_RELEASE_APPROVED: '개인 AI 도구의 실행 설정을 확인하고 앱을 다시 시작하세요.',
+        RECONNECT_EVIDENCE_REQUIRED:
+          '대조할 분석 이력이 없습니다. 기존 출처와 동일한 저장소인지 담당자에게 확인하세요.',
+        RECONNECT_IDENTITY_MISMATCH:
+          '기존 이력과 현재 메일 저장소가 일치하지 않습니다. 다른 저장소라면 새 출처로 등록하세요.',
+        RECONNECT_EXPIRED:
+          '원본 대조 시간이 만료됐습니다. 기존 이력과 원본 대조를 다시 실행하세요.',
         LAST_ADMIN: '마지막 활성 관리자는 비활성화하거나 강등할 수 없습니다.',
         USERNAME_EXISTS: '이미 사용 중인 사용자명입니다.',
         USERNAME_INVALID: '사용자명은 영문으로 시작하는 3~32자 영문·숫자·_.-만 사용할 수 있습니다.',

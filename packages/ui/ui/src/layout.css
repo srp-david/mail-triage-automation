@@ -1,4 +1,152 @@
 /* Layout and content flow; Material UI owns controls, typography, and surfaces. */
+.settings-shell {
+  max-width: 1180px;
+  margin-inline: auto;
+}
+.settings-account {
+  max-width: 1180px;
+  margin-inline: auto;
+}
+.setup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 4px 20px;
+}
+.setup-header h2 {
+  margin-bottom: 6px;
+}
+.setup-tabs {
+  border-bottom: 1px solid var(--mui-palette-divider);
+  margin-bottom: 20px;
+}
+.setup-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.setup-next {
+  background: #eef6f3;
+  border-left: 3px solid var(--mui-palette-primary-main);
+  padding: 14px 18px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+}
+.setup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.setup-step {
+  border: 1px solid var(--mui-palette-divider);
+  border-radius: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.setup-step-heading {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid var(--mui-palette-divider);
+}
+.setup-step-heading h3 {
+  margin: 0 0 4px;
+}
+.setup-number {
+  color: var(--mui-palette-primary-main);
+  background: #eef6f3;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 9px;
+  border-radius: 8px;
+}
+.setup-step-body {
+  padding: 16px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.setup-step-body > .MuiButton-root {
+  align-self: flex-start;
+}
+.setup-step-body details {
+  margin: 0;
+}
+.setup-step-body summary {
+  font-size: 13px;
+}
+.setup-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+#view-settings .setup-step-body label:not(.MuiFormLabel-root) {
+  margin: 0;
+}
+.setup-registration {
+  margin-top: 16px;
+  align-items: flex-start;
+}
+.setup-registration > .MuiTextField-root {
+  flex: 1 1 170px;
+}
+.setup-registration > .MuiAlert-root {
+  width: 100%;
+}
+.setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.setup-note {
+  background: var(--mui-palette-background-default);
+  padding: 14px;
+  border-radius: 8px;
+}
+.setup-guide {
+  margin-top: 20px;
+}
+.setup-guide-list {
+  line-height: 1.8;
+  padding-left: 22px;
+  overflow-wrap: anywhere;
+}
+.setup-guide-list li + li {
+  margin-top: 8px;
+}
+.setup-management {
+  max-width: 780px;
+  padding: 4px;
+}
+.setup-management > div > .MuiButton-root,
+.setup-management > .MuiButton-root {
+  margin: 6px 8px 6px 0;
+}
+@media (max-width: 1100px) {
+  .setup-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .setup-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .setup-step-heading {
+    flex-wrap: wrap;
+    row-gap: 10px;
+    padding: 16px 12px;
+  }
+  .setup-step-heading > .MuiChip-root {
+    margin-left: 0;
+  }
+  .setup-step-body {
+    padding: 14px 12px;
+  }
+  .setup-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 main {
   width: 100%;
   padding: 20px 28px;

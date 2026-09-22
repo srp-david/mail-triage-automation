@@ -2,6 +2,24 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-22 로그아웃 상단 이동
+
+- 개인 앱의 로그아웃을 상단 오른쪽으로 통합했다. 사이드 메뉴와 최초 비밀번호 변경 본문의 중복 버튼을 제거했다. 모바일 메뉴를 열지 않아도 사용할 수 있고, 로그아웃 후 세션·초안·연결 상태·펼친 메뉴를 정리한다.
+- check·UI build, MUI/Native Chrome 회귀 통과. 모바일의 닫힌 메뉴 상태와 최초 비밀번호 변경 화면에서 상단 버튼 노출·로그아웃·로그인 화면 복귀를 검사했다. 가로 넘침·CSP 위반·pageerror 0.
+- Windows candidate.5로 업데이트 후 재기동했다. config/secrets/work를 보존했고 설치본의 상단 버튼·사이드 메뉴 내 버튼 부재·제공 자산 해시를 확인했다. `.runtime/topbar-ui-install.json`, `.runtime/topbar-ui-installed-smoke.json`에 기록했다.
+- Docker API만 반영하고 보고서 13건·이전 문서 33건·수동 연결·DB/Worker 컨테이너 보존을 확인했다. 실제 분석·동기화·ERP 변경 없이 검증했다. 정식 승인과 두 PC 수용은 별도다.
+
+## 2026-09-22 개인 실행 환경 연결 UX
+
+- 개인 연결을 메일 → AI 도구·실행 장치 → ERP 읽기 자료 → 저장·실행 카드로 구성했다. 다음 할 일·설정 상태·실행 상태를 구분하고, 출처/장치 등록을 해당 단계에 배치했다. 공유·장치 관리와 복구는 별도 탭, 비밀번호 변경은 하단 접힘 영역으로 이동했다.
+- 저장하지 않은 선택으로 실행·공유 권한을 변경하지 못하게 하고, 선택 변경 뒤 늦게 도착한 실행 상태를 버린다. 출처 등록 후 다른 초안 선택을 유지한다. 실제 Scheduler의 idle/working/retrying 상태를 표시하고 이미 켜진 실행의 중복 시작을 막는다.
+- local-app 설정 응답에는 주소·자격·파일 경로 없이 MCP 설정 여부·Agent 종류·읽기 자료 개수·DB 연결 여부만 추가했다. 설정 조회가 메일을 읽지 않는 것을 확인했다. 실제 연결 편집은 여전히 settings.json이며, ERP DB provider는 미연결이다.
+- `npm.cmd run check`, 전체 build, `verify-build-compat.mjs`, UI **13/13**, 로컬 API facade **1/1** 통과. 첫 검사에서 MUI props 타입, 테스트의 label 중복/타입을 수정했고 최종 검사에서 통과했다. 기존 번들 크기 경고는 남는다.
+- 합성 Chrome의 `verify-mui-ui.mjs`와 `verify-native-ui.mjs` 통과. 설정 저장·실행 전환·변경 후 상태 무효화·관리/복구 탭·기존 로그인/공유 이력·모바일 메뉴를 검사했다. 1440px/390px 화면 캡처를 확인했으며 가로 넘침·CSP 위반·pageerror 0. 화면은 `.runtime/mui/settings.png`, `.runtime/mui/설정-mobile.png`에 있다.
+- 로컬 Docker API만 교체했다. 실제 제공 HTML/JS/CSS 해시, health, 메일/보고서 조회를 확인했다. 보고서 13건·이전 문서 33건·수동 연결 해시와 DB/Worker 컨테이너 ID가 유지됐다. 검증 결과는 `.runtime/react-deployment/after.json`이다.
+- Windows candidate.4를 생성하고 중지 상태의 개발 PC candidate.3을 업데이트했다. 업데이트 전후 config/secrets/work 해시 동일, 이전 버전 보존, 설치본 자산과 빌드 해시 일치를 확인했다. 설치본 기동 후 기존 본인 세션으로 설정 화면·환경 요약을 읽기 전용 확인했고 pageerror 0이었다. `.runtime/settings-ui-install.json`, `.runtime/settings-ui-installed-smoke.json`에 기록했다. ZIP 식별자는 [현재 상태](current-status.md)에 있다.
+- 새 MCP 주소·Agent·ERP 경로를 설정하거나 실제 분석·동기화·ERP 조회를 실행하지 않았다. hosted API/DB 변경·백업 재개·두 PC 업무 수용·정식 릴리스 승인은 포함하지 않으며 `releaseApproved=false`를 유지한다.
+
 ## 2026-09-22 메일 스레드 상태 배지
 
 - 스레드의 `N개 메일` 옆에 분석 완료·처리 완료·분석 대기/중·확인 필요·실패·이전 이력 배지를 표시한다. 개별 메일과 같은 기준으로 집계하고 `분석 완료 2/6`처럼 현재 표시된 메일 중 해당 상태의 메일 수를 표시한다. 분석 실행 횟수나 이전 문서 수가 아닌 메일 수이며, 한 메일이 여러 상태에 포함될 수 있다.

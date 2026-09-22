@@ -13,6 +13,11 @@ test('local UI facade rechecks source identity before admission and supports his
   const input={storeId:sourceId,mailId:1,messageId:'<expected@test>',requestId:randomUUID()};
   const post=(body:any)=>fetch(base+'/api/runs',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
   try{
+    context.environment=()=>({mailConfigured:true,agents:['codex'],evidenceRootCount:2,dbConfigured:false});
+    const settingsResponse=await (await fetch(base+'/api/settings')).json();
+    assert.deepEqual(settingsResponse.environment,{mailConfigured:true,agents:['codex'],evidenceRootCount:2,dbConfigured:false});
+    assert.equal(settingsResponse.originalAvailable,true);
+    assert.equal(calls,0,'Settings only reports configuration; it must not query mail contents');
     assert.equal((await post({...input,storeId:randomUUID()})).status,409);assert.equal(calls,0);
     messageId='<changed@test>';assert.equal((await post(input)).status,409);assert.equal(started,undefined);
     messageId=input.messageId;assert.equal((await post(input)).status,201);assert.equal(started.sourceId,sourceId);assert.equal(started.runnerId,runnerId);assert.equal(started.subject,mail.subject);assert.ok(started.verifiedAt);

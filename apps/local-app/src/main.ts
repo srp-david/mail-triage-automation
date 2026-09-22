@@ -38,7 +38,7 @@ const server=createBrowserApp(session,{port,controlToken,shutdown,beforeLogout:(
   app.post('/api/admin/users',async(req,res)=>res.json(await history.request('/admin/users',req.body)));
   app.post('/api/admin/users/:id',async(req,res)=>res.json(await history.request('/admin/users/'+z.string().uuid().parse(req.params.id),req.body)));
   app.post('/api/admin/users/:id/reset',async(req,res)=>res.json(await history.request('/admin/users/'+z.string().uuid().parse(req.params.id)+'/reset',{})));
-  localUiRoutes(app,history,{selection:()=>profile.selection(),registerSource:b=>profile.registerSource(b),registerRunner:b=>profile.registerRunner(b),configure:async b=>{await runtime.stop();return profile.configure(b);},status:async()=>({...await profile.status() as object,runtime:runtime.status()})});
+  localUiRoutes(app,history,{selection:()=>profile.selection(),registerSource:b=>profile.registerSource(b),registerRunner:b=>profile.registerRunner(b),configure:async b=>{await runtime.stop();return profile.configure(b);},status:async()=>({...await profile.status() as object,runtime:runtime.status()}),environment:()=>({mailConfigured:!!settings.mailMcpUrl,agents:(["codex","claude"] as const).filter(agent=>!!settings.agents?.[agent]),evidenceRootCount:Object.keys(settings.evidenceRoots).length,dbConfigured:false})});
   app.get('/api/runtime',async(_req,res)=>res.json(runtime.status()));
   app.post('/api/settings/reconnect/preview',async(req,res)=>{await runtime.stop();res.json(await profile.previewReconnect(req.body));});
   app.post('/api/settings/reconnect/apply',async(req,res)=>{await runtime.stop();res.json(await profile.applyReconnect(req.body));});

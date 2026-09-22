@@ -17,6 +17,7 @@ export interface LocalUiContext {
   registerSource(input:unknown):Promise<unknown>;
   registerRunner(input:unknown):Promise<unknown>;
   status():Promise<unknown>;
+  environment?():{mailConfigured:boolean;agents:('codex'|'claude')[];evidenceRootCount:number;dbConfigured:boolean};
 }
 const number=z.coerce.number().int().positive().safe();
 function original(s:LocalSelection){if(!s.original)throw new ApiError(409,'ORIGINAL_UNAVAILABLE');return s.original;}
@@ -32,7 +33,7 @@ export function localUiRoutes(app:express.Express,h:HistoryClient,context:LocalU
   app.get('/api/status',async(_req,res)=>res.json(await context.status()));
   app.get('/api/sources',async(_req,res)=>res.json(await h.request('/sources')));
   app.post('/api/sources',async(req,res)=>res.json(await context.registerSource(req.body)));
-  app.get('/api/settings',async(_req,res)=>{const s=await context.selection();res.json({sourceId:s.sourceId,collectionId:s.collectionId,runnerId:s.runnerId,agent:s.agent,originalAvailable:!!s.original});});
+  app.get('/api/settings',async(_req,res)=>{const s=await context.selection();res.json({sourceId:s.sourceId,collectionId:s.collectionId,runnerId:s.runnerId,agent:s.agent,originalAvailable:!!s.original,...(context.environment?{environment:context.environment()}:{})});});
   app.post('/api/settings',async(req,res)=>res.json(await context.configure(req.body)));
   app.post('/api/runners',async(req,res)=>res.json(await context.registerRunner(req.body)));
   for(const name of ['runners','members','collections'])app.get('/api/'+name,async(_req,res)=>res.json(await h.request('/'+name)));

@@ -1,5 +1,5 @@
-import { Field, Panel } from '../components/Controls';
-import { Alert, AppBar, Button, Chip, Snackbar, Toolbar, Typography } from '@mui/material';
+import { Field, Panel, Disclosure, DisclosureTitle } from '../components/Controls';
+import { Alert, AppBar, Box, Button, Chip, Snackbar, Toolbar, Typography } from '@mui/material';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createApi, errorText, SessionContext } from '../api/client';
 import { activeSync, type Status, type Sync } from '../api/types';
@@ -222,20 +222,41 @@ export function App() {
           <Typography component="h1" variant="h1">
             메일 분석실
           </Typography>
-          <Chip
-            id="connection"
-            variant="outlined"
-            sx={{ color: 'inherit', borderColor: 'rgba(255,255,255,.4)' }}
-            label={
-              status
-                ? status.worker?.online && status.worker.state !== 'stopped'
-                  ? '분석 Worker 연결됨'
-                  : status.originalAvailable === false
-                    ? '공용 이력 연결 · 원본 미연결'
-                    : '메일 조회 가능 · 분석 Worker 미연결'
-                : '연결 확인 중'
-            }
-          />
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', gap: 1.5, ml: 'auto', maxWidth: '100%' }}
+          >
+            <Chip
+              id="connection"
+              variant="outlined"
+              sx={{ color: 'inherit', borderColor: 'rgba(255,255,255,.4)', minWidth: 0 }}
+              label={
+                status
+                  ? status.worker?.online && status.worker.state !== 'stopped'
+                    ? '분석 Worker 연결됨'
+                    : status.originalAvailable === false
+                      ? '공용 이력 연결 · 원본 미연결'
+                      : '메일 조회 가능 · 분석 Worker 미연결'
+                  : '연결 확인 중'
+              }
+            />
+            {native && (authenticated || mustChange) && (
+              <Action
+                variant="text"
+                color="inherit"
+                sx={{ whiteSpace: 'nowrap' }}
+                onAction={async () => {
+                  await api('/logout', {});
+                  clearDrafts();
+                  unauthorized();
+                  setStatus(null);
+                  setMenu(false);
+                  await boot();
+                }}
+              >
+                로그아웃
+              </Action>
+            )}
+          </Box>
         </Toolbar>
       </AppBar>
       <main>
@@ -248,16 +269,6 @@ export function App() {
                 await boot();
               }}
             />
-            <Action
-              onAction={async () => {
-                await api('/logout', {});
-                clearDrafts();
-                unauthorized();
-                await boot();
-              }}
-            >
-              로그아웃
-            </Action>
           </>
         )}
         <Panel id="login" hidden={authenticated || mustChange}>
@@ -378,34 +389,12 @@ export function App() {
             >
               기술 문서 ↗
             </Button>
-            {native && (
-              <Action
-                onAction={async () => {
-                  await api('/logout', {});
-                  clearDrafts();
-                  unauthorized();
-                  setStatus(null);
-                  await boot();
-                }}
-              >
-                로그아웃
-              </Action>
-            )}
           </nav>
           {native && authenticated && view === 'admin' && role === 'admin' && (
             <AdminUsers key={userId} />
           )}
           {native && authenticated && view === 'settings' && (
             <div id="view-settings">
-              {authMode === 'username' && (
-                <PasswordForm
-                  changed={async () => {
-                    clearDrafts();
-                    unauthorized();
-                    await boot();
-                  }}
-                />
-              )}
               <Settings
                 changed={async () => {
                   queryClient.clear();
@@ -413,6 +402,18 @@ export function App() {
                   await boot();
                 }}
               />
+              {authMode === 'username' && (
+                <Disclosure className="settings-account">
+                  <DisclosureTitle>계정 · 비밀번호 변경</DisclosureTitle>
+                  <PasswordForm
+                    changed={async () => {
+                      clearDrafts();
+                      unauthorized();
+                      await boot();
+                    }}
+                  />
+                </Disclosure>
+              )}
             </div>
           )}
           {native && authenticated && view === 'mailbox' && status?.originalAvailable === false && (

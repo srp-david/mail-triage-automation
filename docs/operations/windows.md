@@ -1,6 +1,6 @@
 # Windows 후보 설치·실행·종료
 
-현재 대상은 `0.3.0-candidate.3`이다. 일반 팀원용 설치 묶음은 아직 만들지 않았고, 아래는 담당자가 지원하는 수동 후보 절차다. 과거 candidate.6은 다른 인증 구성의 기록이므로 새 배포본으로 사용하지 않는다.
+현재 대상은 `0.3.0-candidate.5`이다. 개인 연결 UI·상단 로그아웃을 반영하고 개발 PC의 candidate.4를 업데이트했다. 일반 팀원용 설치 묶음은 아직 만들지 않았고, 아래는 담당자가 지원하는 수동 후보 절차다. 과거 candidate.6은 다른 인증 구성의 기록이므로 새 배포본으로 사용하지 않는다.
 
 ## 1. 포함 내용과 사전 조건
 
@@ -16,7 +16,7 @@
 ZIP을 비어 있는 폴더에 해제한다. ZIP 루트에 `node.exe`와 `installer`가 있다. 아래 payload 경로는 실제 압축 해제 위치로 바꾼다.
 
 ```powershell
-$payload = 'C:\Downloads\mail-triage-candidate.3'
+$payload = 'C:\Downloads\mail-triage-candidate.5'
 $installRoot = Join-Path $env:LOCALAPPDATA 'MailTriagePilot'
 & (Join-Path $payload 'node.exe') (Join-Path $payload 'installer\manage.mjs') install $installRoot $payload --candidate
 if ($LASTEXITCODE -ne 0) { throw '설치 진단 실패' }
