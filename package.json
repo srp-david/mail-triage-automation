@@ -36,6 +36,7 @@
     "@extend-ai/react-pptx": "0.2.1",
     "@extend-ai/react-xlsx": "0.16.4",
     "@hello-pangea/dnd": "18.0.1",
+    "@hookform/resolvers": "5.9.1",
     "@modelcontextprotocol/sdk": "1.30.0",
     "@mui/material": "9.4.0",
     "@tanstack/react-query": "5.103.1",
@@ -47,6 +48,7 @@
     "pg": "8.23.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "react-hook-form": "7.88.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {

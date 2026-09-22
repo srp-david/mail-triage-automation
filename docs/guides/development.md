@@ -33,6 +33,12 @@ npm.cmd run check         # lint + format:check + typecheck
 
 IDE에서는 프로젝트의 `eslint.config.mjs`와 `.prettierrc.json`을 사용한다. 백엔드·기존 `public` 코드·생성 산출물·비밀 설정은 이 React 포맷 명령의 대상이 아니다. 첨부 캐시를 메일별로 새로 만드는 두 `useMemo`는 의도적인 캐시 경계여서 해당 줄에만 사유와 함께 Hooks 의존성 예외를 기록했다.
 
+### 폼과 입력 검증
+
+로그인·비밀번호 변경·관리자 계정 생성/수정·출처/실행 설정·출처/문서 모음/장치 등록은 React Hook Form과 Zod resolver를 사용한다. 공통 스키마는 `packages/ui/ui/src/forms/schemas.ts`에 둔다. 서버의 인증·권한·입력 검증은 그대로 최종 기준이다. 검색 조건과 보고서 답변 초안 등 저장 수명이 다른 UI 상태는 기존 방식을 유지한다.
+
+필드 오류를 입력 아래에 표시하고 제출 중 버튼을 잠근다. 공통 Form은 같은 시점의 중복 제출과 한글 IME 확정 Enter를 막는다. 로그인 실패/완료 및 비밀번호 변경 뒤에는 비밀번호만 지우며 비밀번호 공백을 자동 제거하지 않는다. Zod는 strict CSP에서 동적 함수 생성이 발생하지 않도록 `jitless`로 설정한다.
+
 ### 테스트 실행
 
 유닛·React 컴포넌트·서버 통합 검증은 Vitest로 실행한다. React Testing Library와 user-event는 jsdom에서 입력과 접근 가능한 화면 동작을 검사한다. 브라우저 검증은 Playwright Test가 실행기·worker 격리·HTML 보고서·trace를 관리한다.
@@ -131,7 +137,7 @@ node scripts/history-v1.mjs progress RUN_UUID
 |---|---|
 | `npm.cmd run check` | 타입·UI 컴파일 검사. 실제 서버 검증 아님 |
 | `npm.cmd run build` | 배포 가능한 코드 생성. 서비스 배포 아님 |
-| `node scripts/test-isolated.mjs` | 독립 PostgreSQL Docker의 backend 전체 검사 |
+| `npm.cmd run test:all` | 독립 PostgreSQL Docker의 서버 통합 + 유닛 + React 검사 |
 | `node --import tsx scripts/verify-supabase.mjs --browser` | 로컬 Edge·DB·합성 인증·Chrome·Runner·복원. hosted=false |
 | `node scripts/verify-windows-lifecycle.mjs PAYLOAD` | 검증 후보의 설치·기동·중지·개인 상태 보존 |
 | `node --import tsx scripts/verify-dpapi.mjs` | Windows DPAPI 합성 검사 |
@@ -141,10 +147,10 @@ node scripts/history-v1.mjs progress RUN_UUID
 
 ```powershell
 $env:TRIAGE_CLI_SOURCE = 'C:/path/to/erp-manager/tools/triage-history.mjs'
-node scripts/test-isolated.mjs
+npm.cmd run test:external
 ```
 
-`npm test`를 운영 DB 환경변수가 있는 상태에서 무심코 실행하지 않는다. 격리 검사 스크립트와 테스트 로그의 실제 대상 DB를 확인한다. 실 Agent 검증은 비용과 제공자 자격을 사용하므로 일반 타입 검사와 구분한다.
+`npm test`는 DB에 연결하지 않는다. DB 검사는 격리 스크립트로 실행하고 테스트 로그의 실제 대상 DB를 확인한다. 실 Agent 검증은 비용과 제공자 자격을 사용하므로 일반 타입 검사와 구분한다.
 
 ## 6. 오류와 변경 기준
 

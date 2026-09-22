@@ -1,5 +1,10 @@
 import { Field, SelectField, Panel, Disclosure, DisclosureTitle } from '../components/Controls';
-import { Typography } from '@mui/material';
+import { Button, Typography } from '@mui/material';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Form } from '../forms/Form';
+import { settingsSchema, registrationSchema } from '../forms/schemas';
 import { useCallback, useEffect, useState } from 'react';
 import { useSession, errorText } from '../api/client';
 import { Action } from '../components/Common';
@@ -23,7 +28,7 @@ interface MemberOption {
 }
 interface LocalSettings {
   sourceId: string;
-  agent: string;
+  agent: 'codex' | 'claude';
   collectionId?: string;
   runnerId?: string;
   originalAvailable?: boolean;
@@ -47,9 +52,18 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
     [collections, setCollections] = useState<CollectionOption[]>([]),
     [runners, setRunners] = useState<RunnerOption[]>([]),
     [members, setMembers] = useState<MemberOption[]>([]),
-    [value, setValue] = useState<LocalSettings>({ sourceId: '', agent: 'codex' }),
-    [name, setName] = useState(''),
     [member, setMember] = useState('');
+  const form = useForm<z.infer<typeof settingsSchema>>({
+    resolver: zodResolver(settingsSchema),
+    defaultValues: { sourceId: '', agent: 'codex' },
+  });
+  const registration = useForm<z.infer<typeof registrationSchema>>({
+    resolver: zodResolver(registrationSchema),
+    defaultValues: { name: '' },
+  });
+  const value = form.watch();
+  const { reset } = form;
+  const [originalAvailable, setOriginalAvailable] = useState(false);
   const [runtime, setRuntime] = useState<RuntimeStatus | null>(null),
     [recovery, setRecovery] = useState<RecoveryStatus | null>(null);
   const [reconnect, setReconnect] = useState<ReconnectPreview | null>(null),
@@ -66,8 +80,14 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
     setCollections(c);
     setRunners(r);
     setMembers(m);
-    setValue(v);
-  }, [api]);
+    reset({
+      sourceId: v.sourceId,
+      agent: v.agent,
+      collectionId: v.collectionId,
+      runnerId: v.runnerId,
+    });
+    setOriginalAvailable(!!v.originalAvailable);
+  }, [api, reset]);
   useEffect(() => {
     void load().catch((e) => notice(errorText(e)));
   }, [load, notice]);
@@ -80,80 +100,94 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
         원본이 없는 출처도 공유 이력을 조회할 수 있습니다. 분석은 원본과 실행 장치가 연결된 출처에서
         시작하세요.
       </p>
-      <label>
-        메일 출처{' '}
-        <SelectField
-          aria-label="메일 출처"
-          value={value.sourceId}
-          onChange={(e) => setValue({ ...value, sourceId: e.target.value, runnerId: undefined })}
-        >
-          <option value="">출처 선택</option>
-          {sources.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.display_name}
-            </option>
-          ))}
-        </SelectField>
-      </label>
-      <label>
-        이전 문서 모음{' '}
-        <SelectField
-          aria-label="이전 문서 모음"
-          value={value.collectionId ?? ''}
-          onChange={(e) => setValue({ ...value, collectionId: e.target.value || undefined })}
-        >
-          <option value="">선택 안 함</option>
-          {collections.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </SelectField>
-      </label>
-      <label>
-        분석 도구{' '}
-        <SelectField
-          aria-label="분석 도구"
-          value={value.agent}
-          onChange={(e) => setValue({ ...value, agent: e.target.value, runnerId: undefined })}
-        >
-          <option value="codex">Codex</option>
-          <option value="claude">Claude Code</option>
-        </SelectField>
-      </label>
-      <label>
-        실행 장치{' '}
-        <SelectField
-          aria-label="실행 장치"
-          value={value.runnerId ?? ''}
-          onChange={(e) => setValue({ ...value, runnerId: e.target.value || undefined })}
-        >
-          <option value="">선택 안 함</option>
-          {runners
-            .filter((r) => r.active && r.agents.includes(value.agent))
-            .map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.display_name}
+      <Form
+        onSubmit={form.handleSubmit(async (values) => {
+          try {
+            await api('/settings', values);
+            await changed();
+            notice('출처와 실행 설정을 저장했습니다.');
+          } catch (error) {
+            notice(errorText(error));
+          }
+        })}
+      >
+        <label>
+          메일 출처{' '}
+          <SelectField
+            aria-label="메일 출처"
+            value={value.sourceId}
+            onChange={(e) => {
+              form.setValue('sourceId', e.target.value, { shouldDirty: true });
+              form.setValue('runnerId', undefined);
+            }}
+          >
+            <option value="">출처 선택</option>
+            {sources.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.display_name}
               </option>
             ))}
-        </SelectField>
-      </label>
-      <Action
-        onAction={async () => {
-          await api('/settings', {
-            sourceId: value.sourceId,
-            collectionId: value.collectionId,
-            runnerId: value.runnerId,
-            agent: value.agent,
-          });
-          await changed();
-          notice('출처와 실행 설정을 저장했습니다.');
-        }}
-      >
-        선택 저장
-      </Action>
+          </SelectField>
+        </label>
+        <label>
+          이전 문서 모음{' '}
+          <SelectField
+            aria-label="이전 문서 모음"
+            value={value.collectionId ?? ''}
+            onChange={(e) =>
+              form.setValue('collectionId', e.target.value || undefined, { shouldDirty: true })
+            }
+          >
+            <option value="">선택 안 함</option>
+            {collections.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </SelectField>
+        </label>
+        <label>
+          분석 도구{' '}
+          <SelectField
+            aria-label="분석 도구"
+            value={value.agent}
+            onChange={(e) => {
+              form.setValue('agent', e.target.value as 'codex' | 'claude', { shouldDirty: true });
+              form.setValue('runnerId', undefined);
+            }}
+          >
+            <option value="codex">Codex</option>
+            <option value="claude">Claude Code</option>
+          </SelectField>
+        </label>
+        <label>
+          실행 장치{' '}
+          <SelectField
+            aria-label="실행 장치"
+            value={value.runnerId ?? ''}
+            onChange={(e) =>
+              form.setValue('runnerId', e.target.value || undefined, { shouldDirty: true })
+            }
+          >
+            <option value="">선택 안 함</option>
+            {runners
+              .filter((r) => r.active && r.agents.includes(value.agent))
+              .map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.display_name}
+                </option>
+              ))}
+          </SelectField>
+        </label>
+        {form.formState.errors.sourceId && (
+          <p role="alert">{form.formState.errors.sourceId.message}</p>
+        )}
+        <Button type="submit" variant="contained" disabled={form.formState.isSubmitting}>
+          선택 저장
+        </Button>
+      </Form>
       <p>
-        {value.originalAvailable
+        {originalAvailable
           ? '이 PC에 원본 연결이 있습니다.'
           : '선택된 출처의 원본이 이 PC에 연결되어 있지 않습니다.'}
       </p>
@@ -207,31 +241,33 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
       </Typography>
       <Field
         aria-label="등록 이름"
-        value={name}
+        {...registration.register('name')}
         maxLength={200}
-        onChange={(e) => setName(e.target.value)}
+        errorMessage={registration.formState.errors.name?.message}
         placeholder="출처·문서 모음·장치 이름"
       />
       <Action
-        onAction={async () => {
+        disabled={registration.formState.isSubmitting}
+        onAction={registration.handleSubmit(async ({ name }) => {
           await api('/sources', { displayName: name });
           await load();
           notice('이 PC의 메일 출처를 등록했습니다.');
-        }}
+        })}
       >
         현재 MCP 출처 등록
       </Action>
       <Action
-        onAction={async () => {
+        disabled={registration.formState.isSubmitting}
+        onAction={registration.handleSubmit(async ({ name }) => {
           await api('/collections', { name, requestId: crypto.randomUUID() });
           await load();
-        }}
+        })}
       >
         문서 모음 만들기
       </Action>
       <Action
-        disabled={!value.sourceId}
-        onAction={async () => {
+        disabled={!value.sourceId || registration.formState.isSubmitting}
+        onAction={registration.handleSubmit(async ({ name }) => {
           await api('/runners', {
             displayName: name,
             agents: [value.agent],
@@ -239,7 +275,7 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
           });
           await load();
           notice('장치를 등록했습니다. 실행 가능 여부는 진단에서 별도로 확인합니다.');
-        }}
+        })}
       >
         이 PC 실행 장치 등록
       </Action>

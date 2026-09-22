@@ -9,36 +9,46 @@ import { Checkbox, NativeSelect, OutlinedInput, Paper, TextField } from '@mui/ma
 import { styled } from '@mui/material/styles';
 
 // Keep native input identities/events: search IME handling, labels, and focus restoration depend on them.
-export const Field = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
-  function Field({ onChange, value, defaultValue, type, disabled, className, ...props }, ref) {
-    if (type === 'checkbox')
-      return (
-        <Checkbox
-          className={className}
-          disabled={disabled}
-          checked={props.checked}
-          onChange={onChange}
-          slotProps={{ input: { ...props, ref } }}
-        />
-      );
+export const Field = forwardRef<
+  HTMLInputElement,
+  InputHTMLAttributes<HTMLInputElement> & { errorMessage?: string }
+>(function Field(
+  { onChange, value, defaultValue, type, disabled, className, errorMessage, ...props },
+  ref,
+) {
+  if (type === 'checkbox')
     return (
-      <TextField
+      <Checkbox
         className={className}
-        type={type}
         disabled={disabled}
-        value={value}
-        defaultValue={defaultValue}
+        checked={props.checked}
         onChange={onChange}
-        inputRef={ref}
-        id={props.id}
-        label={props['aria-label']}
-        autoComplete={props.autoComplete}
-        required={props.required}
-        slotProps={{ htmlInput: props, inputLabel: type === 'date' ? { shrink: true } : undefined }}
+        slotProps={{ input: { ...props, ref } }}
       />
     );
-  },
-);
+  return (
+    <TextField
+      error={!!errorMessage}
+      helperText={errorMessage}
+      slotProps={{
+        htmlInput: props,
+        inputLabel: type === 'date' ? { shrink: true } : undefined,
+        formHelperText: { role: 'alert' },
+      }}
+      className={className}
+      type={type}
+      disabled={disabled}
+      value={value}
+      defaultValue={defaultValue}
+      onChange={onChange}
+      inputRef={ref}
+      id={props.id}
+      label={props['aria-label']}
+      autoComplete={props.autoComplete}
+      required={props.required}
+    />
+  );
+});
 export const SelectField = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(
   function SelectField({ children, className, disabled, ...props }, ref) {
     return (

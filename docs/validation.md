@@ -2,6 +2,13 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-22 React Hook Form · Zod 전환
+
+- 로그인·비밀번호·관리자 계정 생성/수정·설정 저장 및 등록 입력을 React Hook Form 7.88.0 + Zod resolver 5.9.1로 전환했다. MUI 오류 표시, 비밀번호 초기화, 한글 IME와 중복 제출 방지를 적용했다. 서버 API와 권한 검사는 유지한다.
+- `npm run check`, `build:ui` 통과. `test:all` **137/137**(React 8개 포함) 통과. 비밀번호 길이/UTF-8 바이트 제한, 입력 오류 시 요청 차단, 계정 활성 체크박스, 출처 변경 시 장치 초기화 등을 검사했다.
+- Playwright 실제 인증/임시 DB 및 기존 초안 보존 검사 통과. MUI 회귀에서 발견한 Zod의 동적 함수 탐지 CSP 위반은 `jitless` 설정 후 재검사 통과했다. CSP 정책은 완화하지 않았다.
+- 앱 JS 번들 872.10 kB(gzip 271.47 kB)의 크기 경고가 남는다. 실행 중 서비스 재배포·Windows 설치본 갱신은 수행하지 않았다.
+
 ## 2026-09-22 Vitest · React Testing Library · Playwright Test 전환
 
 - 기존 node:test 34개 파일의 검증을 Vitest 5.0.1로 이관하고, 실제 외부 erp-manager CLI가 필요한 1개 검증은 external 프로젝트로 분리했다. Runner 가상 시간은 Vitest fake timers와 테스트별 cleanup으로 이관했다. React Testing Library 16.3.3 + jsdom에 MUI native ref/입력/체크박스/선택 검증을 추가했다.

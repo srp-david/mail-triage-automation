@@ -1,8 +1,14 @@
 import { Field, SelectField, Panel } from '../components/Controls';
 import { Button, Typography } from '@mui/material';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useSession, errorText } from '../api/client';
 import { Action } from '../components/Common';
+import { Form } from '../forms/Form';
+import { loginSchema, passwordSchema, createUserSchema, updateUserSchema } from '../forms/schemas';
+
 export function UsernameForm({
   csrf,
   changed,
@@ -12,129 +18,142 @@ export function UsernameForm({
   changed: () => Promise<void>;
   notice: (s: string) => void;
 }) {
-  const [name, setName] = useState(''),
-    [password, setPassword] = useState(''),
-    [busy, setBusy] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    resetField,
+    formState: { errors, isSubmitting },
+  } = useForm<z.infer<typeof loginSchema>>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { username: '', password: '' },
+  });
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (busy) return;
-        setBusy(true);
-        void (async () => {
-          try {
-            const r = await fetch('/auth/login', {
-              method: 'POST',
-              headers: { 'content-type': 'application/json', 'x-csrf-token': csrf() },
-              body: JSON.stringify({ username: name, password }),
-            });
-            if (!r.ok) {
-              const b = await r.json();
-              throw Error(
-                b.code === 'LOGIN_RATE_LIMIT'
-                  ? '로그인 시도가 많습니다. 15분 뒤 다시 시도하세요.'
-                  : '로그인하지 못했습니다. 사용자명과 비밀번호를 확인하세요.',
-              );
-            }
-            await changed();
-          } catch (e) {
-            notice(errorText(e));
-          } finally {
-            setPassword('');
-            setBusy(false);
+    <Form
+      onSubmit={handleSubmit(async (values) => {
+        try {
+          const response = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-csrf-token': csrf() },
+            body: JSON.stringify(values),
+          });
+          if (!response.ok) {
+            const body = await response.json();
+            throw Error(
+              body.code === 'LOGIN_RATE_LIMIT'
+                ? '로그인 시도가 많습니다. 15분 뒤 다시 시도하세요.'
+                : '로그인하지 못했습니다. 사용자명과 비밀번호를 확인하세요.',
+            );
           }
-        })();
-      }}
+          await changed();
+        } catch (error) {
+          notice(errorText(error));
+        } finally {
+          resetField('password');
+        }
+      })}
     >
       <label>
         사용자명
         <Field
-          name="username"
+          {...register('username')}
           autoComplete="username"
-          required
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          errorMessage={errors.username?.message}
         />
       </label>
       <label>
         비밀번호
         <Field
-          name="password"
+          {...register('password')}
           type="password"
           autoComplete="current-password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          errorMessage={errors.password?.message}
         />
       </label>
-      <Button type="submit" variant="contained" disabled={busy}>
+      <Button type="submit" variant="contained" disabled={isSubmitting}>
         로그인
       </Button>
       <p>계정 발급이나 비밀번호 초기화는 관리자에게 문의하세요.</p>
-    </form>
+    </Form>
   );
 }
+
 export function PasswordForm({ changed }: { changed: () => Promise<void> }) {
   const { api, notice } = useSession();
-  const [current, setCurrent] = useState(''),
-    [next, setNext] = useState('');
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<z.infer<typeof passwordSchema>>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: { currentPassword: '', newPassword: '' },
+  });
   return (
     <Panel className="username-panel">
       <Typography component="h2" variant="h2">
         비밀번호 변경
       </Typography>
       <p>12자 이상으로 설정하세요. 변경 후 다시 로그인합니다.</p>
-      <label>
-        현재 비밀번호
-        <Field
-          type="password"
-          autoComplete="current-password"
-          value={current}
-          onChange={(e) => setCurrent(e.target.value)}
-        />
-      </label>
-      <label>
-        새 비밀번호
-        <Field
-          type="password"
-          autoComplete="new-password"
-          minLength={12}
-          value={next}
-          onChange={(e) => setNext(e.target.value)}
-        />
-      </label>
-      <Action
-        onAction={async () => {
+      <Form
+        onSubmit={handleSubmit(async (values) => {
           try {
-            await api('/password', { currentPassword: current, newPassword: next });
+            await api('/password', values);
             await changed();
             notice('비밀번호를 변경했습니다. 다시 로그인하세요.');
+          } catch (error) {
+            notice(errorText(error));
           } finally {
-            setCurrent('');
-            setNext('');
+            reset();
           }
-        }}
+        })}
       >
-        비밀번호 변경
-      </Action>
+        <label>
+          현재 비밀번호
+          <Field
+            {...register('currentPassword')}
+            type="password"
+            autoComplete="current-password"
+            errorMessage={errors.currentPassword?.message}
+          />
+        </label>
+        <label>
+          새 비밀번호
+          <Field
+            {...register('newPassword')}
+            type="password"
+            autoComplete="new-password"
+            errorMessage={errors.newPassword?.message}
+          />
+        </label>
+        <Button type="submit" variant="contained" disabled={isSubmitting}>
+          비밀번호 변경
+        </Button>
+      </Form>
     </Panel>
   );
 }
+
 type User = {
   id: string;
   username: string | null;
   display_name: string | null;
-  role: string;
+  role: 'viewer' | 'analyst' | 'admin';
   active: boolean;
   must_change: boolean;
 };
 export function AdminUsers() {
-  const { api } = useSession();
+  const { api, notice } = useSession();
   const [users, setUsers] = useState<User[]>([]),
-    [name, setName] = useState(''),
-    [display, setDisplay] = useState(''),
-    [role, setRole] = useState('analyst'),
     [temporary, setTemporary] = useState('');
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<z.infer<typeof createUserSchema>>({
+    resolver: zodResolver(createUserSchema),
+    defaultValues: { username: '', displayName: '', role: 'analyst' },
+  });
   const load = async () => setUsers(await api<User[]>('/admin/users'));
   return (
     <Panel id="view-admin" className="username-panel">
@@ -149,55 +168,55 @@ export function AdminUsers() {
             발급된 임시 비밀번호
             <Field readOnly value={temporary} autoComplete="off" />
           </label>
-          <Action
-            onAction={() => {
-              setTemporary('');
-            }}
-          >
-            닫기
-          </Action>
+          <Action onAction={() => setTemporary('')}>닫기</Action>
         </div>
       )}
-      <label>
-        새 사용자명
-        <Field value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
-      </label>
-      <label>
-        표시 이름
-        <Field value={display} onChange={(e) => setDisplay(e.target.value)} />
-      </label>
-      <label>
-        역할
-        <SelectField aria-label="역할" value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="analyst">분석 사용자</option>
-          <option value="viewer">조회 사용자</option>
-          <option value="admin">관리자</option>
-        </SelectField>
-      </label>
-      <Action
-        onAction={async () => {
-          setTemporary('');
-          const r = await api<{ temporaryPassword: string }>('/admin/users', {
-            username: name,
-            displayName: display,
-            role,
-          });
-          setTemporary(r.temporaryPassword);
-          setName('');
-          setDisplay('');
-          await load();
-        }}
+      <Form
+        onSubmit={handleSubmit(async (values) => {
+          try {
+            setTemporary('');
+            const result = await api<{ temporaryPassword: string }>('/admin/users', values);
+            setTemporary(result.temporaryPassword);
+            reset({ ...values, username: '', displayName: '' });
+            await load();
+          } catch (error) {
+            notice(errorText(error));
+          }
+        })}
       >
-        계정 생성
-      </Action>
-      {users.map((u) => (
-        <UserRow key={u.id} user={u} changed={load} secret={setTemporary} />
+        <label>
+          새 사용자명
+          <Field
+            {...register('username')}
+            autoComplete="off"
+            errorMessage={errors.username?.message}
+          />
+        </label>
+        <label>
+          표시 이름
+          <Field {...register('displayName')} errorMessage={errors.displayName?.message} />
+        </label>
+        <label>
+          역할
+          <SelectField aria-label="역할" {...register('role')}>
+            <option value="analyst">분석 사용자</option>
+            <option value="viewer">조회 사용자</option>
+            <option value="admin">관리자</option>
+          </SelectField>
+        </label>
+        <Button type="submit" variant="contained" disabled={isSubmitting}>
+          계정 생성
+        </Button>
+      </Form>
+      {users.map((user) => (
+        <UserRow key={user.id} user={user} changed={load} secret={setTemporary} />
       ))}
     </Panel>
   );
 }
+
 function UserRow({
-  user: u,
+  user,
   changed,
   secret,
 }: {
@@ -205,44 +224,77 @@ function UserRow({
   changed: () => Promise<void>;
   secret: (s: string) => void;
 }) {
-  const { api } = useSession();
-  const [name, setName] = useState(u.display_name ?? ''),
-    [role, setRole] = useState(u.role),
-    [active, setActive] = useState(u.active);
+  const { api, notice } = useSession();
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<z.infer<typeof updateUserSchema>>({
+    resolver: zodResolver(updateUserSchema),
+    defaultValues: { displayName: user.display_name ?? '', role: user.role, active: user.active },
+  });
+  useEffect(() => {
+    reset({ displayName: user.display_name ?? '', role: user.role, active: user.active });
+  }, [user.display_name, user.role, user.active, reset]);
   return (
     <fieldset>
       <legend>
-        {u.username ?? '이관 대기'} {u.must_change ? '(비밀번호 변경 필요)' : ''}
+        {user.username ?? '이관 대기'} {user.must_change ? '(비밀번호 변경 필요)' : ''}
       </legend>
-      <label>
-        표시 이름
-        <Field value={name} onChange={(e) => setName(e.target.value)} />
-      </label>
-      <label>
-        역할
-        <SelectField aria-label="역할" value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="viewer">조회 사용자</option>
-          <option value="analyst">분석 사용자</option>
-          <option value="admin">관리자</option>
-        </SelectField>
-      </label>
-      <label>
-        <Field type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-        활성
-      </label>
-      <Action
-        onAction={async () => {
-          await api('/admin/users/' + u.id, { displayName: name, role, active });
-          await changed();
-        }}
+      <Form
+        onSubmit={handleSubmit(async (values) => {
+          try {
+            await api('/admin/users/' + user.id, values);
+            await changed();
+          } catch (error) {
+            notice(errorText(error));
+          }
+        })}
       >
-        계정 저장
-      </Action>
+        <label>
+          표시 이름
+          <Field {...register('displayName')} errorMessage={errors.displayName?.message} />
+        </label>
+        <label>
+          역할
+          <SelectField aria-label="역할" {...register('role')}>
+            <option value="viewer">조회 사용자</option>
+            <option value="analyst">분석 사용자</option>
+            <option value="admin">관리자</option>
+          </SelectField>
+        </label>
+        <label>
+          <Controller
+            name="active"
+            control={control}
+            render={({ field }) => (
+              <Field
+                type="checkbox"
+                name={field.name}
+                ref={field.ref}
+                onBlur={field.onBlur}
+                checked={field.value}
+                onChange={(event) => field.onChange(event.target.checked)}
+              />
+            )}
+          />
+          활성
+        </label>
+        <Button type="submit" variant="contained" disabled={isSubmitting}>
+          계정 저장
+        </Button>
+      </Form>
       <Action
+        disabled={isSubmitting}
         onAction={async () => {
           secret('');
-          const r = await api<{ temporaryPassword: string }>('/admin/users/' + u.id + '/reset', {});
-          secret(r.temporaryPassword);
+          const result = await api<{ temporaryPassword: string }>(
+            '/admin/users/' + user.id + '/reset',
+            {},
+          );
+          secret(result.temporaryPassword);
           await changed();
         }}
       >
