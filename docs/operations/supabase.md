@@ -1,6 +1,6 @@
 # Supabase 팀 배포 안내
 
-갱신: 2026-09-22. [통합 계획 v3.1](implementation-plan.md)의 M1~M3 실행 안내다. **첫 hosted API·DB 배포 및 합성 검증 완료**, 실제 두 PC 업무 파일럿은 미완료다. Supabase Edge `history` + PostgreSQL, 각 팀원 PC의 local-app/MCP/AI Agent 구성이다. 백업 설정은 사용자 요청으로 보류했다. 기존 운영 서비스/DB는 유지한다.
+갱신: 2026-09-22. [통합 계획 v3.1](../implementation-plan.md)의 M1~M3 실행 안내다. **첫 hosted API·DB 배포 및 합성 검증 완료**, 실제 두 PC 업무 파일럿은 미완료다. Supabase Edge `history` + PostgreSQL, 각 팀원 PC의 local-app/MCP/AI Agent 구성이다. 백업 설정은 사용자 요청으로 보류했다. 기존 운영 서비스/DB는 유지한다.
 
 ## 1. 준비 상태와 배포 대상
 
@@ -31,7 +31,7 @@ node scripts/test-isolated.mjs
 node --import tsx scripts/verify-supabase.mjs --browser
 ```
 
-결과는 [검증 기록](validation.md)에 실제 실행 단위로 남긴다. 로컬 Edge 통과는 hosted CPU/메모리·TLS·Supavisor·Data API 차단·일시정지 재개 완료를 뜻하지 않는다. AI/MCP는 PC에서 실행하므로 긴 분석을 Edge 요청 하나 안에서 실행하지 않는다. [Edge 제한](https://supabase.com/docs/guides/functions/limits).
+결과는 [검증 기록](../validation.md)에 실제 실행 단위로 남긴다. 로컬 Edge 통과는 hosted CPU/메모리·TLS·Supavisor·Data API 차단·일시정지 재개 완료를 뜻하지 않는다. AI/MCP는 PC에서 실행하므로 긴 분석을 Edge 요청 하나 안에서 실행하지 않는다. [Edge 제한](https://supabase.com/docs/guides/functions/limits).
 
 ## 3. 프로젝트 생성 후 운영자 작업
 
@@ -77,9 +77,9 @@ Free는 [7일간 낮은 활동으로 일시정지될 수 있고](https://supabas
 
 
 1. 소규모 파일럿은 서로 다른 사용자 최소 2명/2PC로 시작한다. 관리자·백업/복구 담당과 지정 업무 사례를 정한다. 기존 이력을 통째로 업로드하지 않고 신규 지정 사례부터 시작하며 이관은 source 귀속 확인 후 별도로 한다.
-2. [로컬 설정 예시](../deploy/supabase/local-settings.example.json)의 PROJECT를 실제 프로젝트로 바꾸고 개인 `config/settings.json`에 저장한다. `historyUrl`, `auth.issuer`, `auth.audience`는 서버와 일치해야 한다. API 주소와 issuer에 DPAPI 세션이 묶이므로 이전 시 재로그인한다. DB URL/서명키는 PC에 넣지 않는다.
+2. [로컬 설정 예시](../../deploy/supabase/local-settings.example.json)의 PROJECT를 실제 프로젝트로 바꾸고 개인 `config/settings.json`에 저장한다. `historyUrl`, `auth.issuer`, `auth.audience`는 서버와 일치해야 한다. API 주소와 issuer에 DPAPI 세션이 묶이므로 이전 시 재로그인한다. DB URL/서명키는 PC에 넣지 않는다.
 3. 현재 운영 v0와 충돌하지 않도록 예시 포트 43180을 사용한다. 개인 Mail MCP URL·지원 Agent 실행 경로·ERP 읽기 자료 경로를 본인 환경에서 지정하고 기존 개인 설정은 보존한다.
-4. 새 후보는 `node scripts/package-windows.mjs 0.3.0-candidate.3`으로 만들고 `node scripts/verify-windows-lifecycle.mjs .runtime/packages/0.3.0-candidate.3`으로 확인한다. 동일 번호를 덮어쓰지 않는다. 설치/후보 실행은 [Windows 안내](windows-candidate.md)를 따른다. hosted/실제 팀 수용 전 manifest의 releaseApproved는 false다.
+4. 현재 candidate.3은 이미 생성되어 있다. 새 코드의 후보는 `node scripts/package-windows.mjs 새후보버전`으로 만들고 `node scripts/verify-windows-lifecycle.mjs .runtime/packages/새후보버전`으로 확인한다. 동일 번호를 덮어쓰지 않는다. 설치/후보 실행은 [Windows 안내](windows.md)를 따른다. 실제 팀 수용 전 manifest의 releaseApproved는 false다.
 5. 첫 로그인 → 비밀번호 변경 → 본인 출처/Runner 등록 → 지정 실제 사례 분석 → 보고서 저장/공유를 확인한다. 다른 PC에 원본이 없으면 보고서만 조회됨을 확인한다. 별도 사용자 자료 접근 거절, 재로그인, 중단/재전송, 설정 보존 업데이트를 검사한다.
 6. 초기 제안은 실제 업무 5일 관찰이다. 날짜/버전/실행 ID, 기대·실제 결과, 오류 코드, 재현 절차, 심각도, 담당/해결 버전만 기록한다. 비밀번호·토큰·메일 원문을 피드백 게시물에 붙이지 않는다. 기간/목표는 팀과 조정한다.
 

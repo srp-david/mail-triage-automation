@@ -1,0 +1,115 @@
+# 개발·검증 안내
+
+현재 사용자명 인증 v1 코드 기준이다. 아래 명령은 저장소 루트에서 실행한다. `npm start`와 `npm run worker`는 기존 v0이며 팀용 API/로컬 앱을 대신 실행하지 않는다.
+
+## 1. 준비와 빌드
+
+Node.js 24와 npm이 필요하다. Windows 패키지 빌드는 Windows x64·Node v24.16.0 고정이다. Docker는 격리 DB/Edge 검사에, Chrome은 브라우저 검사에 사용한다. 로컬 앱의 DPAPI는 Windows 전용이다.
+
+```powershell
+npm.cmd ci --ignore-scripts --no-audit --no-fund
+npm.cmd run check
+npm.cmd run build
+node scripts/build-edge.mjs
+node scripts/verify-build-compat.mjs
+```
+
+`build`는 TypeScript → 기존 dist 경로 호환 파일 → Office viewer → Markdown → React UI 순서다. Edge 번들은 별도 명령이다. 빌드가 실행 중 Docker API나 Supabase 함수를 자동 교체하지 않는다.
+
+## 2. 공용 API의 개발 실행
+
+운영 DB가 아닌 명시적으로 준비한 개발 DB를 사용한다. `DATABASE_URL_FILE`, `HISTORY_SCHEMA`, 필요한 CA를 운영자 전용 개발 설정에서 로드하고 schema를 먼저 만든 뒤 migration을 수행한다.
+
+```powershell
+node dist/apps/history-api/src/main.js --migrate
+```
+
+서버 실행에는 `AUTH_ISSUER`, `AUTH_AUDIENCE`, `TEAM_ID`, `AUTH_SIGNING_KEY_FILE`과 DB 연결이 필요하다. 처음에는 팀·최초 관리자도 준비해야 하므로 [운영자 절차](../operations/supabase.md)를 따른다. 비밀을 명령 인자·Git에 넣지 않는다.
+
+```powershell
+node dist/apps/history-api/src/main.js
+```
+
+기본 bind는 `127.0.0.1:3081`이다. 루트 v0의 `/api`와 달리 자료는 `/api/v1`, 인증은 `/auth`다. Auth0의 namespace/company domain/clientId를 이 실행 경로에 넣지 않는다.
+
+## 3. 로컬 앱 설정과 실행
+
+아래는 실제 값이 없는 설정 예시다. `PROJECT`, 실행 파일·자료 경로를 본인 환경에 맞게 바꿔 `<TRIAGE_LOCAL_HOME>/config/settings.json`에 저장한다. `auth`는 현재 키만 허용한다.
+
+```json
+{
+  "localPort": 43180,
+  "historyUrl": "https://PROJECT.supabase.co/functions/v1/history",
+  "auth": {
+    "mode": "username",
+    "issuer": "https://PROJECT.supabase.co/history-auth",
+    "audience": "mail-triage"
+  },
+  "mailMcpUrl": "http://127.0.0.1:17082/mcp",
+  "agents": {
+    "codex": {
+      "executable": "C:/approved/node.exe",
+      "prefix": ["C:/approved/codex.js"]
+    }
+  },
+  "evidenceRoots": {"gg": "C:/approved-readonly/erp-gg"}
+}
+```
+
+mailMcpUrl·agents는 선택 항목이다. 미설정 상태에서도 서버 로그인은 가능하지만 원본 조회·분석에는 해당 연결이 필요하다. evidenceRoots 기본값은 `{}`다. Agent 실행 경로는 제공자 프로그램을 자동 설치하거나 로그인시키지 않는다. DB provider는 현재 진입점에 연결되어 있지 않다.
+
+개발용 앱을 전경 실행하려면 별도 설정 폴더를 만들고 다음을 실행한다. 기존 설치본과 같은 포트/폴더를 동시에 사용하지 않는다.
+
+```powershell
+$env:TRIAGE_LOCAL_HOME = 'C:\work\mail-triage-dev'
+node dist/apps/local-app/src/main.js
+```
+
+다른 PowerShell에서 같은 `TRIAGE_LOCAL_HOME`을 지정한 뒤 브라우저를 연다. 단순 URL 탐색은 로컬 세션을 만들지 못한다.
+
+```powershell
+$env:TRIAGE_LOCAL_HOME = 'C:\work\mail-triage-dev'
+node scripts/history-v1.mjs open
+```
+
+설치 후보의 시작·종료는 [Windows 안내](../operations/windows.md)의 lifecycle 도구를 사용한다. `app.lock`을 삭제해 실행 중복이나 업데이트 차단을 우회하지 않는다.
+
+## 4. 직접 CLI
+
+실행 중 로컬 앱이 토큰 갱신을 소유한다. CLI는 DPAPI 제어 채널로 같은 API를 이용한다.
+
+```powershell
+node scripts/history-v1.mjs sources
+node scripts/history-v1.mjs settings
+node scripts/history-v1.mjs get RUN_UUID
+node scripts/history-v1.mjs progress RUN_UUID
+```
+
+쓰기 동작은 `begin INPUT_JSON`, `cancel RUN_UUID`, `review RUN_UUID INPUT_JSON`, `handling RUN_UUID true|false`, `runner start analysis|sync`, `runner stop`, `sync start|stop`, `recovery show|deliver|recover|deliver-sync|archive-analysis|archive-sync`다. 실제 자료·작업을 바꾸므로 지정된 시험 범위에서만 실행한다. begin에는 `storeId`(source UUID), mailId/messageId, 고정 requestId와 선택 parentId/answer를 사용한다.
+
+## 5. 검증 수준
+
+| 명령 | 확인 대상·전제 |
+|---|---|
+| `npm.cmd run check` | 타입·UI 컴파일 검사. 실제 서버 검증 아님 |
+| `npm.cmd run build` | 배포 가능한 코드 생성. 서비스 배포 아님 |
+| `node scripts/test-isolated.mjs` | 독립 PostgreSQL Docker의 backend 전체 검사 |
+| `node --import tsx scripts/verify-supabase.mjs --browser` | 로컬 Edge·DB·합성 인증·Chrome·Runner·복원. hosted=false |
+| `node scripts/verify-windows-lifecycle.mjs PAYLOAD` | 검증 후보의 설치·기동·중지·개인 상태 보존 |
+| `node --import tsx scripts/verify-dpapi.mjs` | Windows DPAPI 합성 검사 |
+| 실제 팀 파일럿 | 두 사용자·두 PC·개인 Agent/MCP·지정 업무. 별도 기록 |
+
+전체 backend에는 기존 erp-manager CLI를 읽는 호환 검사도 있다. 해당 checkout을 사용할 때 실제 파일을 지정한다.
+
+```powershell
+$env:TRIAGE_CLI_SOURCE = 'C:/path/to/erp-manager/tools/triage-history.mjs'
+node scripts/test-isolated.mjs
+```
+
+`npm test`를 운영 DB 환경변수가 있는 상태에서 무심코 실행하지 않는다. 격리 검사 스크립트와 테스트 로그의 실제 대상 DB를 확인한다. 실 Agent 검증은 비용과 제공자 자격을 사용하므로 일반 타입 검사와 구분한다.
+
+## 6. 오류와 변경 기준
+
+API 오류의 requestId·`X-Request-ID`와 stderr JSON 로그를 대조한다. 로컬 로그에 upstreamRequestId가 있으면 같은 원격 ID를 찾는다. 본문·토큰·SQL·raw stack을 로그에 추가하지 않는다. 설치 launcher는 stdio를 자동 파일로 수집하지 않으므로 수집 방식은 별도로 준비한다.
+
+schema 변경은 새 migration과 grants·복원 검증을 함께 다룬다. 계약 변경은 공용 API/HistoryClient/로컬 UI/Runner를 함께 확인한다. 실제 수행 결과는 [검증 일지](../validation.md), 현재 수용 범위는 [현재 상태](../current-status.md)에 남긴다.

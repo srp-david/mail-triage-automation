@@ -2,6 +2,14 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-22 문서 체계 정리와 현재 구조 명세
+
+- 루트 README와 문서 안내를 현재 Supabase 공용 API·Windows local-app 기준으로 다시 작성했다. 아키텍처·내부 모듈·로그인/분석/동기화/복구 흐름·제품 스펙·API·데이터 모델·보안·개발/운영 절차를 분리했다.
+- 과거 Auth0 계획·인계·완료 기록은 `docs/archive`, 기능별 과거 검증은 `docs/validation`, 현재 운영 절차는 `docs/operations`로 정리했다. 보존 대상 Markdown 18개의 본문은 상대 링크 수정 외 동일하고 과거 파일럿 JSON도 동일하다. `docs/implementation-plan.md`와 이 일지의 경로는 유지했다.
+- 현재 구현과 계획을 구분했다. 실제 ERP DB provider 미연결, 개인 MCP/Agent·두 PC 수용 미완료, 후보 승인 false, 사용자 요청의 hosted 백업 보류를 명시했다. 계획서의 DPAPI 세션 저장 설명도 실제 구현에 맞췄다.
+- Markdown 39개의 파싱·코드 fence·상대 링크 265개·JSON 예시 4개·기존 기록 보존·M1~M5 표·문서 변경 범위를 검사했다. 현재 문서 PowerShell 예시 22개는 실행하지 않고 구문 분석으로 확인했다. Mermaid 11개는 시작 구문만 검사했으며 실제 렌더링 검증은 수행하지 않았다.
+- 증거는 Git 제외 `.runtime/docs-reorganization-20260922/audit.json`, `powershell-syntax.json`, `moves.json`과 원본 보존 폴더에 남겼다. 제품 코드·서비스·DB·배포본은 변경하지 않았고 앱 테스트/빌드·실행·재배포도 수행하지 않았다.
+
 ## 2026-09-22 Supabase 첫 hosted 배포와 개발 PC 연결
 
 - 사용자 생성 프로젝트 `mail-triage-automation`과 CLI 로그인 확인 후 서울 Supabase PostgreSQL 17.6에 배포했다. 기존 사용자 테이블이 없는 것을 확인하고 `triage_private`에 checksum ledger 포함 6개 migration과 팀·최초 관리자 `david`를 생성했다. 기존 로컬 DB/Worker/MCP와 ERP 코드·DB는 변경하지 않았다. 기존 메일 원문/업무 이력 이관도 하지 않았다.
@@ -25,13 +33,13 @@
 - Windows `0.3.0-candidate.3` 재생성: Node v24.16.0, 3,723파일, ZIP 45,160,414 bytes. SHA-256 `87624689ca2c711564dfd5c4b358149efd082a68cac27f3d5bedb01ca073272d`. Git 제외 `.runtime/packages/0.3.0-candidate.3.zip`, manifest `authentication=username`, `releaseApproved=false`.
 - `verify-windows-lifecycle.mjs` 통과: `.runtime/lifecycle/한글 설치-oXcWYA`. 한글 경로 설치·일반 후보 실행 거절·명시적 후보 기동·browser ticket·바로가기·정상 중지·설정 보존 제거. 이 개발 PC의 검증이며 깨끗한 두 PC나 실제 인증 완료가 아니다.
 - Supabase CLI `2.117.0` 실행 확인. `projects list`는 `LegacyPlatformAuthRequiredError / Access token not provided`로 실패했다. 프로젝트/로그인이 없으므로 hosted 배포, 서버 비밀 등록, 운영 DB 생성/이관, 최초 관리자 발급, 팀 배포는 실행하지 않았다. 기존 API/DB/Mail MCP healthy 및 Worker 실행 상태를 보존했다.
-- v3.1 계획·운영/설치 안내·[Supabase 배포 및 피드백 안내](supabase-rollout.md)를 정리했다. 문서 검사 9개·로컬 링크 90개·M1~M5 표·v2.1 원문 보존 통과, `git diff --check` 통과. 과거 검증 기록은 보존했다. Git push 없음.
+- v3.1 계획·운영/설치 안내·[Supabase 배포 및 피드백 안내](operations/supabase.md)를 정리했다. 문서 검사 9개·로컬 링크 90개·M1~M5 표·v2.1 원문 보존 통과, `git diff --check` 통과. 과거 검증 기록은 보존했다. Git push 없음.
 
 ## 2026-09-21 팀 배포 우선 v3.0 재정리와 AWS 읽기 확인
 
 - 사용자 결정에 따라 공용 API·DB와 각 PC의 MCP/AI로 먼저 팀 배포하고, 피드백·안정화 후 원격 SR 자동화를 진행하는 M1~M5로 계획을 재구성했다. AWS API를 우선 검토하되 DB 엔진 선택은 분리했다. 원본 제품/PoC checkout·실행 서비스는 수정하지 않았다.
 - Codex 리뷰 4건과 완료 ID/hash를 확인한 Claude 리뷰 14건을 종합했다. 최신 계획 11절에 항목별 처리와 구현 시점을 기록했다. 구조화 brief, SR 중복/열린 PR 정책, 불변 bundle, service 권한 수명, 테스트 약화/CI 권한, 외부 PR 복원을 후속 단계에 반영했다. 매번 사람 승인 강제와 미확인 Supabase 사설망/도메인 전제는 확정안으로 채택하지 않았다.
-- 기존 `6ceecf2` 계획 본문은 [v2.1 보존본](implementation-plan-history-2026-09-21-v2.1.md)에 그대로 보존했고 현재 기준이 아님을 표시했다. 최신 문서는 통합 계획 하나이며 안내/개발/서버/팀 배포 안내도 맞췄다. 과거 검증 내용은 삭제하지 않았다.
+- 기존 `6ceecf2` 계획 본문은 [v2.1 보존본](archive/implementation-plan-history-2026-09-21-v2.1.md)에 그대로 보존했고 현재 기준이 아님을 표시했다. 최신 문서는 통합 계획 하나이며 안내/개발/서버/팀 배포 안내도 맞췄다. 과거 검증 내용은 삭제하지 않았다.
 - 사용자의 AWS CLI 확인 지시로 기존 로그인 환경에서 `sts get-caller-identity`, 서울 리전 `rds describe-db-instances`, 대상의 `cloudwatch get-metric-data`를 읽기 전용 수행했다. 비밀/endpoint/계정 식별자를 Git에 넣지 않았다. RDS/보안 그룹/IAM/백업 설정 변경이나 SQL 접속은 하지 않았다.
 - 사용자가 `cvslog`는 `srp-rds-maria` 내부 DB라고 확인했다. 실조회: MariaDB 10.11.16 / db.t3.micro / Single-AZ / 20 GiB gp2 / 암호화·비공개 / 자동 백업 보존 0일 / 삭제 보호 꺼짐. 별도 백업·DB 내부 권한/테이블·앱 영역은 확인하지 않았다.
 - 2026-09-14T05:55:44Z~2026-09-21T05:55:44Z의 시간별 집계가 지표별 168개, Complete로 반환됐다. CPU Maximum 최대 26.48%, FreeableMemory Minimum 최저 142,995,456 bytes(약 136 MiB), FreeStorageSpace 최저 17,957,457,920 bytes(약 16.7 GiB), 연결 Maximum 최대 9개, CPU credit Minimum 최저 288. 추가 앱의 실제 부하·수용량이나 메모리 압박을 확정한 검증은 아니다. 원자료: Git 제외 `.runtime/aws-cvslog-review/{queries,metrics}.json`.
@@ -345,7 +353,7 @@
 - 1,000개 합성 목록 비교, 초기 Office/WASM 요청 0건, 데스크톱·모바일 캡처 육안 확인. React 초기 JS/CSS 크기는 증가했으며 측정 조건·수치·제한을 별도 기록했다.
 - React 및 기존 UI 복귀 이미지를 운영 데이터 없이 임시 컨테이너에서 검증했다. 유휴 상태 확인 후 최종 API만 `--no-build --no-deps --wait`로 교체했다. Docker 엔진 및 기존 메일 MCP의 중단 상태는 기존 컨테이너를 재기동해 복구했다.
 - 실제 `/health`, React HTML/JS/CSS 해시, 토큰 로그인, 메일 목록/상세, 기존 보고서, 390px 모바일 확인 통과. pageerror 0건, 변경 요청은 로그인뿐. 분석 6건·이전 문서 33건·리뷰·처리·관련 메일·수동 연결 해시 및 DB/Worker 컨테이너 ID 유지. Worker online/ready.
-- 최종 이미지 `mail-triage-web:react-r6-20260918`와 기존 화면 이미지 `mail-triage-web:pre-react-97525f6`를 로컬 보존했다. 이미지 ID·기능 대응표·명령·복귀 절차는 [React 전환 검증](react-transition-validation.md)에 기록했다.
+- 최종 이미지 `mail-triage-web:react-r6-20260918`와 기존 화면 이미지 `mail-triage-web:pre-react-97525f6`를 로컬 보존했다. 이미지 ID·기능 대응표·명령·복귀 절차는 [React 전환 검증](validation/react-transition-validation.md)에 기록했다.
 - 실제 새 AI 분석·동기화·ERP 변경은 수행하지 않았다. 비밀·실메일 원문·생성물·`.runtime`은 Git에 추가하지 않는다. P1~P8 팀 인증·Runner 작업은 미착수로 유지한다.
 
 ## 2026-09-18 React Query와 스레드 조회 성능 개선
@@ -578,7 +586,7 @@
 
 # 2026-09-18 최종 로컬 검증 및 후보6
 
-- 최종 결과는 [로컬 완료 기록](local-completion-2026-09-18.md)에 모았다. check/build/compat, backend98/98, 기존 UI15/15와 Native Chrome 합성, 최신 파일 정책의 실제 두 CLI→Runner→API→DB 저장 종단을 통과했다. 최종 종단 소요는 Codex30,548ms/Claude55,937ms다.
+- 최종 결과는 [로컬 완료 기록](archive/local-completion-2026-09-18.md)에 모았다. check/build/compat, backend98/98, 기존 UI15/15와 Native Chrome 합성, 최신 파일 정책의 실제 두 CLI→Runner→API→DB 저장 종단을 통과했다. 최종 종단 소요는 Codex30,548ms/Claude55,937ms다.
 - 후보5 실제 한글 설치에서 DPAPI ACL helper의 console code page 문제가 드러났다. 경로를 ASCII base64로 전달하고 UTF8로 복원해 해결했다. 한글 폴더 반복write/read3회·현재user-only DACL·평문부재와 후보6 실제 설치/기동/진입/바로가기/정상중지/설정보존 제거가 통과했다. 이는 같은 개발 PC 검증이며 깨끗한 팀 PC 검사와 구분한다.
 - 후보6 3,719파일/Nodev24.16.0/contract1, releaseApproved=false 유지. ZIP hash `8e5c45c9439af96cb7d3e2b53a463541ae73796ec1783efdd32755ce88fa7222`. 기존 v0 API/DB healthy·Worker running과 3080 유지 확인. Git push·Release 게시·운영 이관 없음.
 - 실제 Auth0/회사 메일·호스트/TLS·외부 암호화 백업·ERP 읽기 계정/provider·OS 쓰기 거부·두 PC 파일럿은 D1~D7 입력/현장 검증 대기. P8은 P7/D8 이후다. 이 한계를 완료로 바꾸지 않았다.

@@ -1,7 +1,7 @@
 # mail-triage-web 작업 정리 및 후속 작업
 작성일: 2026-09-16
 작업 소유권: erp-manager에서 시작한 구현을 mail-triage-web 프로젝트의 Codex로 이전한다.
-이 문서는 인계·작업 당시의 기록이다. 2026-09-17 문서 통합 이후 앞으로의 작업·기술 선택·단계는 [통합 구현 계획](implementation-plan.md)에서만 관리한다. 구현·검증 근거는 [검증 기록](validation.md), 전체 문서는 [문서 안내](README.md)를 따른다. 아래의 현재/미완료/다음 순서는 기록 당시 기준이다.
+이 문서는 인계·작업 당시의 기록이다. 2026-09-17 문서 통합 이후 앞으로의 작업·기술 선택·단계는 [통합 구현 계획](../implementation-plan.md)에서만 관리한다. 구현·검증 근거는 [검증 기록](../validation.md), 전체 문서는 [문서 안내](../README.md)를 따른다. 아래의 현재/미완료/다음 순서는 기록 당시 기준이다.
 
 ## 작업 당시 요약 — viewer 이후 계획서 후속 구현
 
@@ -18,13 +18,13 @@
 - API 중단 시 대기 작업을 시작하지 않는 Worker gate, 잠금 연결 소실 시 Worker 종료, DB 연결 오류 처리, 서비스 재시작 정책 추가.
 - DB 통합 테스트 22개, 합성 Office/운영 UI 검증, 격리된 백업/복원·강제 종료·DB 재시작 복구 통과. 실제 Codex 전체 분석의 장애 재현과는 구분한다.
 - 첫 테스트 중 새 Compose 재시작 설정 때문에 기존 DB 컨테이너가 재생성되고 이전 API/Worker가 종료됨. 볼륨을 보존한 채 재기동했으며 이후 테스트는 `--no-deps` 또는 격리 프로젝트에서 수행했다.
-- 상세 사용법: [운영 도구](maintenance.md). 결과 manifest/receipt/화면 캡처는 Git 제외 `.runtime/`에 보존한다.
+- 상세 사용법: [운영 도구](../operations/legacy-maintenance.md). 결과 manifest/receipt/화면 캡처는 Git 제외 `.runtime/`에 보존한다.
 - erp-manager의 공용 이력 계약 문서를 새 도구에 맞게 갱신했다. 현재 앱 이력 DB 백업은 `.runtime/triage-after-maintenance-20260916.dump`에 보존했다. 실제 백업의 복원 검증과 합성 복원 검증은 구분한다.
 
 2026-09-17 후속 검증: 사용자가 제목으로 지정한 메일을 MCP ID 1130으로 확정했다. 실제 웹 버튼→Worker 분석→보고서 저장→직접/웹 조회 및 핵심 근거 대조를 완료했다(약 5분 11초). 누락된 기존 처리 로그를 Worker에 읽기 전용으로 연결했고, 원본 처리 상태와 이번 보고서 분류도 대조했다. 결과 사본은 `.runtime/worker-e2e-1130-report.md`, 검증 JSON은 `.runtime/worker-e2e-1130-validation.json`이다. 남은 것은 메일별 과거 이력 연결과 최종 공용 전환이다. 원본 문서와 기존 완료 상태는 보존한다. 커밋/푸시는 수행하지 않았다.
 
 ## 먼저 읽을 파일
-- 최신 계획: [implementation-plan.md](implementation-plan.md) — 공용 이력 API·PostgreSQL, 회사 이메일 인증, 팀원별 로컬 실행과 설치 프로그램. 이전 중앙 실행형 제안은 [역사 자료](team-deployment-proposal-2026-09-17.md)에 보존한다.
+- 최신 계획: [implementation-plan.md](../implementation-plan.md) — 공용 이력 API·PostgreSQL, 회사 이메일 인증, 팀원별 로컬 실행과 설치 프로그램. 이전 중앙 실행형 제안은 [역사 자료](team-deployment-proposal-2026-09-17.md)에 보존한다.
 - 계획서: C:/Users/david/IdeaProjects/mail-triage-web/docs/implementation-plan.md
 - 검증 기록: C:/Users/david/IdeaProjects/mail-triage-web/docs/validation.md
 - 실행 안내: C:/Users/david/IdeaProjects/mail-triage-web/README.md

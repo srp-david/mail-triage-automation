@@ -6,7 +6,7 @@
 
 **당장 제공할 제품은 공용 API·DB에 계정과 분석 이력을 저장하고, 팀원 PC의 웹 앱·Mail/DB MCP·개인 AI Agent로 분석하는 팀용 앱이다.** 먼저 제한된 팀원에게 배포해 피드백을 받고 안정화한다. 공용 웹·원격 MCP·원격 Agent·자동 코드 수정·PR은 다음 제품 단계다.
 
-최종 목표는 사용자 PC가 꺼져 있어도 웹의 SR/메일 선택에서 분석 보고서, 격리된 코드 구현, 빌드·테스트·리뷰, PR 생성·조회까지 수행하는 것이다. 최종 기능을 최초 배포의 완료 조건으로 묶지 않는다. 최신 사용자 결정과 이 문서가 계획의 단일 기준이며, 이전 P/A/S 단계표는 [v2.1 보존본](implementation-plan-history-2026-09-21-v2.1.md)의 역사 기록이다.
+최종 목표는 사용자 PC가 꺼져 있어도 웹의 SR/메일 선택에서 분석 보고서, 격리된 코드 구현, 빌드·테스트·리뷰, PR 생성·조회까지 수행하는 것이다. 최종 기능을 최초 배포의 완료 조건으로 묶지 않는다. 최신 사용자 결정과 이 문서가 계획의 단일 기준이며, 이전 P/A/S 단계표는 [v2.1 보존본](archive/implementation-plan-history-2026-09-21-v2.1.md)의 역사 기록이다.
 
 | 구분 | 결정/제안 |
 |---|---|
@@ -68,8 +68,8 @@ flowchart LR
 ```
 
 - 공용 API는 계정·세션·source/collection ACL·작업/보고서/리뷰/처리 상태를 관리한다. 팀 PC에 이력 DB 자격·서명키를 배포하지 않는다.
-- Mail/DB MCP와 AI 실행은 각 PC에 남긴다. 공용 API가 각 PC의 localhost MCP에 접근하지 않는다. 이력 DB와 분석 대상 ERP DB는 다른 시스템이며, DB MCP는 ERP 읽기 전용 권한을 유지한다.
-- 원문·첨부는 로컬 MCP에 남고 공용 DB에는 필요한 메타데이터/보고서를 저장한다. 보고서 자체도 업무 자료라서 ACL을 적용한다. 같은 메일함이어도 독립 MCP 저장소의 숫자 ID를 동일시하지 않는다.
+- Mail/DB MCP와 AI 실행은 각 PC에 남기는 설계다. 공용 API가 각 PC의 localhost MCP에 접근하지 않는다. 이력 DB와 분석 대상 ERP DB는 다른 시스템이며, DB MCP는 ERP 읽기 전용 권한을 유지한다. 현재 local-app에는 실제 ERP DB provider가 연결되어 있지 않고, 기존 v0의 DB MCP 설정을 자동으로 이어받지 않는다.
+- 원문·첨부의 원본 저장소는 로컬 MCP이고 공용 DB에는 필요한 메타데이터/보고서를 저장한다. AI 입력에는 원문·코드가 포함될 수 있고 보고서·답변·기존 문서에도 원문 일부가 담길 수 있으므로 로컬 실행을 외부 전송 없음으로 해석하지 않는다. 공유 자료에 ACL을 적용하며 같은 메일함이어도 독립 MCP 저장소의 숫자 ID를 동일시하지 않는다.
 - 다른 PC에서 공유 보고서는 볼 수 있지만 대응 원본이 없으면 원문/첨부를 열 수 없다고 표시한다. 팀원의 PC가 꺼지면 그 PC의 분석만 멈춘다. 공용 API와 다른 PC의 분석은 계속 이용 가능해야 한다.
 - 로컬 origin/Host/CSRF, DPAPI, 개인 설정 보존을 유지한다. 공용 웹 세션 문제는 M4에서 해결하며 첫 배포를 공용 브라우저 제품으로 바꾸지 않는다.
 
@@ -103,7 +103,7 @@ AWS에 API와 미래 MCP를 모으면 같은 VPC 안의 사설 연결과 보안 
 - 팀 PC는 설정 가능한 HTTPS API 주소만 사용한다. DB 자격·서명키를 배포하지 않는다. 서버에는 TLS 검증·최소 DML runtime 계정·별도 migration 계정을 적용한다. Data API를 비활성화하고 private schema를 노출하지 않는다.
 - 로컬 테스트용 `local-gateway`/`local-benchmark`는 hosted 배포 대상이 아니다. 업무 로직은 일반 Node API에서도 실행 가능하게 유지하고 Edge 진입점/설정과 분리한다.
 - 프로젝트 식별자·지역·Free 여유·운영 담당은 D4에서 확인한다. Free 적합성은 실제 호출/DB/egress를 측정해 판단하며 자동 유료 전환이나 의미 없는 keepalive를 추가하지 않는다.
-- 매일 및 migration 직전 외부 암호화 백업을 확보하고 격리 DB에서 복원한다. Free 일시정지 재개·재로그인·미전송 결과 복구를 hosted에서 확인한다. 구체적 운영 절차는 [Supabase 배포 안내](supabase-rollout.md)를 따른다.
+- 운영 준비 요건은 매일 및 migration 직전 외부 암호화 백업과 격리 DB 복원이다. 현재 백업 설정은 사용자 요청으로 보류했으며 성공한 hosted 백업·복원은 없다. 보류가 해제된 뒤 준비한다. Free 일시정지 재개·재로그인·미전송 결과 복구도 hosted에서 확인해야 한다. 구체적 운영 절차는 [Supabase 배포 안내](operations/supabase.md)를 따른다.
 - 향후 AWS 이전은 호환 PostgreSQL 버전/extension/권한을 대조한 복원 리허설 → writer 중지/최종 복사 → API/DB 전환 → 전체 세션 폐기/재로그인 → 검증 순서다. 새 DB 쓰기 후 롤백은 새 결과 보존/역이관 없이 옛 dump를 덮어쓰지 않는다. MariaDB는 이 절차에 앞서 엔진 이식이 필요하다.
 
 ## 5. M1 통합 계약과 검증
@@ -133,7 +133,7 @@ AWS에 API와 미래 MCP를 모으면 같은 VPC 안의 사설 연결과 보안 
 
 ### 5.3 로컬 실행과 복구
 
-- local-app은 loopback에만 bind하고 Host/Origin·HttpOnly/SameSite cookie·CSRF·launcher bootstrap을 유지한다. access token은 앱 메모리, refresh/device는 DPAPI와 사용자 ACL로 보호하고 서버 주소/issuer에 묶는다. 브라우저 저장소·Agent 환경·Git에 자격을 넣지 않는다.
+- local-app은 loopback에만 bind하고 Host/Origin·HttpOnly/SameSite cookie·CSRF·launcher bootstrap을 유지한다. access/refresh token을 포함한 세션은 앱 메모리와 DPAPI 보호 저장소에서 관리하며 device 자격도 DPAPI와 사용자 ACL로 보호한다. 세션은 서버 주소/issuer에 묶고 브라우저 저장소·Agent 환경·Git에 자격을 넣지 않는다.
 - refresh는 직렬 회전하고 사용된 token 재사용을 거절한다. 응답 유실/보호 저장 실패는 재로그인으로 처리한다. 계정 전환 시 캐시·초안·source·outbox 소유자를 분리한다. 다른 사용자로 미전송 결과를 올리지 않는다.
 - 작업은 지정 local Runner에만 배정한다. 등록/claim/heartbeat/result에서 현재 사용자·장치·source·capability를 확인한다. `requestId`/입력 hash, claim receipt, lease token+generation, 결과 hash로 재전송과 실제 재실행을 구분한다. 늦은 결과가 새 실행을 덮어쓰지 못한다.
 - PC 종료/절전·네트워크 단절·lease 만료를 실패/복구 가능 상태로 표시한다. 명시적 재시도 없이 Agent를 중복 실행하지 않는다. 완료 응답 유실은 같은 결과 ID/hash로 재전송한다. 저장 전 보고서를 ‘저장 완료’로 표시하지 않는다.
@@ -275,7 +275,7 @@ DB 복원 시 신규 claim/발행을 먼저 중지한다. DB에 남은 intent만
 | D1 | 최초 관리자·팀·계정 발급 담당 | M1 외부 계정 생성 전 | 합성 인증/관리자 검증 |
 | D2 | 개인/공유 source·legacy 귀속·ACL | M1 이관/M2 지정 사례 전 | 기본 비공개·미확정 자료 보존 |
 | D3 | 임시 자격 전달·본인 확인·admin 복구 담당 | M2 계정 발급 전 | 발급/만료/복구 절차 검증 |
-| D4 | Supabase 프로젝트/조직·지역·Free 한도·배포 자격·운영/암호화 백업 담당 (프로젝트 미생성 확인) | M1 hosted 배포 전 | PoC 통합·로컬 회귀·복원 리허설·후보 패키지 |
+| D4 | Supabase 프로젝트·서울 배포 확인. 요금제/조직 한도·운영 담당 확인과 사용자 요청으로 보류한 외부 백업 설정은 남음 | M1 운영 준비 완료 전 | 설치·개인 연결·제한 팀 파일럿 준비 |
 | D5 | 팀 PC/Agent/MCP·읽기 자료·지원 버전 | M1 후보/M2 배포 전 | 로컬 진단·회귀·개인 설정 보존 |
 | D6 | 배포 접근·서명/회사 정책·릴리스/롤백 담당 | M2 게시 전 | 후보 패키지·checksum/설치 검증 |
 | D7 | 파일럿 팀원·사례·관찰 기간/목표·피드백/안정화 판정 | M2 시작/M3 종료 | 시험표·피드백 양식·합성 검증 |
@@ -285,7 +285,7 @@ DB 복원 시 신규 claim/발행을 먼저 중지한다. DB에 남은 intent만
 | D11 | 원격 사용량·로그/첨부 보존·운영 장애/복구 담당·수용 기준 | M4~M5 운영 수용 전 | 비용/복원 시나리오 |
 | D12 | 원격 ERP 코드 mirror/commit·DB 읽기 계정·망 경로·갱신 담당 | M4 분석 전 | 자료 버전·쓰기 차단 명세 |
 
-M1~M3의 다음 작업은 PoC 통합·후보/복원 검증 → 지정 Supabase 프로젝트 배포·hosted 검증 → 제한 팀 배포 → 피드백 안정화다. D8~D12 및 AWS 이전 시점 미확정을 이유로 첫 팀 배포 개발을 멈추지 않는다. 비밀번호·개인키·DB 자격을 채팅/Git으로 요구하지 않는다. 외부 자원 생성·실데이터 이관·실제 repo 쓰기는 구체적 대상과 실행 범위가 마련됐을 때 수행한다.
+PoC 통합·후보 검증·Supabase 첫 배포와 hosted 합성 검증은 수행했다. M1~M3의 다음 작업은 간편 배포 묶음·개인 MCP/Agent/읽기 자료 연결 → 제한 팀 배포 → 피드백 안정화다. 실제 ERP DB provider와 운영/백업 수용은 별도이며 백업은 사용자 요청으로 보류한다. D8~D12 및 AWS 이전 시점 미확정을 이유로 첫 팀 배포 개발을 멈추지 않는다. 비밀번호·개인키·DB 자격을 채팅/Git으로 요구하지 않는다. 외부 자원 생성·실데이터 이관·실제 repo 쓰기는 구체적 대상과 실행 범위가 마련됐을 때 수행한다.
 
 ## 11. 두 리뷰의 반영 결과
 
@@ -312,10 +312,10 @@ M1~M3의 다음 작업은 PoC 통합·후보/복원 검증 → 지정 Supabase �
 
 ## 12. 문서와 변경 관리
 
-현재 계획은 이 문서 하나에서 관리한다. [v2.1 보존본](implementation-plan-history-2026-09-21-v2.1.md)은 기존 본문/검증 연결을 보존한 역사 자료이며 실행 기준이 아니다. 과거 단계 ID로 작성된 기록은 당시 문맥으로 읽고 M1~M5 완료로 환산하지 않는다.
+현재 계획은 이 문서 하나에서 관리한다. [v2.1 보존본](archive/implementation-plan-history-2026-09-21-v2.1.md)은 기존 본문/검증 연결을 보존한 역사 자료이며 실행 기준이 아니다. 과거 단계 ID로 작성된 기록은 당시 문맥으로 읽고 M1~M5 완료로 환산하지 않는다.
 
-- 최신 안내: [문서 목록](README.md), [팀 배포 통합 안내](team-deployment-plan.md).
-- 현재 코드 실행 경계: [v1 개발 안내](v1-development.md), [서버 안내](server-runbook.md), [Windows 후보](windows-candidate.md), [팀 파일럿](team-pilot.md). 명령은 해당 코드/환경 검증 후 갱신한다.
-- 검증/기존 업무: [검증 기록](validation.md), [기존 로컬 완료](local-completion-2026-09-18.md), [운영 안내](maintenance.md), [legacy 연결](legacy-link-validation.md), [상태 필터](status-filter-validation.md), [스레드 검증](mail-threads-validation.md).
+- 최신 설명: [문서 목록](README.md), [현재 상태](current-status.md), [아키텍처](architecture.md), [내부 구조](internals.md), [흐름](workflows.md), [스펙](specification.md).
+- 현재 코드 실행 경계: [개발 안내](guides/development.md), [Supabase 운영](operations/supabase.md), [일반 Node 서버](operations/node-server.md), [Windows 후보](operations/windows.md), [팀 파일럿](operations/team-pilot.md). 현재 API·DB 계약과 보안 경계는 [문서 목록](README.md)에서 찾는다.
+- 검증/기존 업무: [검증 기록](validation.md), [기존 로컬 완료](archive/local-completion-2026-09-18.md), [운영 안내](operations/legacy-maintenance.md), [legacy 연결](validation/legacy-link-validation.md), [상태 필터](validation/status-filter-validation.md), [스레드 검증](validation/mail-threads-validation.md).
 
 v3.0의 AWS 조회는 읽기 전용이었다. v3.1에서 Supabase PoC 제품 소스를 통합하며 실제 배포/DB 변경 여부와 검증 결과는 [검증 기록](validation.md)에 남긴다. 비용/버전/실제 권한은 해당 구현 단계에서 재확인한다. 완료 표시는 소스·검증 대상·증거와 함께 남긴다.

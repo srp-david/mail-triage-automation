@@ -1,6 +1,6 @@
 # React 화면 전환 검증
 
-검증일: 2026-09-18. 범위는 [통합 구현 계획 4.3절](implementation-plan.md)의 R0~R6이다. React 메인 화면을 구현하고 로컬 Docker API에 적용했다. Auth0·팀 권한·공용 API 분리·개인 Runner는 이번 변경에 포함하지 않는다.
+검증일: 2026-09-18. 범위는 [통합 구현 계획 4.3절](../implementation-plan.md)의 R0~R6이다. React 메인 화면을 구현하고 로컬 Docker API에 적용했다. Auth0·팀 권한·공용 API 분리·개인 Runner는 이번 변경에 포함하지 않는다.
 
 ## 기준과 단계별 결과
 

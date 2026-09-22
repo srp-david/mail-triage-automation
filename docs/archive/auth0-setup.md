@@ -1,8 +1,8 @@
 # 회사 이메일 가입·로그인 연결
 
-> **2026-09-21 방향 변경으로 폐기된 연결안이다.** 사용자는 Auth0·이메일 인증·SES 발송 없이 공용 서버의 사용자명 로그인과 관리자 계정 생성을 선택했다. 아래 내용은 기존 코드 검토/이력 용도로만 보존한다. 새 작업은 [통합 구현 계획](implementation-plan.md) 5절·17절을 따르며 Auth0 테넌트·발송 설정을 준비할 필요가 없다.
+> **2026-09-21 방향 변경으로 폐기된 연결안이다.** 사용자는 Auth0·이메일 인증·SES 발송 없이 공용 서버의 사용자명 로그인과 관리자 계정 생성을 선택했다. 아래 내용은 기존 코드 검토/이력 용도로만 보존한다. 새 작업은 [통합 구현 계획](../implementation-plan.md) 5절·17절을 따르며 Auth0 테넌트·발송 설정을 준비할 필요가 없다.
 
-실제 연결 전 준비 절차다. 완료 상태와 미확정 결정은 [구현 계획](implementation-plan.md) 12~13절에서 관리한다. 기존 v0는 유지하고 최초 실인증은 별도 v1 앱·격리 DB로 확인한다. 예시 설정만으로 실제 이메일 인증이 연결되지는 않는다.
+실제 연결 전 준비 절차다. 완료 상태와 미확정 결정은 [구현 계획](../implementation-plan.md) 12~13절에서 관리한다. 기존 v0는 유지하고 최초 실인증은 별도 v1 앱·격리 DB로 확인한다. 예시 설정만으로 실제 이메일 인증이 연결되지는 않는다.
 
 ## 사용자에게 필요한 정보
 
@@ -24,7 +24,7 @@
 2. Native Application의 Token Endpoint Authentication Method는 `None`, grant는 Authorization Code와 Refresh Token을 사용한다. Refresh Token Rotation을 켜고 앱의 `refreshMode: rotating`과 맞춘다.
 3. 기존 v0의 3080과 분리한 첫 실인증 앱은 43180을 제안한다. 포트 사용 여부 확인 후 `http://127.0.0.1:43180/auth/callback`을 Allowed Callback URLs에 정확히 등록한다. `localhost`, 포트 wildcard, 이메일 인증 URL을 callback 대신 등록하지 않는다. 이후 3080으로 전환할 때는 Auth0 callback과 로컬 `localPort`를 함께 맞춘다.
 4. 공용 이력용 API의 signing algorithm은 RS256, Allow Offline Access는 활성화한다. Identifier를 서버 `AUTH_AUDIENCE`와 로컬 `auth.audience`에 똑같이 사용한다. Identifier는 API 식별자이며 로컬 서버의 실제 `historyUrl`과 달라도 된다.
-5. [pre-registration.cjs](../deploy/auth0/pre-registration.cjs)를 Pre User Registration Action에, [post-login.cjs](../deploy/auth0/post-login.cjs)를 Post Login Action에 배포하고 각각 해당 flow에 연결·적용한다. 파일 업로드만으로 flow가 활성화된 것으로 간주하지 않는다.
+5. [pre-registration.cjs](../../deploy/auth0/pre-registration.cjs)를 Pre User Registration Action에, [post-login.cjs](../../deploy/auth0/post-login.cjs)를 Post Login Action에 배포하고 각각 해당 flow에 연결·적용한다. 파일 업로드만으로 flow가 활성화된 것으로 간주하지 않는다.
 6. 두 Action의 `COMPANY_DOMAINS`와 서버 값을 일치시킨다. Post Login의 `CLAIM_NAMESPACE`는 서버 `AUTH_NAMESPACE`와 정확히 맞춘다. 미인증 회사 이메일과 외부 도메인은 Post Login에서 거절하고, 검증된 access token의 namespaced email/email_verified만 API가 신뢰한다.
 7. Auth0 Domain은 `https://<Domain>/`으로 조합해 서버 `AUTH_ISSUER`와 로컬 `auth.issuer`에 사용한다. 마지막 `/`까지 동일하게 맞춘다.
 
@@ -36,16 +36,16 @@
 - 현재 앱에는 인증메일 재발송 버튼이 없다. 첫 연결 검증은 Auth0 Dashboard의 Users → 대상 사용자 → Send Verification Email로 재발송한다. 이는 관리자 재발송 검증이며 사용자 셀프서비스 구현 완료와 구분한다. [공식 재발송 안내](https://support.auth0.com/center/s/article/How-to-Resend-a-User-Verification-Email).
 - 이메일 인증을 완료하면 앱으로 돌아와 로그인을 다시 시작한다. 인증·재설정 메일은 진행 중 PKCE 요청의 callback이 아니므로 `/auth/callback`을 직접 열지 않는다. 메일 완료 화면에서 로컬 앱으로 자동 복귀하는 설정은 별도 확인한다.
 - 최초 관리자 이메일에 해당하는 Auth0 `user_id` (`auth0|…`)를 확인해 **앱 API에 처음 로그인하기 전에** `ADMIN_SUBJECT`에 넣는다. 관리자 이메일 자체나 Client ID를 넣지 않는다. 현재 코드는 새 membership 생성 시에만 admin을 지정하며, 기존 analyst가 된 사용자는 환경변수 변경만으로 자동 승격되지 않는다.
-- 격리된 v1 DB에 확정한 `TEAM_ID`의 team을 먼저 준비한다. DB 초기화와 runtime 권한 설정은 [서버 runbook](server-runbook.md)을 따른다. 기존 DB에 실험용 migration·team을 추가하지 않는다.
+- 격리된 v1 DB에 확정한 `TEAM_ID`의 team을 먼저 준비한다. DB 초기화와 runtime 권한 설정은 [서버 runbook](server-runbook-2026-09-22.md)을 따른다. 기존 DB에 실험용 migration·team을 추가하지 않는다.
 
 ## 로컬 설정과 첫 로그인
 
-[local-settings.example.json](../deploy/auth0/local-settings.example.json)을 별도 `TRIAGE_LOCAL_HOME/config/settings.json`에 복사하고 실제 issuer/Client ID/audience를 채운다. 예시는 개인 MCP·AI 계정을 등록하지 않아 로그인과 공용 이력 연결까지만 검증한다. 기존 개인 설정을 덮어쓰지 않는다.
+[local-settings.example.json](../../deploy/auth0/local-settings.example.json)을 별도 `TRIAGE_LOCAL_HOME/config/settings.json`에 복사하고 실제 issuer/Client ID/audience를 채운다. 예시는 개인 MCP·AI 계정을 등록하지 않아 로그인과 공용 이력 연결까지만 검증한다. 기존 개인 설정을 덮어쓰지 않는다.
 
-서버에는 `AUTH_ISSUER`, `AUTH_AUDIENCE`, `AUTH_NAMESPACE`, `COMPANY_DOMAINS`, `TEAM_ID`, `ADMIN_SUBJECT` 및 격리 DB 접속 설정이 필요하다. 실제 값은 [server.env.example](../deploy/server.env.example)와 대응시킨다. 상시 공용 서버 구축 전에는 별도 로컬 history-api로 인증을 검증할 수 있다.
+서버에는 `AUTH_ISSUER`, `AUTH_AUDIENCE`, `AUTH_NAMESPACE`, `COMPANY_DOMAINS`, `TEAM_ID`, `ADMIN_SUBJECT` 및 격리 DB 접속 설정이 필요하다. 실제 값은 [server.env.example](../../deploy/server.env.example)와 대응시킨다. 상시 공용 서버 구축 전에는 별도 로컬 history-api로 인증을 검증할 수 있다.
 
 1. 격리 history-api를 127.0.0.1:3081에서 기동하고 readiness를 확인한다.
-2. 별도 `TRIAGE_LOCAL_HOME`을 지정해 빌드된 v1 local-app을 기동한다. 실행 명령은 [v1 개발 경계](v1-development.md)를 따른다.
+2. 별도 `TRIAGE_LOCAL_HOME`을 지정해 빌드된 v1 local-app을 기동한다. 실행 명령은 [v1 개발 경계](v1-development-2026-09-22.md)를 따른다.
 3. 같은 `TRIAGE_LOCAL_HOME` 환경에서 `node scripts/history-v1.mjs open`으로 브라우저를 연다. 단순 URL 직접 접속은 최초 로컬 세션을 만들지 못한다.
 4. 회사 계정으로 로그인 → Auth0 가입 → 이메일 인증 → 앱에서 다시 로그인 순서로 확인한다. 재설정은 Auth0 로그인 화면에서 시작한다.
 

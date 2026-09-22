@@ -1,6 +1,6 @@
 # 공용 이력 서버 리허설과 전환
 
-현재 배포 절차는 [Supabase 팀 배포 안내](supabase-rollout.md), 범위는 [통합 계획 v3.1](implementation-plan.md) 4~6절을 따른다. Supabase PoC 소스는 원본에 통합했으며 hosted 배포·실제 팀 파일럿은 미완료다.
+현재 배포 절차는 [Supabase 팀 배포 안내](../operations/supabase.md), 범위는 [통합 계획 v3.1](../implementation-plan.md) 4~6절을 따른다. Supabase PoC 소스는 원본에 통합했으며 hosted 배포·실제 팀 파일럿은 미완료다.
 
 아래는 이전 Auth0/VM 리허설의 역사 기록이다. 현재 사용자명 인증/Edge 배포에서 Auth0·SMTP 설정을 사용하지 않는다. Compose는 Node 자체 운영 참고안이며 Supabase 배포 명령이 아니다. AWS 이전과 MariaDB 이식은 안정화 이후 별도 작업이다.
 

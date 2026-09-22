@@ -1,6 +1,6 @@
 # Windows 후보 패키지
 
-현재 사용자명 인증 후보의 빌드·검증 상태는 [Supabase 배포 안내](supabase-rollout.md)와 [검증 기록](validation.md)을 따른다. 아래 candidate.6은 이전 P6 개발 후보이며 새 팀 배포본으로 사용하지 않는다. Native UI·세션·Runner와 두 agent MCP 합성 실행은 연결됐고, 실인증·ERP 읽기 계정·공용 호스트·팀 PC 검증은 남아 manifest는 releaseApproved=false다. 시작 스크립트는 미승인 후보의 일반 실행을 거부한다. 값을 임의로 true로 바꿔 배포하지 않는다.
+현재 사용자명 인증 후보의 빌드·검증 상태는 [Supabase 배포 안내](../operations/supabase.md)와 [검증 기록](../validation.md)을 따른다. 아래 candidate.6은 이전 P6 개발 후보이며 새 팀 배포본으로 사용하지 않는다. Native UI·세션·Runner와 두 agent MCP 합성 실행은 연결됐고, 실인증·ERP 읽기 계정·공용 호스트·팀 PC 검증은 남아 manifest는 releaseApproved=false다. 시작 스크립트는 미승인 후보의 일반 실행을 거부한다. 값을 임의로 true로 바꿔 배포하지 않는다.
 
 빌드 PC의 Windows x64 Node v24.16.0을 고정한다. `npm.cmd run build` 후 `node scripts/package-windows.mjs 새후보버전`을 실행한다. 버전 형식은 `0.2.0-candidate.6`이며 기존 폴더를 덮어쓰지 않으므로 다음 빌드는 새 번호를 사용한다. portable node.exe·Node 라이선스·정확한 의존성/lockfile·로컬 앱/Runner/adapter·공통 스킬·UI 자산·설치 관리 도구와 모든 파일 SHA-256 manifest/ZIP checksum을 만든다. DB 드라이버·history-api·개인 설정·ERP 자료·인증·outbox는 넣지 않는다.
 

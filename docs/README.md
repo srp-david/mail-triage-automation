@@ -1,47 +1,64 @@
 # 문서 안내
 
-갱신일: 2026-09-21. **공용 API·DB + 팀원 PC의 MCP·AI Agent를 먼저 팀에 배포하고, 피드백과 안정화 후 원격 SR 자동화로 확장한다.** 첫 공용 API·DB는 Supabase Edge·PostgreSQL로 배포한다. AWS 이전은 안정화 후 별도 진행하며 기존 `srp-rds-maria/cvslog` MariaDB 재사용은 추가 이식 결정이다.
+갱신: 2026-09-22. 현재 제품 설명, 실행 절차, 앞으로의 계획, 과거 증거를 구분해 관리한다. 처음 읽는 사람은 **현재 상태 → 아키텍처 → 주요 흐름 → 제품 스펙** 순서로 읽는다.
 
-## 먼저 읽을 문서
+## 현재 제품 이해
 
-1. [통합 구현 계획 v3.1](implementation-plan.md): 현재 우선순위와 M1~M5, AWS/DB 판단, 팀 배포·안정화 기준, 두 리뷰 반영 결과의 단일 기준.
-2. [프로젝트 README](../README.md): 현재 단일 사용자 Docker 앱의 사용법. 계획 중인 AWS 팀 서비스의 배포 명령이 아니다.
-3. [검증 기록](validation.md): 실제 확인한 사실·대상·결과와 미검증 경계.
-4. [운영 안내](maintenance.md): 기존 이관·동기화·복구 도구. 새 코드/배포 환경 검증 전에는 기존 실행 경로로만 해석한다.
-
-## 계획 읽는 순서
-
-| 궁금한 내용 | 통합 계획 위치 |
+| 문서 | 답하는 질문 |
 |---|---|
-| 지금 할 일·완료된 것 | 1~3절: 팀 배포 우선, 현재 소스/PoC 경계, M1~M5 |
-| AWS와 기존 RDS 사용 판단 | 4절: Supabase 첫 배포, 이후 AWS 이전과 DB 이식 경계 |
-| 첫 팀 배포의 구현/검증 | 5~6절: PoC 통합, 인증·로컬 Runner, 설치/복원, 파일럿/피드백 |
-| 안정화 이후 원격 자동화 | 7~9절: 원격 자료/서비스 권한, brief·commit 전달·검증·PR·복원 |
-| 필요한 입력과 리뷰 반영 | 10~11절: 결정 시점, Codex/Claude 항목별 처리 |
+| [프로젝트 README](../README.md) | 무엇을 하는 제품이며 어디서 시작하는가? |
+| [현재 상태](current-status.md) | 무엇이 배포·검증됐고 무엇이 남았는가? |
+| [아키텍처](architecture.md) | PC·API·DB·MCP·AI는 어디에 있고 어떻게 연결되는가? |
+| [내부 구조](internals.md) | 어떤 파일과 모듈이 어떤 역할을 맡는가? |
+| [주요 흐름](workflows.md) | 시작·로그인·분석·동기화·복구·종료가 어떻게 동작하는가? |
+| [제품 스펙](specification.md) | 제공 기능, 지원 환경, 설정과 제한은 무엇인가? |
+| [보안과 데이터](security.md) | 어떤 자료가 어디로 가며 어떤 보안 경계가 있는가? |
+| [API 계약](reference/api.md) | 로컬 API와 공용 API의 경로·인증·입출력은 무엇인가? |
+| [데이터 모델](reference/data-model.md) | 계정·출처·작업·보고서·복구 정보는 어떻게 저장되는가? |
 
-## 문서별 역할과 현재성
+## 개발·설치·운영
 
-| 문서 | 역할/경계 |
+| 문서 | 적용 대상 |
 |---|---|
-| [implementation-plan.md](implementation-plan.md) | 최신 결정·범위·순서·수용 기준. 새 백로그는 여기서만 관리 |
-| [supabase-rollout.md](supabase-rollout.md) | 현재 Supabase 배포·백업·파일럿 준비 절차 |
-| [team-deployment-plan.md](team-deployment-plan.md) | 통합 계획으로 가는 안내. 별도 계획을 유지하지 않음 |
-| [v1-development.md](v1-development.md) | 원본의 개발 실행 경로. 자체 인증 PoC 미병합/AWS 미배포 경계 확인 |
-| [server-runbook.md](server-runbook.md) | 기존 서버 리허설 기록과 새 AWS 배포 준비 시 갱신할 항목 |
-| [windows-candidate.md](windows-candidate.md) | 기존 Windows 후보·설치/복귀. 과거 후보를 새 팀 배포 승인본으로 쓰지 않음 |
-| [team-pilot.md](team-pilot.md) | 과거 파일럿 사례/양식. 최신 수용 기준은 통합 계획 6절 |
-| [validation.md](validation.md) | 날짜별 실제 검증. 당시 상태를 최신 구현 상태로 읽지 않음 |
-| [local-completion-2026-09-18.md](local-completion-2026-09-18.md) | P1~P6의 당시 로컬 완료 근거. 새 인증/AWS/원격 SR 완료 근거 아님 |
-| [react-transition-validation.md](react-transition-validation.md) | React 전환·회귀·로컬 적용 근거 |
-| [mail-threads-validation.md](mail-threads-validation.md) | 헤더 기반 스레드·수동 연결 및 화면 검증 |
-| [legacy-link-validation.md](legacy-link-validation.md) | 기존 문서 연결/보존 근거 |
-| [status-filter-validation.md](status-filter-validation.md) | 메일 검색 상태 필터 검증 |
-| [implementation-plan-history-2026-09-21-v2.1.md](implementation-plan-history-2026-09-21-v2.1.md) | v2.1 전체 보존본. 옛 Supabase 우선안·P/A/S 단계는 현재 실행 기준이 아님 |
-| [implementation-history-2026-09-17.md](implementation-history-2026-09-17.md) | 이전 구현 계획/완료 체크리스트 |
-| [team-deployment-proposal-2026-09-17.md](team-deployment-proposal-2026-09-17.md) | 이전 배포 비교안 |
-| [auth0-setup.md](auth0-setup.md) | 폐기한 Auth0 연결안의 역사 자료 |
-| [work-summary.md](work-summary.md) | 당시 작업/인계 맥락. 최신 계획의 기준이 아님 |
+| [개발 안내](guides/development.md) | 현재 사용자명 인증 코드의 빌드·별도 실행·검증 |
+| [Windows 후보 설치](operations/windows.md) | 현재 candidate.3의 설치·기동·종료·진단·업데이트 |
+| [Supabase 운영](operations/supabase.md) | 현재 공용 API·비공개 DB와 최초 계정·운영 절차 |
+| [팀 파일럿](operations/team-pilot.md) | 제한된 2명/2PC 수용과 피드백. 간편 배포 묶음은 미구현 |
+| [일반 Node 서버](operations/node-server.md) | 이후 자체 호스팅 코드 경로. 실제 AWS 배포 완료 아님 |
+| [기존 v0 서비스](operations/legacy-v0.md) | 기존 Docker API/DB/Worker 보존과 사용 경계 |
+| [기존 유지보수 도구](operations/legacy-maintenance.md) | v0 이관·동기화·복구 도구. v1 운영 DB에 그대로 적용하지 않음 |
 
-Supabase PoC 제품 커밋 3개를 원본에 통합했다. 현재 프로젝트는 아직 생성되지 않았으며 hosted 배포·실제 팀 파일럿은 미완료다. 로컬 재검증 결과는 검증 기록에서 확인한다. 관리자 생성 사용자명 계정·JWT/자료 ACL을 유지하고 Auth0/인증 이메일/SES 연결은 제외한다.
+## 계획과 증거
 
-현재 ERP 코드/DB 읽기 전용과 비밀/메일 원문 Git 제외 원칙을 유지한다. 원격 코드 수정·PR은 M5에서 repo/권한을 정한 후 진행한다. 자동 merge·운영 배포·운영 DB 쓰기는 범위 밖이다.
+- [통합 구현 계획](implementation-plan.md): M1 공용 기반 → M2 제한 배포 → M3 안정화 → M4 원격 분석 → M5 SR→PR. 범위·순서·수용 기준의 단일 기준이다.
+- [검증 일지](validation.md): 날짜별 실제 수행 결과. 과거의 미완료 상태를 현재 사실로 읽지 않는다.
+- [기능별 검증 기록](validation/README.md): UI 전환·메일 스레드·기존 문서 연결 등의 근거.
+- [보존 문서](archive/README.md): 이전 Auth0·VM 제안, 옛 계획, 인계, 당시 개발·설치 안내. 현재 실행 명령의 기준으로 사용하지 않는다.
+
+## 문서 구조
+
+```text
+docs/
+  README.md                  문서 지도
+  current-status.md          배포·검증·남은 작업의 현재 요약
+  architecture.md            배치와 경계
+  internals.md               코드와 모듈
+  workflows.md               실행 흐름과 상태
+  specification.md           구현된 제품 스펙
+  security.md                보안과 데이터 이동
+  implementation-plan.md     앞으로의 순서와 수용 기준
+  reference/                 API·DB 상세 계약
+  guides/                    개발 안내
+  operations/                설치·운영·팀 수용
+  validation.md              날짜별 검증 일지
+  validation/                주제별 검증 근거
+  archive/                   과거 결정·인계·옛 안내
+```
+
+## 변경 규칙
+
+1. 기능을 바꾸면 관련 현재 문서와 코드 경로를 함께 갱신한다. 새 계획은 구현된 기능처럼 기술하지 않는다.
+2. 배포·실검증을 수행했을 때만 현재 상태와 검증 일지를 갱신한다. 문서 정리는 새 배포·테스트 완료가 아니다.
+3. 계정·권한·백업 등 운영 수치는 환경과 확인일을 명시한다. 실제 endpoint·자격·메일 원문은 예시에 넣지 않는다.
+4. 과거 기록은 삭제하지 않는다. 위치를 옮길 때 상대 링크를 수정하고 Git으로 이전 본문을 추적한다.
+5. 2026-09-22 커밋 정리 전 ID는 `backup/commits-before-cleanup-20260922` 브랜치에 보존되어 있다. 과거 검증의 원래 ID를 현재 HEAD로 일괄 치환하지 않는다.
