@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
-import {chromium} from 'playwright-core';
+import {standalone} from './browser-scenario.mjs';
+
+export async function verify(browser){
 process.env.NODE_ENV='test';process.env.TRIAGE_TOKEN='synthetic-pre-p1-'.repeat(4);
 const {createApp}=await import('../src/server.ts');
 const server=createApp().listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
-const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[],posts=[];
 page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
 await page.clock.install();
@@ -91,3 +92,5 @@ try{
  assert.deepEqual(errors,[]);
  console.log(JSON.stringify({draftRefresh:true,draftNavigation:true,draftIsolation:true,draftReload:true,draftReauthentication:true,storageFallback:true,failedSubmitPreserved:true,successfulSubmitCleared:true,explicitDiscard:true,stateActions:true,activeRecheck:true,summaryRecovery:true,searchReset:true,searchRetry:true,mobileFocusAndScroll:true,legacyDetails:true,pageErrors:errors}));
 }finally{await browser.close();await new Promise(r=>server.close(r));}
+}
+await standalone(import.meta.url,verify);

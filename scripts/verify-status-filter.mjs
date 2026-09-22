@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import {chromium} from 'playwright-core';
+import {standalone} from './browser-scenario.mjs';
+
+export async function verify(browser){
 process.env.NODE_ENV='test';process.env.TRIAGE_TOKEN='synthetic-status-'.repeat(4);
 const {createApp}=await import('../src/server.ts');
 const server=createApp().listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
-const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const page=await browser.newPage(),requests=[],errors=[];page.on('pageerror',e=>errors.push(e.message));
 await page.route('**/api/**',async route=>{
  const url=new URL(route.request().url());let json;
@@ -31,3 +32,5 @@ try{
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));assert.deepEqual(errors,[]);
  console.log('PASS: 9 status options, combined conditions, page reset, empty results, mobile layout');
 }finally{await browser.close();await new Promise(r=>server.close(r));}
+}
+await standalone(import.meta.url,verify);

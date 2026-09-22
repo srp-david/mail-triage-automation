@@ -1,4 +1,4 @@
-import {test} from 'node:test';
+import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import {childEnvironment,normalizeEvent,AgentAdapter} from '../packages/agent-adapters/src/index.js';
 test('agent environment strips history DB/device tokens and normalized progress drops tool contents',async()=>{

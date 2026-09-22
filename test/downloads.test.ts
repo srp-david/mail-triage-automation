@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { attachmentDownload, DOWNLOAD_LIMIT } from '../src/attachments.js';
 const result=(bytes:Buffer,filename='sample.zip')=>({

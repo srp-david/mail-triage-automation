@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
-import {chromium} from 'playwright-core';
+import {standalone} from './browser-scenario.mjs';
+
+export async function verify(browser){
 process.env.NODE_ENV='test';process.env.TRIAGE_TOKEN='synthetic-thread-token-'.repeat(3);
 const {createApp}=await import('../src/server.ts');
 const mail=id=>({id,messageId:id===1?'<root@example.test>':`<${id}@example.test>`,subject:id<=105?'배송 일정 확인':'같은 제목의 별개 문의',
@@ -18,7 +20,6 @@ const server=createApp(async(name,args)=>{
  return {emails,total,nextOffset:args.offset+args.limit<total?args.offset+args.limit:null};
 },async id=>({...mail(id),body:'개별 메일 본문 '+id,attachments:[]}),undefined,{list:async()=>[]},async()=> 'synthetic-sync').listen(0,'127.0.0.1');
 await new Promise(resolve=>server.once('listening',resolve));
-const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const context=await browser.newContext({viewport:{width:1280,height:900},extraHTTPHeaders:{Authorization:'Bearer '+process.env.TRIAGE_TOKEN}});
 const page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
 await page.clock.install();
@@ -67,3 +68,5 @@ try{
  assert.ok(analysisBatches.includes(100));assert.deepEqual(errors,[]);
  console.log(JSON.stringify({threadPagination:true,keyboardExpand:true,collapsePreserved:true,individualMailSelection:true,analysisBatches:true,viewSwitch:true,searchAndRetry:true,oldMcpFallback:true,mobileFocus:true,pageErrors:errors}));
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
+}
+await standalone(import.meta.url,verify);

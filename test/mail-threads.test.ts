@@ -1,4 +1,4 @@
-import {test} from 'node:test';
+import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import {groupThreads,searchThreads} from '../src/mail-threads.js';
 import type {ThreadLink} from '../src/thread-links.js';

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
-import {chromium} from 'playwright-core';
+import {standalone} from './browser-scenario.mjs';
+
+export async function verify(browser){
 process.env.NODE_ENV='test';process.env.TRIAGE_TOKEN='synthetic-markdown-'.repeat(4);
 let server,base=process.env.PREVIEW_BASE_URL;
 if(!base){const {createApp}=await import('../src/server.ts');server=createApp().listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));base='http://127.0.0.1:'+server.address().port;}
@@ -20,7 +22,6 @@ const source = [
  '<input autofocus><form action="/api/sync"><button>실행</button></form>', '',
  '<a href="https://example.com" ping="/api/ping">HTML link</a>',
  ].join('\n');
-const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[],unexpected=[],mutations=[],external=[];
 page.on('pageerror',e=>errors.push(e.message));
 page.on('request',r=>{if(new URL(r.url()).origin!==new URL(base).origin)external.push(r.url());});
@@ -78,3 +79,5 @@ try{
  console.log(JSON.stringify({renderedMarkdown:true,knowledgeAndReviews:true,legacy:true,sourceExact:true,exportPreserved:true,safeLinks:true,noUntrustedRequests:true,mobileTableAndCodeScroll:true,pageErrors:errors,apiMutations:mutations}));
 }catch(error){console.error({errors,notice:await page.locator('#history-notice').textContent()});throw error;}
 finally{await browser.close();if(server)await new Promise(r=>server.close(r));}
+}
+await standalone(import.meta.url,verify);

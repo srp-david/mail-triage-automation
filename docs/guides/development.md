@@ -33,6 +33,27 @@ npm.cmd run check         # lint + format:check + typecheck
 
 IDE에서는 프로젝트의 `eslint.config.mjs`와 `.prettierrc.json`을 사용한다. 백엔드·기존 `public` 코드·생성 산출물·비밀 설정은 이 React 포맷 명령의 대상이 아니다. 첨부 캐시를 메일별로 새로 만드는 두 `useMemo`는 의도적인 캐시 경계여서 해당 줄에만 사유와 함께 Hooks 의존성 예외를 기록했다.
 
+### 테스트 실행
+
+유닛·React 컴포넌트·서버 통합 검증은 Vitest로 실행한다. React Testing Library와 user-event는 jsdom에서 입력과 접근 가능한 화면 동작을 검사한다. 브라우저 검증은 Playwright Test가 실행기·worker 격리·HTML 보고서·trace를 관리한다.
+
+```powershell
+npm.cmd test                     # DB 없이 유닛 + React 컴포넌트
+npm.cmd run test:watch           # 위 범위를 변경 감시
+npm.cmd run test:integration     # 일회용 PostgreSQL에서 API/DB 통합 검사
+npm.cmd run test:all             # 유닛 + React + API/DB
+npm.cmd run test:coverage        # .runtime/coverage
+npm.cmd run build                # E2E가 사용하는 UI/Office/Markdown 빌드
+npm.cmd run test:e2e             # Playwright 전체: UI 16종 + 실제 인증 API/DB
+npm.cmd run test:e2e:report       # .runtime/playwright-report
+```
+
+DB 검사는 Docker의 `postgres:17`을 loopback 임의 포트와 tmpfs로 실행하고 종료 시 해당 임시 컨테이너만 제거한다. Vitest의 integration 프로젝트를 직접 실행할 때는 전용 `TEST_DATABASE_URL`이 필요하며 앱의 `.env`를 자동 사용하지 않는다. 기존 erp-manager CLI 계약 검사는 `TRIAGE_CLI_SOURCE`에 해당 CLI 파일을 지정한 뒤 `npm run test:external`로 별도 실행한다. 기본 테스트에서 이 외부 저장소 의존성을 숨겨 건너뛰지 않는다.
+
+Playwright는 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 지정값, Windows 기본 설치 Chrome, Playwright 관리 Chromium 순서로 선택한다. 관리 Chromium이 필요하면 `npx playwright install chromium`을 한 번 실행한다. Office 합성 fixture 생성에는 Python 3 표준 라이브러리를 사용한다. 인증 E2E에는 Docker가 필요하다. 기존 `node scripts/verify-react-suite.mjs manual-threads` 명령도 Playwright 실행기로 연결된다.
+
+기존 16종은 모의 API 또는 합성 메일 공급자를 사용하는 브라우저 회귀이고, `auth-database.spec.ts`는 브라우저 티켓 → React 로그인 → local-app → 실제 사용자명 API → 임시 PostgreSQL → 비밀번호 변경/로그아웃을 통과한다. 개인 MCP·Agent·운영 Supabase의 종단 검증과는 구분한다. trace와 화면은 합성 자료만 사용하며 `.runtime`에 보관한다.
+
 ## 2. 공용 API의 개발 실행
 
 운영 DB가 아닌 명시적으로 준비한 개발 DB를 사용한다. `DATABASE_URL_FILE`, `HISTORY_SCHEMA`, 필요한 CA를 운영자 전용 개발 설정에서 로드하고 schema를 먼저 만든 뒤 migration을 수행한다.

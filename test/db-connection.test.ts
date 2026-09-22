@@ -1,4 +1,4 @@
-import {test} from 'node:test';
+import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import pg from 'pg';
 import {databaseConnection} from '../apps/history-api/src/db-connection.js';

@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
-import {chromium} from 'playwright-core';
 import {dragThread} from './thread-dnd-browser.mjs';
+import {standalone} from './browser-scenario.mjs';
+
+export async function verify(browser){
 process.env.NODE_ENV='test';process.env.TRIAGE_TOKEN='synthetic-scroll-'.repeat(4);
 const {createApp}=await import('../src/server.ts'),{config}=await import('../src/config.ts');
 const mails=Array.from({length:90},(_,i)=>({id:i+1,messageId:`<${i+1}@example.test>`,subject:'합성 문의 '+(i+1),
@@ -13,7 +15,6 @@ const server=createApp(async(name,args)=>{
  if(name==='get_email')return mails[args.id-1];if(name==='get_email_html')return {html:''};assert.equal(name,'search_emails');return {emails:mails,nextOffset:null};
 },async id=>({...mails[id-1],body:Array.from({length:220},(_,i)=>'합성 본문 '+id+' · '+(i+1)+'번째 줄').join('\n'),attachments:[]}),undefined,store,async()=> 'synthetic-sync').listen(0,'127.0.0.1');
 await new Promise(r=>server.once('listening',r));
-const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const page=await browser.newPage({viewport:{width:1440,height:900},extraHTTPHeaders:{Authorization:'Bearer '+config.token}});page.setDefaultTimeout(10000);await page.clock.install();
 page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{const url=new URL(r.url());if(url.pathname==='/api/mails')queries.push(Object.fromEntries(url.searchParams));});
 await page.route('**/api/status',r=>r.fulfill({json:{storeId:config.store,sync:null,worker:{online:true,state:'ready'}}}));
@@ -62,3 +63,5 @@ try{
  await page.setViewportSize({width:1280,height:500});assert.equal(await list.evaluate(el=>getComputedStyle(el).overflowY),'visible');assert.equal((await viewport()).horizontal,false);
  assert.deepEqual(errors,[]);console.log(JSON.stringify({independentPaneScroll:true,fixedToolbarAndPager:true,noNestedBodyScroll:true,readingPosition:true,manualMutationPageAndScroll:true,smallDesktopHeights:true,mobileSingleScroll:true,mobilePositions:true,shortWindowFallback:true,pageErrors:errors}));
 }finally{await browser.close();await new Promise(r=>server.close(r));}
+}
+await standalone(import.meta.url,verify);

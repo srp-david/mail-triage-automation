@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
-import {chromium} from 'playwright-core';
+import {standalone} from './browser-scenario.mjs';
+
+export async function verify(browser){
 process.env.NODE_ENV='test';process.env.TRIAGE_TOKEN='synthetic-related-'.repeat(4);
 let server,base=process.env.PREVIEW_BASE_URL;
 if(!base){const {createApp}=await import('../src/server.ts');server=createApp().listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));base='http://127.0.0.1:'+server.address().port;}
-const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[],mutations=[],searches=[],bodyReads=[],imageReads=[],external=[];
 page.on('pageerror',e=>errors.push(e.message));
 page.on('request',r=>{if(r.url().includes('tracker.example.test'))external.push(r.url());});
@@ -105,3 +106,5 @@ try{
  assert.deepEqual(external,[]);assert.ok(imageReads.length>0);
  console.log(JSON.stringify({manualSelection:true,previewBeforeLink:true,sameBodyAsMailbox:true,htmlParagraphsAndTables:true,inlineImages:true,plainFallback:true,noExternalImages:true,multipleLinks:true,duplicateAndSelfGuard:true,pagination:true,identityFailure:true,missingOriginalPreserved:true,unlink:true,undoHandlingPreservesLinks:true,searchRetry:true,stalePreviewIgnored:true,staleHtmlIgnored:true,mobile:true,noAnalysisOrSync:true,pageErrors:errors}));
 }finally{release?.();releaseHtml?.();await browser.close();if(server)await new Promise(r=>server.close(r));}
+}
+await standalone(import.meta.url,verify);

@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
-import {chromium} from 'playwright-core';
+import {standalone} from './browser-scenario.mjs';
+
+export async function verify(browser){
 process.env.NODE_ENV='test';process.env.TRIAGE_TOKEN='synthetic-handling-'.repeat(4);
 let server,base=process.env.PREVIEW_BASE_URL;
 if(!base){const {createApp}=await import('../src/server.ts');server=createApp().listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));base='http://127.0.0.1:'+server.address().port;}
-const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[],mutations=[];
 page.on('pageerror',e=>errors.push(e.message));
 let handled=null,fail=false,state='needs_input',submitted=null,identityKind='mcp';
@@ -68,3 +69,5 @@ try{
  assert.deepEqual(mutations,[...Array(3).fill('/api/runs/one/handling'),'/api/runs']);assert.deepEqual(errors,[]);
  console.log(JSON.stringify({closeWithoutAnalysis:true,undo:true,historyAndBadges:true,reportPreserved:true,reload:true,conflict:true,activeGuard:true,completedFollowup:true,followupContext:true,handledAndOutlookGuards:true,mobile:true,pageErrors:errors}));
 }finally{await browser.close();if(server)await new Promise(r=>server.close(r));}
+}
+await standalone(import.meta.url,verify);

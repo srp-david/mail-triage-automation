@@ -1,4 +1,4 @@
-import {test} from 'node:test';
+import {test} from 'vitest';
 import assert from 'node:assert/strict';
 process.env.NODE_ENV='test';process.env.TRIAGE_TOKEN='synthetic-thread-cache-route-'.repeat(3);
 const {createApp}=await import('../src/server.js');

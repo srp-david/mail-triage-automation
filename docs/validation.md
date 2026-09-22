@@ -2,6 +2,14 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-22 Vitest · React Testing Library · Playwright Test 전환
+
+- 기존 node:test 34개 파일의 검증을 Vitest 5.0.1로 이관하고, 실제 외부 erp-manager CLI가 필요한 1개 검증은 external 프로젝트로 분리했다. Runner 가상 시간은 Vitest fake timers와 테스트별 cleanup으로 이관했다. React Testing Library 16.3.3 + jsdom에 MUI native ref/입력/체크박스/선택 검증을 추가했다.
+- `npm run test:all`: 유닛·React·독립 PostgreSQL 통합 **131/131 통과**. `TRIAGE_CLI_SOURCE`를 지정한 `test:external` **1/1 통과**. 최초 통합 실행의 외부 CLI 경로 누락 1건은 테스트 분류와 명시적 실행 명령으로 해결했다. 기존 DB/Worker/보고서/메일 데이터에 연결하지 않았다.
+- 기존 Chrome 회귀 **16/16**을 `@playwright/test` 1.63.0으로 실행했다. 시나리오별 worker와 context를 분리하고 HTML 리포트와 trace를 `.runtime/playwright-*`에 보관한다. 기존 단독 진단 스크립트 진입점도 유지했다.
+- 실제 사용자명 API와 임시 PostgreSQL을 사용하는 인증 E2E **1/1 통과**. 일회용 browser-ticket 발급, 최초 임시 비밀번호 로그인, 비밀번호 변경, 새 비밀번호 로그인, 로그아웃 후 토큰 거부를 검증했다. 실제 MCP/AI/ERP/운영 서비스 검증은 아니다.
+- `npm run check` 통과. 서비스 재배포 및 Windows 후보 생성은 수행하지 않았다. 테스트 사용법은 [개발 안내](guides/development.md)를 따른다.
+
 ## 2026-09-22 React ESLint + Prettier 도입
 
 - 메인 React UI와 Office 뷰어에 ESLint 10.11.0 flat config, typescript-eslint 8.70.1, React Hooks 7.1.1, Prettier 3.9.8, eslint-config-prettier 10.1.8을 적용했다. `lint`, `lint:fix`, `format`, `format:check`, `typecheck`를 추가했고 `check`는 lint → format:check → typecheck를 실행한다. React 소스와 CSS/JSON/HTML을 포맷하고 `.gitattributes`로 해당 범위의 LF를 유지한다.

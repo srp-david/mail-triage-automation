@@ -1,4 +1,4 @@
-import {test} from 'node:test';
+import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import {ThreadSearchCache} from '../src/thread-cache.js';
 import {scanThreadMails,searchThreads} from '../src/mail-threads.js';

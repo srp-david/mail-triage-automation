@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
-import {chromium} from 'playwright-core';
+import {standalone} from './browser-scenario.mjs';
+
+export async function verify(browser){
 process.env.NODE_ENV='test';process.env.TRIAGE_TOKEN='synthetic-mail-analysis-'.repeat(4);
 let server,base=process.env.PREVIEW_BASE_URL;
 if(!base){const {createApp}=await import('../src/server.ts');server=createApp().listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));base='http://127.0.0.1:'+server.address().port;}
-const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[],mutations=[],batches=[];
 await page.clock.install();page.on('pageerror',e=>errors.push(e.message));
 let completed=false,unavailable=false,slow=false,release;
@@ -57,3 +58,5 @@ try{
  assert.deepEqual(errors,[]);assert.deepEqual(mutations,[]);
  console.log(JSON.stringify({batchLookup:true,statusBadges:true,priorCompletedPreserved:true,legacyLinkedOnly:true,noHistoryUnmarked:true,pollWithoutListReset:true,failureRecovery:true,paginationAndStaleGuard:true,mobile:true,pageErrors:errors,apiMutations:mutations}));
 }finally{release?.();await browser.close();if(server)await new Promise(r=>server.close(r));}
+}
+await standalone(import.meta.url,verify);

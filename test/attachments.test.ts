@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { imageSources } from '../public/attachments.js';
 test('MCP image and embedded image resources are both displayed',()=>{

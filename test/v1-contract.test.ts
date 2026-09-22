@@ -1,4 +1,4 @@
-import {test} from 'node:test';
+import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {HistoryClient} from '../packages/history-client/src/index.js';

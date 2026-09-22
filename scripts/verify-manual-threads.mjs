@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
-import {chromium} from 'playwright-core';
 import {dragThread,touchThread} from './thread-dnd-browser.mjs';
+import {standalone} from './browser-scenario.mjs';
+
+export async function verify(browser){
 process.env.NODE_ENV='test';process.env.TRIAGE_TOKEN='synthetic-manual-threads-'.repeat(3);
 const {createApp}=await import('../src/server.ts'),{config}=await import('../src/config.ts');
 const mails=Array.from({length:4},(_,i)=>({id:i+1,messageId:`<${i+1}@example.test>`,fetchedAt:'2026-01-01T00:00:00Z',
@@ -23,7 +25,6 @@ const server=createApp(async(name,args)=>{
  return {emails:mails,nextOffset:null};
 },async id=>({...mails[id-1],body:'합성 메일 본문 '+id,attachments:[]}),undefined,store,async()=> 'synthetic-sync').listen(0,'127.0.0.1');
 await new Promise(resolve=>server.once('listening',resolve));
-const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const context=await browser.newContext({viewport:{width:1440,height:1000},hasTouch:true,extraHTTPHeaders:{Authorization:'Bearer '+config.token}});
 const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(10000);await page.clock.install();
 await page.addInitScript(()=>{window.cspViolations=[];document.addEventListener('securitypolicyviolation',e=>window.cspViolations.push(e.violatedDirective));});
@@ -93,3 +94,5 @@ try{
  assert.deepEqual(await page.evaluate(()=>window.cspViolations),[]);
  assert.deepEqual(errors,[]);console.log(JSON.stringify({library:'@hello-pangea/dnd',dragConnectAndDetach:true,keyboardConnectDetachCancel:true,touchConnectDetach:true,viewChangeCancels:true,noPickButtons:true,foreignSelfAndLinkedDropRejected:true,reload:true,unlink:true,undo:true,saveDetachAndRefreshFailure:true,narrowViewportMouseDrag:true,mailSelection:true,cspViolations:0,pageErrors:errors}));
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
+}
+await standalone(import.meta.url,verify);

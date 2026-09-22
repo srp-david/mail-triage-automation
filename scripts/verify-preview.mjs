@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile, mkdir } from 'node:fs/promises';
-import { chromium } from 'playwright-core';
+import {standalone} from './browser-scenario.mjs';
 
+export async function verify(browser){
 // Same server/static headers as the app, no DB or MCP operations. Every API response is synthetic.
 process.env.NODE_ENV='test';process.env.TRIAGE_TOKEN='preview-fixture-token-'.repeat(4);
 let server;
@@ -16,7 +17,6 @@ const formats=['docx','pptx','xlsx'];
 const files=Object.fromEntries(await Promise.all(formats.map(async ext=>[ext,await readFile('.runtime/preview-fixtures/sample.'+ext)])));
 const attachments=formats.map((ext,i)=>({attachmentId:'1.'+(i+1),filename:'sample.'+ext,size:files[ext].length,contentType:'application/octet-stream'}));
 attachments.push({attachmentId:'1.4',filename:'large.docx',size:6*1024*1024},{attachmentId:'1.5',filename:'archive.zip',size:10},{attachmentId:null,filename:'missing.xlsx',size:10});
-const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const page=await browser.newPage({viewport:{width:1440,height:1000},acceptDownloads:true});
 const errors=[],external=[],mutations=[],consoleErrors=[];
 page.on('pageerror',e=>errors.push(e.message));
@@ -103,3 +103,5 @@ try{
  console.log(JSON.stringify({formats,syntheticOoxmlRendered:true,mobile:true,retry:true,byteExactDownload:true,unauthorized:true,corrupt:true,externalBlocked:blocked,escapeFocus:true,apiMutations:mutations,pageErrors:errors,consoleErrors}));
 }catch(error){console.error(JSON.stringify({consoleErrors,errors}));await page.screenshot({path:'.runtime/preview-failure.png'});throw error;}
 finally{await browser.close();if(server)await new Promise(resolve=>server.close(resolve));}
+}
+await standalone(import.meta.url,verify);

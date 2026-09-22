@@ -1,11 +1,12 @@
-// Synthetic only: exercises both the native local-app boundary and MUI browser controls.
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {createServer} from 'node:net';
-import {chromium} from 'playwright-core';
 import {createBrowserApp} from '../apps/local-app/src/browser-app.ts';
 import {ApiError} from '../packages/contracts/src/v1.ts';
+import {standalone} from './browser-scenario.mjs';
+
+export async function verify(browser){
 const probe=createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));
 let authenticated=false,settings={sourceId:'source',collectionId:'',runnerId:'runner',agent:'codex',originalAvailable:true};
 const writes=[],searches=[],errors=[];
@@ -39,7 +40,6 @@ const app=createBrowserApp(session,{port,controlToken:control,staticRoot:resolve
  });
 }});
 const server=app.listen(port,'127.0.0.1');await new Promise(r=>server.once('listening',r));
-const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const page=await browser.newPage({viewport:{width:1440,height:900}});page.setDefaultTimeout(10000);
 page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
 await page.addInitScript(()=>{window.cspViolations=[];document.addEventListener('securitypolicyviolation',e=>window.cspViolations.push(e.violatedDirective));});
@@ -76,3 +76,5 @@ try{
  assert.ok(first.headers.get('content-security-policy').includes("'nonce-"+n(firstHtml)+"'"));assert.ok(secondHtml.includes('name="triage-auth" content="native"'));
  console.log('PASS: MUI native login/logout, nonce CSP, IME Enter, settings save, admin fields/checkbox, mobile menu/layout, screenshots');
 }finally{await browser.close();await new Promise(r=>server.close(r));}
+}
+await standalone(import.meta.url,verify);

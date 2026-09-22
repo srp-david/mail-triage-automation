@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
-import { chromium } from 'playwright-core';
+import {standalone} from './browser-scenario.mjs';
+
+export async function verify(browser){
 // All API responses are synthetic; no customer, DB or MCP access.
 process.env.NODE_ENV='test';process.env.TRIAGE_TOKEN='image-fixture-token-'.repeat(4);
 const {createApp}=await import('../src/server.ts');
 const server=createApp().listen(0,'127.0.0.1');
 await new Promise(resolve=>server.once('listening',resolve));
 const base='http://127.0.0.1:'+server.address().port;
-const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
 const page=await browser.newPage({viewport:{width:1440,height:1000},acceptDownloads:true});
 const png=Buffer.from(await page.evaluate(()=>{
  const canvas=document.createElement('canvas');canvas.width=1600;canvas.height=900;
@@ -95,3 +96,5 @@ try{
  assert.deepEqual(errors,[]);assert.deepEqual(mutations,[]);
  console.log(JSON.stringify({inlinePreserved:true,noGallery:true,onDemand:true,retry:true,corrupt:true,sizeLimit:true,downloadExact:true,escapeFocus:true,lateResponse:true,plainFallback:true,mobile:true,unauthorized:true,pageErrors:errors}));
 }finally{releaseSlow?.();await browser.close();await new Promise(resolve=>server.close(resolve));}
+}
+await standalone(import.meta.url,verify);
