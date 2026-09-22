@@ -82,6 +82,8 @@ React 화면은 `packages/ui/ui/src`에서 메일·이력·설정·사용자명 
 
 화면은 MUI 9와 Emotion을 사용한다. `theme.ts`는 한국어 글꼴·색상·작은 입력 크기를, `components/Controls.tsx`는 native 이벤트를 보존하는 MUI 입력과 패널을 정의한다. `layout.css`는 분할/반응형 배치만 담당하며 메인 화면은 기존 `public/style.css`를 로드하지 않는다. 메일·Markdown 본문 서식은 `document-content.css`로 분리했다. 스레드 펼침은 MUI `styled`와 native disclosure를 함께 사용한다.
 
+React 메일 연결/해제 드래그는 `@hello-pangea/dnd` 18.0.1의 `DragDropContext`·`Draggable`·`Droppable`로 처리한다. 대화별 영역과 하단 해제 영역 사이의 이동을 기존 `/thread-links` API에 전달하며 정렬 순서는 변경하지 않는다. 마우스·터치·키보드 센서를 사용하고, 키보드는 Space로 시작/놓기, 위아래 방향키로 대상 변경, Escape로 취소한다. 접힌 대화 안의 메일은 드래그 측정 대상에서 제외하고 펼치면 등록한다. 동일 대화·외부 드롭, 다른 저장소나 갱신된 목록에서 끝난 드래그는 쓰기 요청을 만들지 않는다. `DragDropContext`에는 기존 요청별 CSP nonce를 전달한다.
+
 보고서와 첨부 미리보기는 MUI Dialog로 표시한다. 본문 정화·CID 해석과 Office 파서는 유지하며 Markdown 도구, 이미지 재시도, XLSX 시트/확대·축소 제어도 MUI로 표시한다. `packages/ui/security.ts`는 HTML 응답에 요청별 CSP nonce를 주입한다. Windows 패키지는 이 서버 모듈도 포함해야 한다. `scripts/verify-mui-ui.mjs`는 합성 local-app 로그인·설정·관리자·IME·nonce·모바일 회귀를 검사한다.
 
 | 설치 경로 | 내용·갱신 방식 |

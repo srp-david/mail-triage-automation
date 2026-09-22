@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {chromium} from 'playwright-core';
+import {dragThread} from './thread-dnd-browser.mjs';
 process.env.NODE_ENV='test';process.env.TRIAGE_TOKEN='synthetic-scroll-'.repeat(4);
 const {createApp}=await import('../src/server.ts'),{config}=await import('../src/config.ts');
 const mails=Array.from({length:90},(_,i)=>({id:i+1,messageId:`<${i+1}@example.test>`,subject:'합성 문의 '+(i+1),
@@ -39,9 +40,9 @@ try{
  await page.getByRole('button',{name:'다음',exact:true}).click();await mail(60).waitFor();await settle();await list.evaluate(el=>el.scrollTop=500);
  const visible=await list.evaluate(el=>{const b=el.getBoundingClientRect();return [...el.querySelectorAll('.mail')].filter(m=>{const r=m.getBoundingClientRect();return r.top>b.top&&r.bottom<b.bottom;}).map(m=>Number(m.dataset.mailId));});
  assert.ok(visible.length>=2);const [source,target]=visible;
- await mail(source).dragTo(mail(target));await page.getByText('89개 대화 · 90개 메일',{exact:true}).waitFor();await settle();assert.equal(queries.at(-1).offset,'30');assert.ok(await list.evaluate(el=>el.scrollTop)>200);
+ await dragThread(page,mail(source),mail(target));await page.getByText('89개 대화 · 90개 메일',{exact:true}).waitFor();await settle();assert.equal(queries.at(-1).offset,'30');assert.ok(await list.evaluate(el=>el.scrollTop)>200);
  const zone=page.locator('#thread-detach-zone'),zoneBox=await zone.boundingBox();assert.ok(zoneBox.y+zoneBox.height<900);
- await mail(source).dragTo(zone);await page.getByText('90개 대화 · 90개 메일',{exact:true}).waitFor();await settle();assert.equal(queries.at(-1).offset,'30');assert.ok(await list.evaluate(el=>el.scrollTop)>200);
+ await dragThread(page,mail(source),zone);await page.getByText('90개 대화 · 90개 메일',{exact:true}).waitFor();await settle();assert.equal(queries.at(-1).offset,'30');assert.ok(await list.evaluate(el=>el.scrollTop)>200);
  await page.screenshot({path:'.runtime/mail-scroll-desktop.png'});
  for(const [width,height] of [[1920,1080],[1280,720],[1024,750],[901,701]]){
   await page.setViewportSize({width,height});assert.equal((await viewport()).pageOverflow,false,`${width}x${height}`);assert.equal((await viewport()).horizontal,false);

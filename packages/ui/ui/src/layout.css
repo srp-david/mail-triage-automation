@@ -41,6 +41,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;line-height:1.8;pad
 .mail-thread{border-bottom:1px solid var(--mui-palette-divider)}.thread-summary{font-size:13px;overflow-wrap:anywhere}.thread-meta{display:block;font-size:12px;margin-top:5px;color:var(--mui-palette-text-secondary)}
 .thread-count,.thread-manual-badge{margin-left:6px}.thread-members{margin-left:12px;padding-left:8px;border-left:2px solid var(--mui-palette-divider)}.mail-thread.has-selected-mail>summary{background:#e5f2ec}
 .thread-singleton{min-width:0}.thread-draggable{cursor:grab}.thread-draggable:active{cursor:grabbing}.thread-drop-target{outline:2px solid var(--mui-palette-info-main);outline-offset:-2px;background:#eff6ff!important}
+.mail.thread-dragging{background:var(--mui-palette-background-paper);box-shadow:var(--mui-shadows-4)}
 .thread-link-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--mui-palette-divider)}.thread-link-row>span{flex:1;min-width:0;overflow-wrap:anywhere}
 #thread-action-status:not(:empty){margin-bottom:8px;padding:8px;border-radius:8px;background:#eff6ff;max-height:100px;overflow:auto;font-size:12px}
 #thread-detach-zone{padding:9px;margin-bottom:8px;border:1px dashed var(--mui-palette-divider);border-radius:8px;text-align:center;font-size:12px;color:var(--mui-palette-text-secondary)}#thread-detach-zone.is-dragging{background:#fff6ec;border-color:var(--mui-palette-warning-main)}

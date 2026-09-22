@@ -2,6 +2,14 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-22 React 드래그앤드롭 라이브러리 전환
+
+- `@hello-pangea/dnd` 18.0.1로 React 메일의 수동 연결/해제 드래그를 전환했다. 기존 API·되돌리기·실패 안내·목록 순서·스크롤 복원을 유지한다. 드래그 시작 시 저장소와 목록을 기록하고 종료 시 대조하며, 동일 대화·외부 드롭·수동 연결된 메일의 다른 대화 이동은 쓰지 않는다. 라이브러리 동적 스타일에 기존 CSP nonce를 전달한다.
+- `npm.cmd run check`, UI build 및 Docker 내 전체 build 통과. 메인 JS 752.48 kB / gzip 233.98 kB이며 기존 번들 크기 경고는 남아 있다.
+- 합성 Chrome에서 `manual-threads`, `mail-scroll`, `mail-threads`, `mui-ui` 4개 검사 통과. 마우스·키보드 연결/해제와 Escape 취소, CDP 터치 연결/해제, 개별 보기 전환 중 취소, 외부/자기 자신/연결된 메일의 잘못된 드롭, 새로고침·되돌리기·저장/해제/목록 갱신 실패, 읽기 위치·페이지·모바일 스크롤 유지, CSP 위반 0·pageerror 0을 확인했다. 접힌 대화는 숨겨진 Draggable을 등록하지 않아 키보드 드롭 대상이 되도록 했다. 터치 검증은 물리 기기 검증이 아닌 Chrome 에뮬레이션이다.
+- `scripts/thread-dnd-browser.mjs`로 라이브러리 센서의 활성화와 프레임을 포함한 입력을 재현한다. 터치 자동 스크롤로 이동하는 하단 해제 영역의 좌표를 다시 읽도록 테스트를 보정했다. 증거는 `.runtime/react-validation/react/{manual-threads,mail-scroll,mail-threads,mui-ui}.log`와 합성 모바일 캡처다.
+- 로컬 Docker API만 `--no-build --no-deps --wait`로 교체한 후 health, 제공 JS/CSS SHA-256, HTML nonce, 실제 메일·보고서 열기와 모바일 표시를 검증했다. 보고서 12건·이전 문서 33건·수동 연결 해시 및 DB/Worker 컨테이너 ID를 보존했다. `.runtime/react-deployment/after.json`에 결과를 기록했다. 실메일의 연결/해제 쓰기는 하지 않았고 Windows 설치 패키지와 Supabase 배포는 변경하지 않았다.
+
 ## 2026-09-22 전체 화면 MUI 전환
 
 - 메일함·검색·상태·보고서·관련 메일·이전 이력·설정·로그인·관리자를 MUI 9.4.0 / Emotion 공통 테마로 전환했다. 기존 전역 CSS를 메인 앱에서 제거하고 배치와 문서 본문 서식을 분리했다. Dialog, Snackbar/Alert, Chip, CircularProgress, 버튼/입력/선택/체크박스와 MUI styled disclosure를 사용한다. 메일 본문 정화·CID·Office 파서는 유지하며 Markdown 도구·이미지 재시도·XLSX 시트/확대 제어도 MUI를 사용한다.
