@@ -368,6 +368,16 @@ export function App() {
                 {label}
               </Button>
             ))}
+            <Button
+              component="a"
+              href={import.meta.env.VITE_DOCS_URL || 'http://127.0.0.1:3000/'}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="기술 문서 (새 탭)"
+              onClick={() => setMenu(false)}
+            >
+              기술 문서 ↗
+            </Button>
             {native && (
               <Action
                 onAction={async () => {

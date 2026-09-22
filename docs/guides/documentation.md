@@ -21,6 +21,20 @@ npm.cmd run docs:test     # 별도 4175 포트에서 Playwright 문서 검증
 
 문서 도구는 `website/package.json`과 별도 lockfile에 고정한다. 제품의 npm workspace·Docker 이미지·Windows 설치본에 Docusaurus를 넣지 않으며 제품 빌드와 문서 빌드를 각각 실행한다. 생성된 `website/build`와 `.docusaurus`는 Git에서 제외한다.
 
+## 메인 화면에서 열기
+
+로그인 후 주 메뉴의 **기술 문서 ↗**를 누르면 새 탭으로 문서를 연다. 모바일에서는 **메뉴**를 펼쳐 같은 항목을 선택한다. 기존 메일 화면과 입력 중인 내용은 유지된다.
+
+기본 연결 주소는 `http://127.0.0.1:3000/`이다. 로컬에서는 위의 `docs:build` 후 `docs:serve`를 실행해 문서 서버를 켜 두어야 한다. 메뉴가 문서 서버를 자동으로 실행하지는 않는다.
+
+별도로 배포한 문서 사이트를 연결하려면 UI 빌드 시 `VITE_DOCS_URL`을 지정한다. 이 값은 빌드 결과에 포함되므로 주소 변경 후 UI를 다시 빌드·배포한다.
+
+```powershell
+$env:VITE_DOCS_URL = 'https://docs.example.com/' # 실제 문서 사이트 주소로 교체
+npm.cmd run build:ui
+Remove-Item Env:VITE_DOCS_URL
+```
+
 ## 문서 작성
 
 - 본문은 기존 `docs/**/*.md`에서 수정한다. `.md`는 CommonMark로 읽으므로 코드 예시의 `<...>`와 중괄호가 JSX로 해석되지 않는다.
