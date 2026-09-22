@@ -1,0 +1,24 @@
+:root {
+  --ifm-color-primary: #235ea8;
+  --ifm-color-primary-dark: #205597;
+  --ifm-color-primary-darker: #1e508f;
+  --ifm-color-primary-darkest: #194276;
+  --ifm-color-primary-light: #2767b9;
+  --ifm-color-primary-lighter: #286cc1;
+  --ifm-color-primary-lightest: #397ccf;
+  --ifm-font-family-base: system-ui, 'Malgun Gothic', sans-serif;
+  --ifm-code-font-size: 90%;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #8dbbfa;
+}
+
+.markdown table {
+  display: block;
+  overflow-x: auto;
+}
+
+.markdown {
+  overflow-wrap: anywhere;
+}

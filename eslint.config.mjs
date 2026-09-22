@@ -27,5 +27,10 @@ export default defineConfig([
     files: ['packages/ui/**/vite.config.ts'],
     languageOptions: { globals: globals.node },
   },
+  {
+    files: ['website/*.js'],
+    extends: [js.configs.recommended],
+    languageOptions: { sourceType: 'commonjs', globals: globals.node },
+  },
   prettier,
 ]);

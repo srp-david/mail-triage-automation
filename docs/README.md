@@ -1,3 +1,7 @@
+---
+slug: /
+---
+
 # 문서 안내
 
 갱신: 2026-09-22. 현재 제품 설명, 실행 절차, 앞으로의 계획, 과거 증거를 구분해 관리한다. 처음 읽는 사람은 **현재 상태 → 아키텍처 → 주요 흐름 → 제품 스펙** 순서로 읽는다.
@@ -21,6 +25,7 @@
 | 문서 | 적용 대상 |
 |---|---|
 | [개발 안내](guides/development.md) | 현재 사용자명 인증 코드의 빌드·별도 실행·검증 |
+| [기술 문서 사이트](guides/documentation.md) | Docusaurus 빌드·탐색·검색·도표 검증 |
 | [Windows 후보 설치](operations/windows.md) | 현재 candidate.3의 설치·기동·종료·진단·업데이트 |
 | [Supabase 운영](operations/supabase.md) | 현재 공용 API·비공개 DB와 최초 계정·운영 절차 |
 | [팀 파일럿](operations/team-pilot.md) | 제한된 2명/2PC 수용과 피드백. 간편 배포 묶음은 미구현 |

@@ -1,6 +1,6 @@
 # 데이터 모델과 보존 규칙
 
-현재 PostgreSQL schema의 논리 구조다. Supabase 배포는 `triage_private`를 사용한다. SQL 원본은 [baseline](../../src/migration.sql)과 [버전별 migration](../../apps/history-api/migrations)에 있다.
+현재 PostgreSQL schema의 논리 구조다. Supabase 배포는 `triage_private`를 사용한다. SQL 원본은 [baseline](../../src/migration.sql)과 `apps/history-api/migrations/`에 있다. 버전별 SQL은 [계정·권한](../../apps/history-api/migrations/001_identity.sql), [Runner](../../apps/history-api/migrations/002_runner.sql), [동기화](../../apps/history-api/migrations/003_sync.sql), [문서 접근 권한](../../apps/history-api/migrations/004_collection_access.sql), [사용자명 인증](../../apps/history-api/migrations/005_username_auth.sql)을 참조한다.
 
 ## 1. 주요 관계
 

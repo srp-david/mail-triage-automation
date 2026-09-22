@@ -6,5 +6,6 @@ public/markdown
 public/react
 .env
 .runtime
+website
 
 *.dump

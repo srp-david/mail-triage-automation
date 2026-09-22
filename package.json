@@ -13,10 +13,10 @@
     "worker": "node dist/worker.js",
     "check": "npm run lint && npm run format:check && npm run typecheck",
     "typecheck": "npm run build:types -- --noEmit && npm run build:types -- -p packages/ui/viewer/tsconfig.json && npm run build:types -- -p packages/ui/ui/tsconfig.json",
-    "lint": "eslint packages/ui/ui packages/ui/viewer --max-warnings=0",
+    "lint": "eslint packages/ui/ui packages/ui/viewer website/*.js --max-warnings=0",
     "lint:fix": "npm run lint -- --fix",
-    "format": "prettier --write \"packages/ui/ui/**/*.{ts,tsx,css,json,html}\" \"packages/ui/viewer/**/*.{js,ts,tsx,css,json,html}\" eslint.config.mjs .prettierrc.json",
-    "format:check": "prettier --check \"packages/ui/ui/**/*.{ts,tsx,css,json,html}\" \"packages/ui/viewer/**/*.{js,ts,tsx,css,json,html}\" eslint.config.mjs .prettierrc.json",
+    "format": "prettier --write \"packages/ui/ui/**/*.{ts,tsx,css,json,html}\" \"packages/ui/viewer/**/*.{js,ts,tsx,css,json,html}\" eslint.config.mjs .prettierrc.json website/*.js website/package.json website/src/css/custom.css playwright.docs.config.ts test/docs-e2e/*.ts",
+    "format:check": "prettier --check \"packages/ui/ui/**/*.{ts,tsx,css,json,html}\" \"packages/ui/viewer/**/*.{js,ts,tsx,css,json,html}\" eslint.config.mjs .prettierrc.json website/*.js website/package.json website/src/css/custom.css playwright.docs.config.ts test/docs-e2e/*.ts",
     "test": "vitest run --project unit --project ui",
     "diagnose": "tsx src/diagnose.ts",
     "build:types": "node node_modules/@typescript/native/bin/tsc",
@@ -26,7 +26,12 @@
     "test:coverage": "vitest run --project unit --project ui --coverage",
     "test:e2e": "playwright test",
     "test:e2e:report": "playwright show-report .runtime/playwright-report",
-    "test:external": "node scripts/test-isolated.mjs --external"
+    "test:external": "node scripts/test-isolated.mjs --external",
+    "docs:install": "npm --prefix website ci",
+    "docs:dev": "npm --prefix website start --",
+    "docs:build": "npm --prefix website run build --",
+    "docs:serve": "npm --prefix website run serve --",
+    "docs:test": "playwright test --config playwright.docs.config.ts"
   },
   "dependencies": {
     "@emotion/cache": "11.14.0",

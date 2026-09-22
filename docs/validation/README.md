@@ -1,3 +1,7 @@
+---
+slug: /validation/topics
+---
+
 # 기능별 검증 기록
 
 이 문서들은 작성 시점의 실제 수행·실패·경계를 보존한다. 현재 배포 요약은 [현재 상태](../current-status.md), 날짜별 전체 검증은 [검증 일지](../validation.md)를 본다.

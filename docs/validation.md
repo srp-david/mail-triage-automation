@@ -2,6 +2,13 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-22 Docusaurus 기술 문서 사이트
+
+- `website/`의 별도 package/lockfile에 Docusaurus 3.10.2, Mermaid와 로컬 검색을 구성했다. 기존 `docs/` Markdown을 직접 사용하며 현재 제품·개발·운영·참조·검증·보존 메뉴로 구분한다. 문서 도구와 산출물은 제품 Docker 빌드에서 제외한다.
+- `docs:build` 정적 빌드와 내부 링크 검사 통과. 검증 일지와 검증 목록의 중복 URL을 분리하고, migration 폴더 링크는 개별 SQL 링크로 바꿨다. 문서 밖 README와 직접 링크된 소스는 읽기용 파일로 제공한다. 비공개 runtime 디렉터리를 탐색하거나 포함하지 않는다.
+- Playwright 문서 검사 **6/6 통과**: 한국어 검색 결과 이동, 문서 탐색, 모바일 메뉴/가로 넘침, 현재/보존 문서의 Mermaid 도표 **10개** 렌더링, 브라우저 오류 없음. 합성 화면은 `.runtime/docs-test-results`에 보관한다.
+- `npm run check`, 제품 `npm run build` 통과. 문서의 로컬 정적 결과를 확인했으며 외부 게시·접근 인증·서비스 재배포는 수행하지 않았다. [문서 사이트 안내](guides/documentation.md)의 명령으로 재현한다.
+
 ## 2026-09-22 React Hook Form · Zod 전환
 
 - 로그인·비밀번호·관리자 계정 생성/수정·설정 저장 및 등록 입력을 React Hook Form 7.88.0 + Zod resolver 5.9.1로 전환했다. MUI 오류 표시, 비밀번호 초기화, 한글 IME와 중복 제출 방지를 적용했다. 서버 API와 권한 검사는 유지한다.
