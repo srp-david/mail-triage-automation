@@ -1,7 +1,8 @@
 import pg from 'pg';
 import { readFile } from 'node:fs/promises';
 import { config } from '../../../src/config.js';
-export const pool = new pg.Pool({ connectionString: config.database, max: Number(process.env.HISTORY_POOL_MAX??8), connectionTimeoutMillis: 10000, idleTimeoutMillis: 10000 });
+import {databaseConnection} from './db-connection.js';
+export const pool = new pg.Pool({ ...databaseConnection(config.database,process.env.HISTORY_DB_CA_BASE64), max: Number(process.env.HISTORY_POOL_MAX??8), connectionTimeoutMillis: 10000, idleTimeoutMillis: 10000 });
 // Idle sockets can close during a database restart. Active requests still receive their own errors.
 pool.on('error',()=>console.error('history_db_connection_lost'));
 export async function migrate() {

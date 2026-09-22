@@ -1,6 +1,7 @@
 # v1 개발 실행 경계
 
-> 2026-09-21: 먼저 공용 API·DB와 로컬 MCP/AI를 팀에 배포하고 피드백·안정화 후 원격 SR 자동화로 확장한다. 아래 명령은 **원본의 이전 Auth0 코드 실행 기록**이다. 사용자명·관리자 생성 계정·JWT는 별도 PoC `8303d52`에서 로컬 완료 보고가 확인됐으나 원본 미병합이다. [통합 구현 계획 v3.0](implementation-plan.md) 4~6절 M1~M3에 따라 AWS/DB 경로와 PoC를 통합한 뒤 실행 안내를 갱신한다. 아래 AUTH/PKCE 설정을 새 배포 준비물로 사용하지 않는다. 기존 MariaDB RDS는 연결 주소만 바꿔 현재 PostgreSQL 코드를 실행할 수 없다.
+> 2026-09-21: Supabase PoC의 사용자명 인증·관리자·Edge·로컬 Runner를 원본에 통합했다. 최신 실행/배포 절차는 [Supabase 배포 안내](supabase-rollout.md), 단계는 [통합 계획 v3.1](implementation-plan.md)을 따른다. 아래는 이전 Auth0 개발 기록이다. 인증 환경 변수와 PKCE 실행법을 새 배포에 적용하지 않는다. 기본 v0 서비스는 그대로 보존한다.
+
 
 현재 기본 `npm start`와 Docker 서비스는 기존 단일 사용자 v0 앱이다. v1 local-app은 Native 세션과 React UI를 연결한 별도 개발 경로다. 공용 서버에는 v0를 노출하지 않는다.
 

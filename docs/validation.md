@@ -2,6 +2,31 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-22 Supabase 첫 hosted 배포와 개발 PC 연결
+
+- 사용자 생성 프로젝트 `mail-triage-automation`과 CLI 로그인 확인 후 서울 Supabase PostgreSQL 17.6에 배포했다. 기존 사용자 테이블이 없는 것을 확인하고 `triage_private`에 checksum ledger 포함 6개 migration과 팀·최초 관리자 `david`를 생성했다. 기존 로컬 DB/Worker/MCP와 ERP 코드·DB는 변경하지 않았다. 기존 메일 원문/업무 이력 이관도 하지 않았다.
+- runtime 역할은 DDL 불가, anon/authenticated는 private schema 접근 불가를 실제 확인했다. `history` Edge Function만 배포하고 앱 자체 ES256·현재 세션·ACL 인증을 적용했다. HTTPS live/ready 200, 인증 없는 자료 요청 401을 확인했다. CLI DB SSL enforcement 적용 성공도 확인했다.
+- 초기 Node 접속의 `SELF_SIGNED_CERT_IN_CHAIN`을 Supabase 공식 CA 등록으로 해결했다. `HISTORY_DB_CA_BASE64`를 통해 CA/호스트 이름 검증을 유지하고, pg URL 옵션이 명시적 CA를 덮어쓰지 않도록 `verify-full`만 파싱 후 제거한다. 약한 TLS·충돌 옵션은 거절한다. 실제 클라이언트 TLS encrypted/authorized=true. pooler 내부 DB 연결의 `pg_stat_ssl.ssl=false`는 별도 관측값이며 전체 내부 구간 TLS 보장으로 보고하지 않는다.
+- 사용자가 Dashboard Data API 비활성화를 확인했다. publishable key의 `/rest/v1/` 요청은 401 `Secret API key required`였다. 공개 키 접근 거절 증거이며 모든 관리 키까지 차단됐다는 검증은 아니다. 앱/클라이언트에는 Supabase service_role/secret key를 사용하지 않는다.
+- `npm.cmd run check`, 전체 build 및 Edge bundle 통과. TLS 설정 검사 3개 추가 후 독립 DB의 전체 backend **130/130 통과**: `.runtime/triage-free-tests-7f7bf86b/tests.log`.
+- 실제 hosted HTTPS **7군 통과**: health/인증 거절, 최초 비밀번호 변경 제한, 합성 관리자·analyst 생성/권한 분리, private source·보고서 ACL 및 멱등 실행, 실제 local Runner의 DPAPI outbox·응답 유실·다른 계정 재전송 거절·Agent 재실행 없는 복구, refresh 경합과 family 폐기, 로그아웃 즉시 JWT 폐기. `.runtime/supabase-deploy-20260922/hosted-verification.json`에 31개 요청과 결과를 기록했다. 합성 계정 2개는 비활성화했으며 실제 AI/MCP 업무 수행은 아니다.
+- Windows `0.3.0-candidate.3`을 이 PC의 별도 `LocalAppData/MailTriagePilot`에 설치하고 43180 포트로 기동했다. 설치된 앱을 실제 Chrome으로 열어 hosted `david` 로그인→첫 비밀번호 변경 화면→로그아웃을 확인했다. 비밀번호는 변경하지 않았고 pageerror 0이다. 후보 승인 값은 false이며 `start-pilot.ps1`로 명시적 파일럿 실행한다. 개인 MCP/Agent는 미설정이다.
+- 최초 관리자 임시 비밀번호(24시간 만료)·DB/서명키는 사용자/SYSTEM 전용 ACL의 Git 제외 보호 폴더에 저장했다. 클라이언트 설정에는 API 주소·issuer/audience만 넣었다. 상세 증거는 `.runtime/supabase-deploy-20260922/`의 `runtime-check.json`, `data-api-check.json`, `installed-browser-verification.json`, `local-install.json`에 있다.
+- hosted backup 시도는 runtime의 `worker_state` SELECT 권한 부족으로 실패했다. 별도 읽기 전용 백업 역할 생성은 자동 승인 검토에서 차단됐고, 이후 사용자가 **백업 설정은 나중에 진행**하도록 지시했다. 새 백업 역할과 성공한 hosted 백업은 없다. 기존 로컬 합성 복원 통과를 실제 hosted 복원으로 대체 보고하지 않는다.
+- 남은 경계: 실제 두 PC·서로 다른 사용자·개인 MCP/AI를 통한 지정 사례 분석/공유, 정기 외부 백업과 복원, hosted pause/resume, 장기 사용량/부하. 따라서 M1 운영 준비·M2 팀 수용 완료나 정식 릴리스로 판정하지 않는다.
+
+## 2026-09-21 Supabase 우선 v3.1 통합과 배포 후보
+
+- 사용자 결정: Supabase로 먼저 팀 배포·피드백·안정화, AWS 이전과 MariaDB 이식은 후속으로 분리. 사용자가 프로젝트 미생성이라고 확인했다.
+- 이전 PoC 작업 폴더/브랜치는 현재 없지만 Git 객체 `8303d52`와 인계 결과가 남아 있음을 확인했다. Orca 터미널/저장소 상태를 읽어 동시 제품 수정이 없음을 확인한 뒤 제품 커밋 `af7ee97`, `056f8fa`, `1f8d11d`를 `602e5aa`, `f3e32fe`, `1c45518`로 통합했다. 문서 제외 제품 diff는 `8303d52`와 동일하다. 예전 계획 문서는 덮어쓰지 않았다.
+- `npm.cmd run check`, 전체 build, Edge bundle, `verify-build-compat.mjs` 통과. 고정 의존성 `hash-wasm`을 설치했다. Office 번들의 크기 경고는 남아 있으나 빌드 오류는 없다.
+- 독립 PostgreSQL 컨테이너의 전체 백엔드 **127/127 통과**: `.runtime/triage-free-tests-9614695f/tests.log`. 첫 실행은 기존 CLI 테스트의 `TRIAGE_CLI_SOURCE` 누락 1건 실패였고, erp-manager의 실제 CLI 파일을 읽기 전용 경로로 지정한 뒤 전체 재실행했다. ERP 코드/DB 변경 없음.
+- `node --import tsx scripts/verify-supabase.mjs --browser` **12군 통과**: `.runtime/triage-free-77ac1c23/result.json`, `hosted=false`. 실제 로컬 Edge Runtime·PostgreSQL·Chrome·DPAPI Runner를 사용해 첫 변경/관리자/ACL, 응답 유실 outbox·다른 사용자 재전송 거절, refresh 경합/재사용 폐기, 계정 비활성화, 로그인 제한, private schema 거절, dump/restore 내용 hash·세션 폐기를 검사했다. Agent 출력은 합성 fixture이며 실메일/ERP/실AI 검증은 아니다.
+- Windows `0.3.0-candidate.3` 재생성: Node v24.16.0, 3,723파일, ZIP 45,160,414 bytes. SHA-256 `87624689ca2c711564dfd5c4b358149efd082a68cac27f3d5bedb01ca073272d`. Git 제외 `.runtime/packages/0.3.0-candidate.3.zip`, manifest `authentication=username`, `releaseApproved=false`.
+- `verify-windows-lifecycle.mjs` 통과: `.runtime/lifecycle/한글 설치-oXcWYA`. 한글 경로 설치·일반 후보 실행 거절·명시적 후보 기동·browser ticket·바로가기·정상 중지·설정 보존 제거. 이 개발 PC의 검증이며 깨끗한 두 PC나 실제 인증 완료가 아니다.
+- Supabase CLI `2.117.0` 실행 확인. `projects list`는 `LegacyPlatformAuthRequiredError / Access token not provided`로 실패했다. 프로젝트/로그인이 없으므로 hosted 배포, 서버 비밀 등록, 운영 DB 생성/이관, 최초 관리자 발급, 팀 배포는 실행하지 않았다. 기존 API/DB/Mail MCP healthy 및 Worker 실행 상태를 보존했다.
+- v3.1 계획·운영/설치 안내·[Supabase 배포 및 피드백 안내](supabase-rollout.md)를 정리했다. 문서 검사 9개·로컬 링크 90개·M1~M5 표·v2.1 원문 보존 통과, `git diff --check` 통과. 과거 검증 기록은 보존했다. Git push 없음.
+
 ## 2026-09-21 팀 배포 우선 v3.0 재정리와 AWS 읽기 확인
 
 - 사용자 결정에 따라 공용 API·DB와 각 PC의 MCP/AI로 먼저 팀 배포하고, 피드백·안정화 후 원격 SR 자동화를 진행하는 M1~M5로 계획을 재구성했다. AWS API를 우선 검토하되 DB 엔진 선택은 분리했다. 원본 제품/PoC checkout·실행 서비스는 수정하지 않았다.

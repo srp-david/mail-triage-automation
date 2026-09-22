@@ -1,6 +1,6 @@
 # mail-triage-web 통합 구현 계획
 
-문서 버전: 3.0 · 갱신일: 2026-09-21 · 상태: **팀 배포 → 피드백·안정화 → 원격 분석 → SR 구현·검증·PR 자동화** 순서로 재정리했다. 이번 변경은 계획·리뷰 반영이며 제품 통합이나 AWS 배포 완료가 아니다.
+문서 버전: 3.1 · 갱신일: 2026-09-22 · 상태: **Supabase 팀 배포 → 피드백·안정화 → AWS 이전 검토 → 원격 분석 → SR 구현·검증·PR 자동화**. 첫 Supabase API·DB 배포와 합성 종단 검증을 완료했다. 사용자 요청으로 백업 설정은 보류하며, 실제 두 PC 업무 파일럿과 M1 운영 준비 완료는 별도로 판정한다.
 
 ## 1. 목표와 현재 우선순위
 
@@ -12,26 +12,26 @@
 |---|---|
 | 확정한 진행 순서 | 공용 API·DB + 로컬 실행을 팀에 배포 → 피드백·안정화 → 원격 실행 → SR→PR |
 | 인증 유지 | 사용자명 + 앱 비밀번호, 관리자 생성 계정, 공개 가입 없음, JWT + 현재 계정/세션/자료 권한 검사 |
-| 호스팅 검토 방향 | API는 AWS 배치를 우선 검토한다. Mail/DB MCP도 이후 AWS에서 운영할 후보이므로 네트워크·운영 체계를 모을 수 있다. 실제 리소스/비용은 D4에서 확정 |
-| DB 검토 방향 | 사용자 제안은 AWS `srp-rds-maria`의 `cvslog` DB 재사용. 확인된 엔진은 MariaDB 10.11이다. PostgreSQL 앱의 이식 비용·앱 DB 분리·부하/백업을 평가한 후 선택. AWS 선택과 엔진 변경은 별도 결정 |
-| 초기 설계 제안 | Node/Express 공용 API + 현재 PostgreSQL 계약 유지가 변경량이 작다. 기존 MariaDB 재사용을 선택하면 DB 이식 작업을 M1에 명시적으로 추가 |
-| Supabase PoC | 자체 인증·계정 관리·Runner/복원 검증의 재사용 자산. Supabase hosted/Edge 운영을 팀 배포의 선행 조건으로 두지 않음 |
+| 첫 호스팅 | Supabase Edge 공용 API + Supabase PostgreSQL. Free로 소규모 파일럿을 준비하고 실제 사용량·한도를 측정. 유료 전환은 별도 결정 |
+| 첫 DB | PostgreSQL 유지, 비공개 앱 schema와 최소 권한 runtime 계정. M1에서 MariaDB 이식하지 않음 |
+| 이후 AWS | M3 안정화 후 이전 범위·시점 결정. PostgreSQL 유지가 기본 이전 후보이며 `srp-rds-maria/cvslog` MariaDB 재사용은 별도 엔진 이식 결정 |
+| Supabase PoC | 보존된 `8303d52`의 제품 변경을 원본에 통합하고 회귀 검증. 자체 인증·계정 관리·Runner/복원을 재사용하며 일반 Node 진입점도 유지 |
 | 현재 허용 경계 | ERP 코드·ERP DB 읽기 전용. 비밀·메일 원문 Git 제외. 기존 DB/Worker/reports/legacy/개인 AI·MCP·SES 설정 보존 |
 | 최종 목표에서도 제외 | 운영 DB 쓰기, 자동 merge, 자동 운영 배포, 메일 발송·삭제·읽음 변경 |
 
-인프라·인증·DB 엔진·실행 위치를 동시에 바꾸지 않는다. M1의 DB 선택 후 합성/복제본에서 통합하고, M2에서 실제 팀 PC와 지정 업무로 검증한다. ERP 쓰기는 M5의 지정 repo/경로 범위와 AGENTS.md 조정을 명시적으로 정한 후에만 허용한다.
+M1은 Supabase PostgreSQL과 로컬 실행을 유지해 합성/복제본에서 통합하고, M2에서 실제 팀 PC와 지정 업무로 검증한다. AWS 이전·DB 엔진 변경·원격 Agent를 첫 배포에 묶지 않는다. ERP 쓰기는 M5의 지정 repo/경로 범위와 AGENTS.md 조정을 명시적으로 정한 후에만 허용한다.
 
 ## 2. 실제 구현 상태와 재사용 범위
 
 | 대상 | 현재 확인된 상태 | 다음 작업 |
 |---|---|---|
-| 원본 `6ceecf2` | v0 서비스와 이전 Auth0 기반 v1 코드. 새 원격 기능은 계획뿐 | 사용자명 인증 PoC 통합·선택 DB/배포 경로 검증 |
+| 원본 | v0 서비스 보존. 사용자명 인증 PoC 제품 커밋 `602e5aa`·`f3e32fe`·`1c45518` 통합 | backend 130/130 및 hosted 7군 통과. 제한된 팀 파일럿 준비 |
 | 기존 P1~P6/candidate.6 | 당시 로컬 구현·합성/후보 검증 기록 존재 | 새 인증/배포 환경의 완료로 재사용하지 않음 |
-| 별도 PoC `feat/supabase-free-poc` / `8303d52` | 사용자명/JWT·관리자·ACL·로컬 Runner·DPAPI·복원·후보 로컬 완료 보고, 원본 미병합 | 변경 검토 후 일반 Node API에 필요한 부분을 통합. Edge 전용 코드/설정은 선택적으로 유지 |
-| hosted/팀 파일럿 | AWS 새 API·선택 DB, 깨끗한 팀 PC·실제 두 PC 파일럿 미검증 | M1~M3에서 수행 |
+| 이전 PoC `8303d52` | 기존 작업 폴더/브랜치는 현재 없음. Git 객체·인계 보고서 보존, 제품 커밋 3개 복구·통합 | 사라진 로컬 패키지/시험 산출물을 배포본으로 쓰지 않고 현재 코드에서 재생성 |
+| hosted/팀 파일럿 | 서울 프로젝트에 API·비공개 DB 배포, TLS/pooler·인증·권한·Runner 합성 검증 통과 | 백업 보류. 개인 MCP/Agent·실제 두 PC 업무 파일럿 진행 필요 |
 | 원격 SR 자동화 | 원격 자료·Agent·구현·PR 종단 미구현/미검증 | M3 안정화 판정 뒤 M4~M5 착수 |
 
-PoC 인계 `b8a5c5dd-8809-4031-8a4f-40ae6a16496d`의 완료 ID·10,263 bytes·SHA-256 `70fb2381fe6fc1a4d5f0a07994173d36b44d47894dc95f3e50905477fc206225`는 대조됐다. 보고된 backend 127/127·Edge/DB/Runner/Chrome/복원 12군은 이번 계획 작업에서 재실행하지 않았다. 별도 checkout을 동시에 수정하거나 인증을 처음부터 중복 구현하지 않는다. 세부 근거는 해당 checkout의 `docs/validation.md`와 [원본 검증 기록](validation.md)을 본다.
+PoC 인계 `b8a5c5dd-8809-4031-8a4f-40ae6a16496d`의 완료 ID·10,263 bytes·SHA-256 `70fb2381fe6fc1a4d5f0a07994173d36b44d47894dc95f3e50905477fc206225`는 대조됐다. v3.0 문서 작업 당시에는 재실행하지 않았고, v3.1 통합 후 원본에서 backend 127/127·Edge/DB/Runner/Chrome/복원 12군을 다시 통과했다. 과거 PoC 검증 문서는 Git 객체 `8303d52:docs/validation.md`에 남아 있다. 현재 증거와 hosted/팀 파일럿의 미완료 경계는 [원본 검증 기록](validation.md)을 본다.
 
 기존 메일/첨부/Office·Markdown, 헤더 기반 스레드/수동 연결, 검색/상태 필터, 보고서 버전/추가 답변/리뷰, 처리 완료/취소, legacy 연결/내보내기, 스크롤/초안 보존은 회귀 대상이다. 제목 일치로 메일을 합치지 않는다. L1 중복 후보 연결, L2 legacy 복수 연결, L3 이력 전환 대조는 미확정 자료를 보존하며 별도 추적한다. 과거 검증 이력은 [문서 안내](README.md)에서 찾는다.
 
@@ -39,7 +39,7 @@ PoC 인계 `b8a5c5dd-8809-4031-8a4f-40ae6a16496d`의 완료 ID·10,263 bytes·SH
 
 | 단계 | 제공하는 결과 | 주요 작업 | 완료/다음 단계 조건 |
 |---|---|---|---|
-| M1 공용 기반·로컬 앱 통합 | 팀 배포 가능한 후보 | DB 선택, PoC 통합, AWS API·권한·백업/복원, 로컬 설치/연결 검증 | 합성/복제본 통과, 외부 API·DB 격리·운영 담당 확인, 승인된 후보 고정 |
+| M1 공용 기반·로컬 앱 통합 | 팀 배포 가능한 후보 | PoC 통합, Supabase Edge/PostgreSQL·권한·백업/복원, 로컬 설치/연결 검증 | 합성/복제본 통과, hosted API·DB 격리·운영 담당 확인, 배포 후보 고정 |
 | M2 제한된 팀 배포 | 팀원이 자기 PC에서 실제 사용 | 최소 2명/2PC, 개인 MCP/Agent 연결, 지정 사례 분석·공유 이력, 설치 지원 | 로그인·권한·실분석/저장·복구·업데이트·백업 복원 성공, 피드백 수집 시작 |
 | M3 피드백·안정화 | 안정된 팀 분석 서비스 | 실패/품질/설치/권한 개선, 사용량/비용 측정, 회귀·릴리스 정리 | 6절 기준을 팀과 확인. 이 판정 전 M4~M5 제품 개발을 배포 선행 과제로 넣지 않음 |
 | M4 원격 분석 전환 | PC 종료와 무관한 웹 분석·보고서 | 공용 웹 세션, 원격 MCP/중계·ERP 읽기 자료, service Runner | PC 종료 종단, 사용자/출처 격리, 원격 취소·회수·비용·복구 검증 |
@@ -47,7 +47,7 @@ PoC 인계 `b8a5c5dd-8809-4031-8a4f-40ae6a16496d`의 완료 ID·10,263 bytes·SH
 
 M1~M3가 첫 번째 제품 범위다. M4~M5는 호환 계약을 문서로 남기되 stage 테이블·service identity·PR 발행 코드를 미리 완성할 필요는 없다. 최초 공용 배포는 미래 기능이 없어도 독립적으로 수용 가능해야 한다. 문서 준비와 실제 원격 작업 착수는 구분한다.
 
-## 4. 첫 팀 배포 아키텍처와 AWS·DB 선택
+## 4. Supabase 첫 배포와 이후 AWS 이전
 
 ### 4.1 M1~M3 구성
 
@@ -62,9 +62,9 @@ flowchart LR
     AGENT --> MCP[개인 DB MCP / 읽기 전용]
     AGENT --> SOURCE[로컬 ERP 코드 / 업무 자료]
   end
-  LOCAL <-->|HTTPS / 인증·조회| API[AWS 공용 API]
+  LOCAL <-->|HTTPS / 인증·조회| API[Supabase Edge 공용 API]
   RUNNER <-->|작업·lease·결과| API
-  API --> DB[(선택한 공용 이력 DB)]
+  API --> DB[(Supabase PostgreSQL / private schema)]
 ```
 
 - 공용 API는 계정·세션·source/collection ACL·작업/보고서/리뷰/처리 상태를 관리한다. 팀 PC에 이력 DB 자격·서명키를 배포하지 않는다.
@@ -73,7 +73,9 @@ flowchart LR
 - 다른 PC에서 공유 보고서는 볼 수 있지만 대응 원본이 없으면 원문/첨부를 열 수 없다고 표시한다. 팀원의 PC가 꺼지면 그 PC의 분석만 멈춘다. 공용 API와 다른 PC의 분석은 계속 이용 가능해야 한다.
 - 로컬 origin/Host/CSRF, DPAPI, 개인 설정 보존을 유지한다. 공용 웹 세션 문제는 M4에서 해결하며 첫 배포를 공용 브라우저 제품으로 바꾸지 않는다.
 
-### 4.2 AWS와 기존 RDS 재사용 판단
+### 4.2 안정화 이후 AWS와 기존 RDS 재사용 판단
+
+이 절은 M3 이후 선택을 위한 조사 기록이다. 첫 Supabase 배포를 지연시키는 선행 과제가 아니다.
 
 AWS에 API와 미래 MCP를 모으면 같은 VPC 안의 사설 연결과 보안 그룹으로 접근 경로를 제한할 수 있다. 이는 운영을 단순화할 수 있다는 설계 판단이며 같은 EC2/같은 DB에 모든 기능을 합치자는 뜻은 아니다. [AWS RDS VPC 연결](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.Scenarios.html).
 
@@ -89,20 +91,20 @@ AWS에 API와 미래 MCP를 모으면 같은 VPC 안의 사설 연결과 보안 
 
 | 후보 | 이점 | 비용/추가 작업 | 현재 판단 |
 |---|---|---|---|
-| AWS API + PostgreSQL 유지 | 현재 코드·PoC·동시성 계약 재사용, 팀 배포까지 변경량이 작음 | AWS PostgreSQL 운영 자원/백업 비용. 기존 호스트 자체 운영안은 운영 부담 별도 비교 | 우선 권고안. 실제 RDS 신규 생성은 별도 대상/예산 확정 후 |
-| AWS API + 기존 MariaDB RDS | 기존 DB 인프라 활용 가능 | 엔진 이식·권한/성능/백업 검증 및 기존 업무 영향. 총비용이 더 작다는 보장 없음 | 기존 DB 재사용을 더 우선할 경우 M1에 별도 이식 단계 추가 후 선택 |
-| AWS API + Supabase PostgreSQL | PostgreSQL 계약 유지, 기존 PoC 플랫폼 활용 | 클라우드 간 연결·비밀·장애/egress 운영, 이후 AWS 통합 시 이관 | 대안으로 보존. 첫 배포의 필수 경로 아님 |
+| AWS API + PostgreSQL 유지 | 현재 코드·PoC·동시성 계약 재사용 | AWS PostgreSQL 운영 자원/백업 비용. 기존 호스트 자체 운영안은 운영 부담 별도 비교 | M3 이후 이전 기본 후보. 실제 자원 생성은 대상/예산 확정 후 |
+| AWS API + 기존 MariaDB RDS | 기존 DB 인프라 활용 가능 | 엔진 이식·권한/성능/백업 검증 및 기존 업무 영향. 총비용이 더 작다는 보장 없음 | 첫 배포 범위 밖. 재사용 선택 시 별도 이식 단계 |
+| AWS API + Supabase PostgreSQL | API부터 순차 이전 가능 | 클라우드 간 연결·비밀·장애/egress 운영 | 이후 점진적 이전의 중간 구성 후보 |
 
 기존 RDS 재사용과 기존 `cvslog` 업무 테이블 공유를 구분한다. 같은 인스턴스를 쓰더라도 앱 전용 database와 runtime/migration 계정을 우선 분리하고, PostgreSQL에서 같은 database가 필요하면 schema/search_path/권한을 분리한다. schema 이름만으로 격리가 보장되지 않으므로 타 영역 접근 거부를 검증한다. CPU/메모리/IO·연결·유지보수·장애 영향은 같은 인스턴스에서 공유한다. [PostgreSQL schema와 권한](https://www.postgresql.org/docs/current/ddl-schemas.html).
 
 ### 4.3 최초 운영 기본안
 
-- 기존 코드와 맞는 Node/Express API를 AWS 호스트에 배치한다. 초기에는 작은 EC2/컨테이너를 후보로 비교하며 ECS/Kubernetes/멀티 리전을 선행 조건으로 두지 않는다. API와 DB를 같은 VPC/리전의 사설 경로로 연결하는 안을 우선한다.
-- 팀 PC는 HTTPS API만 사용한다. DB는 API 보안 그룹/승인된 관리 경로에만 열고, 팀 PC마다 DB 포트를 공개하지 않는다. TLS 인증서 검증·최소 DML runtime 계정·별도 migration 계정을 적용한다.
-- 기존 `deploy/compose.server.yaml`은 자체 DB 컨테이너/Auth0를 가정한 과거 템플릿이다. 그대로 RDS 배포 명령으로 쓰지 않는다. 선택 엔진·RDS 연결/TLS·사용자명 인증·readiness에 맞춰 M1에서 배포 구성을 갱신한다.
-- API 호스트에 개인 AI 인증/메일 자격을 복사하지 않는다. 향후 비신뢰 빌드 Runner와 API/DB/MCP는 자격·파일시스템·네트워크를 분리한다.
-- 비용은 API compute·디스크, DB/백업 증가, 로그, 데이터 전송, 실제 필요한 프록시/네트워크 자원, 운영 시간을 함께 비교한다. 기존 RDS를 사용해도 증설·저장·백업과 타 업무의 성능 비용이 생길 수 있다. 무료 또는 정확한 월 요금을 확정하지 않는다. [RDS PostgreSQL 요금](https://aws.amazon.com/rds/postgresql/pricing/).
-- 운영자와 백업/복원 담당을 정한다. RDS 자동 백업은 인스턴스 전체 단위이므로 앱 장애 때문에 다른 업무 DB를 함께 되돌리지 않게 별도 복원 인스턴스·앱 단위 논리 복구 절차를 검증한다. 자동 백업 0일인 후보를 현재 설정 그대로 팀 운영 가능으로 판정하지 않는다. [RDS 백업 범위](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html).
+- Supabase에는 `history` Edge 함수와 PostgreSQL의 `triage_private` schema만 사용한다. Supabase Auth·Storage·Realtime에 새 의존성을 추가하지 않는다. 관리자 발급 사용자명/자체 JWT를 유지한다.
+- 팀 PC는 설정 가능한 HTTPS API 주소만 사용한다. DB 자격·서명키를 배포하지 않는다. 서버에는 TLS 검증·최소 DML runtime 계정·별도 migration 계정을 적용한다. Data API를 비활성화하고 private schema를 노출하지 않는다.
+- 로컬 테스트용 `local-gateway`/`local-benchmark`는 hosted 배포 대상이 아니다. 업무 로직은 일반 Node API에서도 실행 가능하게 유지하고 Edge 진입점/설정과 분리한다.
+- 프로젝트 식별자·지역·Free 여유·운영 담당은 D4에서 확인한다. Free 적합성은 실제 호출/DB/egress를 측정해 판단하며 자동 유료 전환이나 의미 없는 keepalive를 추가하지 않는다.
+- 매일 및 migration 직전 외부 암호화 백업을 확보하고 격리 DB에서 복원한다. Free 일시정지 재개·재로그인·미전송 결과 복구를 hosted에서 확인한다. 구체적 운영 절차는 [Supabase 배포 안내](supabase-rollout.md)를 따른다.
+- 향후 AWS 이전은 호환 PostgreSQL 버전/extension/권한을 대조한 복원 리허설 → writer 중지/최종 복사 → API/DB 전환 → 전체 세션 폐기/재로그인 → 검증 순서다. 새 DB 쓰기 후 롤백은 새 결과 보존/역이관 없이 옛 dump를 덮어쓰지 않는다. MariaDB는 이 절차에 앞서 엔진 이식이 필요하다.
 
 ## 5. M1 통합 계약과 검증
 
@@ -110,15 +112,15 @@ AWS에 API와 미래 MCP를 모으면 같은 VPC 안의 사설 연결과 보안 
 
 재사용 대상은 자체 사용자명 인증/관리자 UI, 현재 계정·세션·자료 권한 검사, 로컬 로그인/DPAPI/HistoryClient, 사용자 UUID 매핑·복원 후 세션 폐기, outbox 복구다. 일반 Node 실행 진입점도 PoC에 있으므로 Supabase Edge를 사용해야만 인증을 쓸 수 있는 구조로 취급하지 않는다. Edge 전용 gateway·bundle·Supavisor·Free 사용량 튜닝은 AWS Node 배포와 구분한다.
 
-PoC 사양을 무비판적으로 배포하지 않고 아래 차이를 통합 체크리스트로 고정한다. 채택값과 검증 버전은 M1에서 기록하며 서로 다른 기본안을 동시에 현재 사양으로 남기지 않는다.
+첫 통합에서는 PoC의 인증 사양을 아래처럼 채택했다. 로컬 재검증과 hosted 부하/운영 검증을 구분하며 이전 사양을 동시에 현재 기본값으로 남기지 않는다.
 
 | 항목 | 기존 계획/PoC 차이 | 통합 시 기준 |
 |---|---|---|
-| JWT/세션 | v2.1 기본안 RS256/10분/14일, PoC ES256/5분/30일 | PoC 동작을 재사용 후보로 검토, 수명·키 교체·로그아웃/폐기 테스트와 함께 결정 |
-| 비밀번호 | 구 기본안 15~128자, PoC 최소 12자/UTF-8 최대 128 bytes | Unicode/길이 단위를 명시해 UI·API·운영 안내 일치. 선택 정책에 맞춰 재검증 |
+| JWT/세션 | 구 기본안 RS256/10분/14일 폐기 | 현재 ES256 access 5분·정상 세션 최대 30일·첫 변경 전 제한 세션 10분. 회전/폐기 재검증 |
+| 비밀번호 | 구 기본안 15~128자 폐기 | 현재 최소 12자·UTF-8 최대 128 bytes. 임시 비밀번호 24시간·첫 변경 필수 |
 | 사용자명 | PoC ASCII 영문 시작 3~32자·소문자 정규화 | 관리자 발급·중복·불변 UUID·이름 재사용 정책 검증 |
-| hash/자원 | PoC Argon2id WASM·동시 실행 제한 | AWS Node의 동시 로그인·CPU/RAM·rate limit 실측. 약한 hash fallback 없음 |
-| DB | PostgreSQL 트랜잭션·schema·advisory lock | 선택 엔진/버전·TLS·최소 권한·migration/restore 재현. MariaDB 선택 시 전용 이식 검증 |
+| hash/자원 | PoC Argon2id WASM·동시 실행 제한 | hosted Edge의 동시 로그인·CPU/RAM·rate limit 실측. 약한 hash fallback 없음 |
+| DB | PostgreSQL 트랜잭션·schema·advisory lock | Supabase PostgreSQL 버전·TLS·실 pooler·최소 권한·migration/restore 재현 |
 | 큐/관측 | 기존 전역 lock·30분 분석·Runner 1개/팀 2개 시작값 | 첫 파일럿의 작은 규모에서 측정. API 지연·lock 대기/timeout·pool 사용량으로 개선 여부 결정 |
 
 ### 5.2 계정·자료 권한
@@ -273,7 +275,7 @@ DB 복원 시 신규 claim/발행을 먼저 중지한다. DB에 남은 intent만
 | D1 | 최초 관리자·팀·계정 발급 담당 | M1 외부 계정 생성 전 | 합성 인증/관리자 검증 |
 | D2 | 개인/공유 source·legacy 귀속·ACL | M1 이관/M2 지정 사례 전 | 기본 비공개·미확정 자료 보존 |
 | D3 | 임시 자격 전달·본인 확인·admin 복구 담당 | M2 계정 발급 전 | 발급/만료/복구 절차 검증 |
-| D4 | AWS API 호스트·리전/VPC/TLS·DB 엔진/인스턴스 선택·앱 영역 분리·예산·백업 담당 (`cvslog` 위치는 확인 완료) | M1 배포 경로 확정 전 | 현재 자원 읽기 조회·코드 호환성/비용 비교·복제본 설계 |
+| D4 | Supabase 프로젝트/조직·지역·Free 한도·배포 자격·운영/암호화 백업 담당 (프로젝트 미생성 확인) | M1 hosted 배포 전 | PoC 통합·로컬 회귀·복원 리허설·후보 패키지 |
 | D5 | 팀 PC/Agent/MCP·읽기 자료·지원 버전 | M1 후보/M2 배포 전 | 로컬 진단·회귀·개인 설정 보존 |
 | D6 | 배포 접근·서명/회사 정책·릴리스/롤백 담당 | M2 게시 전 | 후보 패키지·checksum/설치 검증 |
 | D7 | 파일럿 팀원·사례·관찰 기간/목표·피드백/안정화 판정 | M2 시작/M3 종료 | 시험표·피드백 양식·합성 검증 |
@@ -283,7 +285,7 @@ DB 복원 시 신규 claim/발행을 먼저 중지한다. DB에 남은 intent만
 | D11 | 원격 사용량·로그/첨부 보존·운영 장애/복구 담당·수용 기준 | M4~M5 운영 수용 전 | 비용/복원 시나리오 |
 | D12 | 원격 ERP 코드 mirror/commit·DB 읽기 계정·망 경로·갱신 담당 | M4 분석 전 | 자료 버전·쓰기 차단 명세 |
 
-M1~M3의 다음 작업은 D4 호환성/인프라 결정 → PoC 통합·후보/복원 검증 → 제한 팀 배포 → 피드백 안정화다. D8~D12 미확정을 이유로 첫 팀 배포 개발을 멈추지 않는다. 비밀번호·개인키·DB 자격을 채팅/Git으로 요구하지 않는다. 외부 자원 생성·실데이터 이관·실제 repo 쓰기는 구체적 대상과 실행 범위가 마련됐을 때 수행한다.
+M1~M3의 다음 작업은 PoC 통합·후보/복원 검증 → 지정 Supabase 프로젝트 배포·hosted 검증 → 제한 팀 배포 → 피드백 안정화다. D8~D12 및 AWS 이전 시점 미확정을 이유로 첫 팀 배포 개발을 멈추지 않는다. 비밀번호·개인키·DB 자격을 채팅/Git으로 요구하지 않는다. 외부 자원 생성·실데이터 이관·실제 repo 쓰기는 구체적 대상과 실행 범위가 마련됐을 때 수행한다.
 
 ## 11. 두 리뷰의 반영 결과
 
@@ -303,7 +305,7 @@ M1~M3의 다음 작업은 D4 호환성/인프라 결정 → PoC 통합·후보/�
 | Claude P2-6 ERP 읽기 연결/버전 | 채택 | D12·7절·8.1 분석 commit과 구현 base 대조 |
 | Claude P2-7 테스트 약화 | 채택 | 8.3 보호 경로/diff 분류·정책에 따른 리뷰/차단 |
 | Claude P2-8 시간/동시성 | 채택 | 5.1 현재 분석값과 7절 원격 단계 정책 분리 |
-| Claude P3-1 VM/Supabase 표 충돌 | 구조 정리 | 1·4절 AWS 우선 검토·DB 별도 선택. 옛 기술 표는 역사 자료 |
+| Claude P3-1 VM/Supabase 표 충돌 | 구조 정리 | 1·4절 Supabase 첫 배포·안정화 후 AWS 이전. 옛 기술 표는 역사 자료 |
 | Claude P3-2 공통 lock | 측정 후 결정 | 5.1 첫 파일럿·7절 원격 부하 검증. 지금 lock 재설계하지 않음 |
 | Claude P3-3 운영자 신뢰 | 채택 | 5.2·D9/D11 앱 admin과 호스트/DB 운영자 구분 |
 | Claude P3-4 checkout 읽기 자격 | 채택 | 8.3·D10 읽기 전용 자격/base bundle, 발행 토큰 분리 |
@@ -316,4 +318,4 @@ M1~M3의 다음 작업은 D4 호환성/인프라 결정 → PoC 통합·후보/�
 - 현재 코드 실행 경계: [v1 개발 안내](v1-development.md), [서버 안내](server-runbook.md), [Windows 후보](windows-candidate.md), [팀 파일럿](team-pilot.md). 명령은 해당 코드/환경 검증 후 갱신한다.
 - 검증/기존 업무: [검증 기록](validation.md), [기존 로컬 완료](local-completion-2026-09-18.md), [운영 안내](maintenance.md), [legacy 연결](legacy-link-validation.md), [상태 필터](status-filter-validation.md), [스레드 검증](mail-threads-validation.md).
 
-2026-09-21 이번 정리는 제품/DB/서비스를 변경하지 않았다. AWS 조회는 읽기 전용이며 IAM/보안 그룹·백업·DB 내용·리소스 생성/배포를 변경하지 않았다. 비용/버전/실제 권한은 해당 구현 단계에서 재확인한다. 완료 표시는 소스·검증 대상·증거와 함께 남긴다.
+v3.0의 AWS 조회는 읽기 전용이었다. v3.1에서 Supabase PoC 제품 소스를 통합하며 실제 배포/DB 변경 여부와 검증 결과는 [검증 기록](validation.md)에 남긴다. 비용/버전/실제 권한은 해당 구현 단계에서 재확인한다. 완료 표시는 소스·검증 대상·증거와 함께 남긴다.

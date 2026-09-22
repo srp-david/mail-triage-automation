@@ -1,13 +1,8 @@
 # 공용 이력 서버 리허설과 전환
 
-이 문서는 원본의 이전 Auth0/VM 리허설 기록이다. 최신 순서는 **AWS 공용 API·선택한 DB + 팀원 로컬 MCP/AI → 팀 배포·안정화 → 원격 자동화**다. [통합 구현 계획 v3.0](implementation-plan.md) 4~6절이 현재 배포 준비의 기준이다. Supabase PoC `8303d52`는 로컬 완료 보고/원본 미병합이며 hosted 운영 완료가 아니다. 아래 Auth0/SMTP·관리자 subject와 자체 DB Compose 명령을 새 AWS/RDS 배포에 그대로 사용하지 않는다.
+현재 배포 절차는 [Supabase 팀 배포 안내](supabase-rollout.md), 범위는 [통합 계획 v3.1](implementation-plan.md) 4~6절을 따른다. Supabase PoC 소스는 원본에 통합했으며 hosted 배포·실제 팀 파일럿은 미완료다.
 
-M1에서 이 문서의 명령을 갱신하기 전에 확인할 항목:
-
-- `cvslog`는 사용자가 확인한 `srp-rds-maria` 내부 DB다. MariaDB 10.11.16이므로 현재 PostgreSQL 앱의 이식 또는 PostgreSQL 유지 선택이 먼저다. 기존 업무 DB에 migration을 바로 실행하지 않는다.
-- API 호스트·RDS/DB 대상·앱 전용 영역·runtime/migration 계정·TLS/CA·네트워크 접근을 확정한다. 인증은 사용자명 PoC의 일반 Node 경로를 통합/검증한다.
-- RDS 자동 백업 보존은 조회 시 0일이었다. 별도 백업 확인과 보존·복원·장애 담당을 정한다. 설정 변경은 아직 수행하지 않았다. 공유 인스턴스 전체 롤백으로 다른 DB를 되돌리지 않는다.
-- 서명키/관리자 bootstrap·복제 DB migration/복원·기존 writer 전환/롤백·두 PC 검증 후 아래 과거 명령을 실제 검증된 절차로 교체한다. 현재 후보는 팀 배포 승인본이 아니다.
+아래는 이전 Auth0/VM 리허설의 역사 기록이다. 현재 사용자명 인증/Edge 배포에서 Auth0·SMTP 설정을 사용하지 않는다. Compose는 Node 자체 운영 참고안이며 Supabase 배포 명령이 아니다. AWS 이전과 MariaDB 이식은 안정화 이후 별도 작업이다.
 
 아래는 기존 리허설 절차 보존본이다.
 
