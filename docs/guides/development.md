@@ -14,7 +14,24 @@ node scripts/build-edge.mjs
 node scripts/verify-build-compat.mjs
 ```
 
-`build`는 TypeScript → 기존 dist 경로 호환 파일 → Office viewer → Markdown → React UI 순서다. Edge 번들은 별도 명령이다. 빌드가 실행 중 Docker API나 Supabase 함수를 자동 교체하지 않는다.
+`check`는 React ESLint → Prettier 검사 → TypeScript 타입 검사 순서다. `build`는 TypeScript → 기존 dist 경로 호환 파일 → Office viewer → Markdown → React UI 순서다. Edge 번들은 별도 명령이다. 빌드가 실행 중 Docker API나 Supabase 함수를 자동 교체하지 않는다.
+
+### React 코드 스타일과 포맷
+
+메인 UI(`packages/ui/ui`)와 Office 뷰어(`packages/ui/viewer`)에 ESLint flat config와 Prettier를 적용한다. ESLint는 TypeScript 권장 규칙과 React Hooks 호출/의존성을 검사하고, `eslint-config-prettier`로 포맷 규칙 충돌을 방지한다. React Compiler 전용 규칙은 사용하지 않는다. Prettier는 TS/TSX/JS/CSS/JSON/HTML에 공백 2칸·100자 기준·세미콜론·JS 작은따옴표·JSX 큰따옴표·후행 쉼표·LF를 적용한다. `.gitattributes`로 Windows checkout에서도 이 범위의 LF를 유지한다.
+
+```powershell
+npm.cmd run lint          # React ESLint 검사, 경고도 실패 처리
+npm.cmd run lint:fix      # 자동 수정 가능한 린트 항목 수정
+npm.cmd run format        # React 소스 포맷 적용
+npm.cmd run format:check  # 파일을 수정하지 않고 포맷 검사
+npm.cmd run typecheck     # 타입 검사만 실행
+npm.cmd run check         # lint + format:check + typecheck
+```
+
+현재 `typescript-eslint`는 TypeScript 7의 새 API를 지원하지 않으므로 `typescript` 6.0.3은 린트용 API로 사용한다. 기존 빌드·타입 검사 컴파일러는 npm 별칭 `@typescript/native`로 고정한 **TypeScript 7.0.2**다. `build:types`가 해당 실행 파일을 명시적으로 호출하므로 직접 `npx tsc` 대신 위 npm 명령을 사용한다. `npm run build:types -- --version`으로 확인할 수 있다. 런타임 의존성이나 ERP 코드/DB에는 영향을 주지 않는다.
+
+IDE에서는 프로젝트의 `eslint.config.mjs`와 `.prettierrc.json`을 사용한다. 백엔드·기존 `public` 코드·생성 산출물·비밀 설정은 이 React 포맷 명령의 대상이 아니다. 첨부 캐시를 메일별로 새로 만드는 두 `useMemo`는 의도적인 캐시 경계여서 해당 줄에만 사유와 함께 Hooks 의존성 예외를 기록했다.
 
 ## 2. 공용 API의 개발 실행
 

@@ -2,6 +2,15 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-22 React ESLint + Prettier 도입
+
+- 메인 React UI와 Office 뷰어에 ESLint 10.11.0 flat config, typescript-eslint 8.70.1, React Hooks 7.1.1, Prettier 3.9.8, eslint-config-prettier 10.1.8을 적용했다. `lint`, `lint:fix`, `format`, `format:check`, `typecheck`를 추가했고 `check`는 lint → format:check → typecheck를 실행한다. React 소스와 CSS/JSON/HTML을 포맷하고 `.gitattributes`로 해당 범위의 LF를 유지한다.
+- TypeScript 7 API와 린트 파서의 호환성 때문에 린트용 `typescript`는 6.0.3, 기존 컴파일러는 npm 별칭 `@typescript/native`의 7.0.2로 분리했다. `build:types`가 7.0.2 실행 파일을 명시한다. 별도 `.runtime/eslint-install-check`에서 새 lockfile로 `npm ci --ignore-scripts`를 통과하고, TypeScript 코드 린트·잘못된 Hooks 호출 검출·컴파일러 7.0.2·Prettier 버전을 확인했다.
+- 미사용 import 제거, 설정 응답 타입 명시, Hooks의 안정된 콜백 참조와 의존성 정리, 오류 cause 보존을 적용했다. 메일별 첨부 캐시를 초기화하는 두 useMemo만 이유를 적어 해당 줄의 의존성 검사를 제외했다. 전역 Hooks 규칙은 유지하고 경고도 검사 실패로 처리한다.
+- `npm.cmd run check` 오류/경고 0건, 전체 build, `verify-build-compat.mjs`, eslint-config-prettier 충돌 검사, `git diff --check` 통과. 기존 번들 크기 경고는 남아 있다.
+- 전체 Chrome 회귀는 최초 15/16 통과했다. Office 미리보기에서 portal 생성 전 DOM 참조를 고정하면 iframe이 삽입되지 않는 문제를 확인하여, 비동기 삽입 시 현재 viewport를 사용하고 cleanup에서는 해당 effect의 frame만 제거하도록 수정했다. 이후 `preview`, `image-preview`, `related-mails` 3/3 재검사와 check/UI build를 통과하여 16종의 최종 통과 로그를 확보했다. 증거는 `.runtime/react-validation/react/*.log`다. 이는 합성 브라우저 검증이며 실제 고객 자료 변경은 하지 않았다.
+- 개발 도구와 소스 정리 작업으로 로컬 Docker API·DB·Worker 및 Supabase를 재배포하지 않았다. Windows 설치 후보도 재생성하지 않았다. 사용 명령과 적용 범위는 [개발 안내](guides/development.md)에 기록했다.
+
 ## 2026-09-22 React 드래그앤드롭 라이브러리 전환
 
 - `@hello-pangea/dnd` 18.0.1로 React 메일의 수동 연결/해제 드래그를 전환했다. 기존 API·되돌리기·실패 안내·목록 순서·스크롤 복원을 유지한다. 드래그 시작 시 저장소와 목록을 기록하고 종료 시 대조하며, 동일 대화·외부 드롭·수동 연결된 메일의 다른 대화 이동은 쓰지 않는다. 라이브러리 동적 스타일에 기존 CSP nonce를 전달한다.
