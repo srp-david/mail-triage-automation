@@ -12,6 +12,7 @@
 |---|---|
 | 확정한 진행 순서 | 공용 API·DB + 로컬 실행을 팀에 배포 → 피드백·안정화 → 원격 실행 → SR→PR |
 | 인증 유지 | 사용자명 + 앱 비밀번호, 관리자 생성 계정, 공개 가입 없음, JWT + 현재 계정/세션/자료 권한 검사 |
+| 화면 구성 | 전체 React UI는 MUI 공통 테마로 통일. 기존 업무 동작·분할 화면·본문/Office 렌더러 유지. UI 전환으로 M4~M5 범위를 앞당기지 않음 |
 | 첫 호스팅 | Supabase Edge 공용 API + Supabase PostgreSQL. Free로 소규모 파일럿을 준비하고 실제 사용량·한도를 측정. 유료 전환은 별도 결정 |
 | 첫 DB | PostgreSQL 유지, 비공개 앱 schema와 최소 권한 runtime 계정. M1에서 MariaDB 이식하지 않음 |
 | 이후 AWS | M3 안정화 후 이전 범위·시점 결정. PostgreSQL 유지가 기본 이전 후보이며 `srp-rds-maria/cvslog` MariaDB 재사용은 별도 엔진 이식 결정 |

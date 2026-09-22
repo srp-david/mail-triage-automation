@@ -1,4 +1,6 @@
 import express from 'express';
+import {readFile} from 'node:fs/promises';
+import {sendUiDocument} from '../packages/ui/security.js';
 import { z } from 'zod';
 import { config, HttpError } from './config.js';
 import { pool, migrate } from './db.js';
@@ -19,7 +21,7 @@ export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRe
   const app=express(); app.disable('x-powered-by');
   const threadCache=new ThreadSearchCache<Awaited<ReturnType<typeof scanThreadMails>>>();
   app.use((req,res,next)=>{
-    // Only the packaged Office renderer needs WASM and React's inline layout styles.
+    // Only the packaged Office renderer permits WASM. The app document adds nonce-bound MUI styles below.
     // Document assets stay local; remote images/fonts/frames and form navigation are blocked.
     const preview=req.path.startsWith('/preview/');
     const csp=preview
@@ -203,7 +205,7 @@ export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRe
     res.set('X-Report-SHA256',r.reportHash).type('text/markdown').send(r.result.report+r.reviews.map((x:any)=>'\n\n## '+x.author+' 리뷰\n\n'+x.body).join(''));
   });
   // React uses the same origin, cookies and API contract as the API.
-  app.get('/',(_req,res)=>res.sendFile('public/react/index.html',{root:process.cwd()}));
+  app.get(['/','/react','/react/','/react/index.html'],async(_req,res)=>sendUiDocument(res,await readFile('public/react/index.html','utf8')));
   app.use(express.static('public'));
   app.use((err:any,_req:express.Request,res:express.Response,_next:express.NextFunction)=>{
     const status=err instanceof z.ZodError?400:err instanceof HttpError?err.status:err.code==='23505'?409:500;

@@ -38,6 +38,8 @@ TLS CA·호스트 검증은 유지한다. migration 자격과 runtime 자격을 
 
 loopback bind, 정확한 Host/Origin 검사, HttpOnly·SameSite cookie, CSRF 토큰, CSP, 일회용 ticket을 적용한다. 단순 localhost 주소만 인증으로 취급하지 않는다. 직접 CLI는 DPAPI의 제어 자격을 사용하며 브라우저 저장소에 서버 토큰을 노출하지 않는다.
 
+MUI/Emotion 스타일은 HTML 응답마다 새로 생성한 192-bit nonce를 `style-src-elem`과 Emotion cache에 전달해 허용한다. 동적 크기·위치를 위한 `style-src-attr 'unsafe-inline'`만 별도로 허용하고 `script-src 'self'`는 유지한다. 메일·Markdown 정화에서 임의 style/script를 제거하며, Office iframe의 기존 WASM 정책은 별도로 유지한다. `/`와 `/react/index.html` 등 HTML 진입점은 `no-store`로 응답한다. 이 설정은 [MUI CSP 안내](https://mui.com/material-ui/guides/content-security-policy/)를 따른다.
+
 DPAPI는 현재 Windows 사용자 범위로 세션·장치·outbox를 암호화하고 저장 폴더 ACL을 제한한다. 같은 사용자 권한의 악성 프로세스나 관리자/호스트 침해까지 막는 격리 장치는 아니다. 다른 PC로 `secrets/work`를 복사해 로그인 이전을 처리하지 않는다. [Microsoft DPAPI 문서](https://learn.microsoft.com/en-us/windows/win32/api/dpapi/nf-dpapi-cryptprotectdata)를 참고한다.
 
 ## 5. AI와 근거 도구

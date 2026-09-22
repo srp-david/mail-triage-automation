@@ -1,3 +1,5 @@
+import {Field,SelectField,Panel,Disclosure,DisclosureTitle} from '../components/Controls';
+import {Typography} from '@mui/material';
 import {useEffect,useState} from 'react';
 import {useSession,errorText} from '../api/client';
 import {Action} from '../components/Common';
@@ -7,25 +9,25 @@ export function Settings({changed}:{changed:()=>Promise<void>}){
  const [reconnect,setReconnect]=useState<any>(null),[sameStore,setSameStore]=useState(false);
  async function load(){const [s,c,r,m,v]=await Promise.all([api<any[]>('/sources'),api<any[]>('/collections'),api<any[]>('/runners'),api<any[]>('/members'),api<any>('/settings')]);setSources(s);setCollections(c);setRunners(r);setMembers(m);setValue(v);}
  useEffect(()=>{void load().catch(e=>notice(errorText(e)));},[]);
- return <section><h2>출처와 실행 설정</h2><p>원본이 없는 출처도 공유 이력을 조회할 수 있습니다. 분석은 원본과 실행 장치가 연결된 출처에서 시작하세요.</p>
- <label>메일 출처 <select aria-label="메일 출처" value={value.sourceId} onChange={e=>setValue({...value,sourceId:e.target.value,runnerId:undefined})}><option value="">출처 선택</option>{sources.map(s=><option key={s.id} value={s.id}>{s.display_name}</option>)}</select></label>
- <label>이전 문서 모음 <select aria-label="이전 문서 모음" value={value.collectionId??''} onChange={e=>setValue({...value,collectionId:e.target.value||undefined})}><option value="">선택 안 함</option>{collections.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
- <label>분석 도구 <select aria-label="분석 도구" value={value.agent} onChange={e=>setValue({...value,agent:e.target.value,runnerId:undefined})}><option value="codex">Codex</option><option value="claude">Claude Code</option></select></label>
- <label>실행 장치 <select aria-label="실행 장치" value={value.runnerId??''} onChange={e=>setValue({...value,runnerId:e.target.value||undefined})}><option value="">선택 안 함</option>{runners.filter(r=>r.active&&r.agents.includes(value.agent)).map(r=><option key={r.id} value={r.id}>{r.display_name}</option>)}</select></label>
+ return <Panel><Typography component="h2" variant="h2">출처와 실행 설정</Typography><p>원본이 없는 출처도 공유 이력을 조회할 수 있습니다. 분석은 원본과 실행 장치가 연결된 출처에서 시작하세요.</p>
+ <label>메일 출처 <SelectField aria-label="메일 출처" value={value.sourceId} onChange={e=>setValue({...value,sourceId:e.target.value,runnerId:undefined})}><option value="">출처 선택</option>{sources.map(s=><option key={s.id} value={s.id}>{s.display_name}</option>)}</SelectField></label>
+ <label>이전 문서 모음 <SelectField aria-label="이전 문서 모음" value={value.collectionId??''} onChange={e=>setValue({...value,collectionId:e.target.value||undefined})}><option value="">선택 안 함</option>{collections.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</SelectField></label>
+ <label>분석 도구 <SelectField aria-label="분석 도구" value={value.agent} onChange={e=>setValue({...value,agent:e.target.value,runnerId:undefined})}><option value="codex">Codex</option><option value="claude">Claude Code</option></SelectField></label>
+ <label>실행 장치 <SelectField aria-label="실행 장치" value={value.runnerId??''} onChange={e=>setValue({...value,runnerId:e.target.value||undefined})}><option value="">선택 안 함</option>{runners.filter(r=>r.active&&r.agents.includes(value.agent)).map(r=><option key={r.id} value={r.id}>{r.display_name}</option>)}</SelectField></label>
  <Action onAction={async()=>{await api('/settings',{sourceId:value.sourceId,collectionId:value.collectionId,runnerId:value.runnerId,agent:value.agent});await changed();notice('출처와 실행 설정을 저장했습니다.');}}>선택 저장</Action>
  <p>{value.originalAvailable?'이 PC에 원본 연결이 있습니다.':'선택된 출처의 원본이 이 PC에 연결되어 있지 않습니다.'}</p>
- <details><summary>기존 원본 저장소 다시 연결</summary><p>같은 MCP 저장소의 복원본이거나 같은 저장소를 공유하는 PC에서만 사용하세요. 새 저장소는 새 출처로 등록해야 합니다. 이력의 최대 10개 메일을 대조하며 일부 일치만으로 저장소 전체가 같다고 보장하지 않습니다.</p>
+ <Disclosure><DisclosureTitle>기존 원본 저장소 다시 연결</DisclosureTitle><p>같은 MCP 저장소의 복원본이거나 같은 저장소를 공유하는 PC에서만 사용하세요. 새 저장소는 새 출처로 등록해야 합니다. 이력의 최대 10개 메일을 대조하며 일부 일치만으로 저장소 전체가 같다고 보장하지 않습니다.</p>
  <Action disabled={!value.sourceId} onAction={async()=>{setSameStore(false);setReconnect(await api('/settings/reconnect/preview',{sourceId:value.sourceId}));}}>기존 이력과 원본 대조</Action>
- {reconnect&&<><p>메일 {reconnect.matchedMails}개의 번호·Message-ID·제목이 일치했습니다.</p><label><input type="checkbox" checked={sameStore} onChange={e=>setSameStore(e.target.checked)}/>이 PC의 MCP가 기존과 같은 저장소 또는 그 복원본임을 확인했습니다.</label><Action disabled={!sameStore} onAction={async()=>{await api('/settings/reconnect/apply',{ticket:reconnect.ticket,confirmedSameStore:true});setReconnect(null);await load();await changed();notice('기존 출처의 원본 연결을 복구했습니다.');}}>원본 연결 복구</Action></>}
- </details>
- <h3>등록</h3><input aria-label="등록 이름" value={name} maxLength={200} onChange={e=>setName(e.target.value)} placeholder="출처·문서 모음·장치 이름"/>
+ {reconnect&&<><p>메일 {reconnect.matchedMails}개의 번호·Message-ID·제목이 일치했습니다.</p><label><Field type="checkbox" checked={sameStore} onChange={e=>setSameStore(e.target.checked)}/>이 PC의 MCP가 기존과 같은 저장소 또는 그 복원본임을 확인했습니다.</label><Action disabled={!sameStore} onAction={async()=>{await api('/settings/reconnect/apply',{ticket:reconnect.ticket,confirmedSameStore:true});setReconnect(null);await load();await changed();notice('기존 출처의 원본 연결을 복구했습니다.');}}>원본 연결 복구</Action></>}
+ </Disclosure>
+ <Typography component="h3" variant="h3">등록</Typography><Field aria-label="등록 이름" value={name} maxLength={200} onChange={e=>setName(e.target.value)} placeholder="출처·문서 모음·장치 이름"/>
  <Action onAction={async()=>{await api('/sources',{displayName:name});await load();notice('이 PC의 메일 출처를 등록했습니다.');}}>현재 MCP 출처 등록</Action>
  <Action onAction={async()=>{await api('/collections',{name,requestId:crypto.randomUUID()});await load();}}>문서 모음 만들기</Action>
  <Action disabled={!value.sourceId} onAction={async()=>{await api('/runners',{displayName:name,agents:[value.agent],sourceIds:[value.sourceId]});await load();notice('장치를 등록했습니다. 실행 가능 여부는 진단에서 별도로 확인합니다.');}}>이 PC 실행 장치 등록</Action>
- <h3>공유 관리</h3><label>팀 사용자 <select aria-label="팀 사용자" value={member} onChange={e=>setMember(e.target.value)}><option value="">사용자 선택</option>{members.map(m=><option key={m.id} value={m.id}>{m.display_name?`${m.display_name} (${m.username??m.email})`:m.username??m.email}</option>)}</select></label>
+ <Typography component="h3" variant="h3">공유 관리</Typography><label>팀 사용자 <SelectField aria-label="팀 사용자" value={member} onChange={e=>setMember(e.target.value)}><option value="">사용자 선택</option>{members.map(m=><option key={m.id} value={m.id}>{m.display_name?`${m.display_name} (${m.username??m.email})`:m.username??m.email}</option>)}</SelectField></label>
  {(['sources','collections'] as const).map(kind=><div key={kind}><span>{kind==='sources'?'선택 출처':'선택 문서 모음'}</span>{(['read','write','none'] as const).map(permission=><Action key={permission} disabled={!member||!(kind==='sources'?value.sourceId:value.collectionId)} onAction={async()=>{await api('/'+kind+'/'+(kind==='sources'?value.sourceId:value.collectionId)+'/grants',{userId:member,permission});notice('공유 권한을 변경했습니다.');}}>{permission==='read'?'읽기 허용':permission==='write'?'쓰기 허용':'권한 회수'}</Action>)}</div>)}
- <h3>등록 장치</h3>{runners.map(r=><div key={r.id}>{r.display_name} · {r.active?'등록됨':'폐기됨'}{r.active&&<Action onAction={async()=>{await api('/runners/'+r.id+'/revoke',{});await load();}}>장치 폐기</Action>}</div>)}
- <h3>로컬 실행과 복구</h3><p>실행은 이 앱이 켜져 있는 동안만 유지됩니다. 설정 변경이나 로그아웃은 실행을 중지합니다.</p>
+ <Typography component="h3" variant="h3">등록 장치</Typography>{runners.map(r=><div key={r.id}>{r.display_name} · {r.active?'등록됨':'폐기됨'}{r.active&&<Action onAction={async()=>{await api('/runners/'+r.id+'/revoke',{});await load();}}>장치 폐기</Action>}</div>)}
+ <Typography component="h3" variant="h3">로컬 실행과 복구</Typography><p>실행은 이 앱이 켜져 있는 동안만 유지됩니다. 설정 변경이나 로그아웃은 실행을 중지합니다.</p>
  <Action onAction={async()=>{setRuntime(await api('/runtime'));}}>실행 상태 확인</Action>
  {runtime&&<p>분석: {runtime.analysis} · 동기화: {runtime.sync}{!runtime.analysisAvailable?' · 로컬 설정에 개인 분석 도구가 등록되지 않았습니다.':''}</p>}
  <Action disabled={!value.runnerId} onAction={async()=>{await api('/runtime/start',{kind:'sync'});setRuntime(await api('/runtime'));notice('동기화 실행을 켰습니다. 메일함에서 동기화를 시작하세요.');}}>동기화 실행 켜기</Action>
@@ -37,5 +39,5 @@ export function Settings({changed}:{changed:()=>Promise<void>}){
  {recovery.analysis?.hasResult&&<><p>만료된 실행은 원본을 재확인한 뒤 새 이력으로 복구합니다. 기존 이력은 보존됩니다.</p><Action onAction={async()=>{await api('/runtime/recovery',{action:'recover'});setRecovery(await api('/runtime/recovery'));}}>원본 재확인 후 결과 복구</Action></>}
  {['running','interrupted'].includes(recovery.analysis?.state)&&!recovery.analysis?.hasResult&&<Action onAction={async()=>{await api('/runtime/recovery',{action:'archive-analysis'});setRecovery(await api('/runtime/recovery'));}}>종료된 분석 중단 기록 보관</Action>}
  {recovery.sync?.state==='running'&&<><Action onAction={async()=>{await api('/runtime/recovery',{action:'deliver-sync'});setRecovery(await api('/runtime/recovery'));}}>저장된 동기화 응답 재전송</Action><Action onAction={async()=>{await api('/runtime/recovery',{action:'archive-sync'});setRecovery(await api('/runtime/recovery'));}}>종료된 동기화 기록 보관</Action></>}</div>}
- </section>;
+ </Panel>;
 }

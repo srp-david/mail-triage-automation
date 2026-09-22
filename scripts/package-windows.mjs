@@ -7,7 +7,7 @@ const exec=promisify(execFile),version=process.argv[2]??'0.2.0-candidate.1';
 if(process.platform!=='win32'||process.arch!=='x64'||process.version!=='v24.16.0')throw new Error('Build requires pinned Windows x64 Node v24.16.0');
 if(!/^\d+\.\d+\.\d+-candidate\.\d+$/.test(version))throw new Error('Candidate version required');
 const target=resolve('.runtime/packages',version);await mkdir(dirname(target),{recursive:true});await mkdir(target,{recursive:false});
-for(const sub of ['apps/local-app','packages/contracts','packages/history-client','packages/runner','packages/agent-adapters','packages/skills'])await cp('dist/'+sub,join(target,'dist',sub),{recursive:true});
+for(const sub of ['apps/local-app','packages/contracts','packages/history-client','packages/runner','packages/agent-adapters','packages/skills','packages/ui'])await cp('dist/'+sub,join(target,'dist',sub),{recursive:true});
 await cp('public',join(target,'public'),{recursive:true});
 await cp('installer/windows',join(target,'installer'),{recursive:true});
 await mkdir(join(target,'scripts'));await cp('scripts/history-v1.mjs',join(target,'scripts/history-v1.mjs'));

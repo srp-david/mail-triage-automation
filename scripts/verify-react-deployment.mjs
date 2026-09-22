@@ -22,7 +22,9 @@ else{
  const before=JSON.parse(await readFile(directory+'/before.json','utf8'));assert.deepEqual(hashes,before.hashes);assert.deepEqual(containers,before.containers);
  const env=Object.fromEntries((await readFile('.env','utf8')).split(/\r?\n/).filter(x=>x.includes('=')).map(x=>[x.slice(0,x.indexOf('=')),x.slice(x.indexOf('=')+1)]));
  const base='http://localhost:'+(env.TRIAGE_PORT??3080),html=await readFile('public/react/index.html','utf8');
- const index=await fetch(base+'/');assert.equal(index.status,200);assert.equal(sha256(await index.text()),sha256(html));
+ const index=await fetch(base+'/');assert.equal(index.status,200);const servedHtml=await index.text();
+ const nonce=servedHtml.match(/<meta name="csp-nonce" content="([A-Za-z0-9+/=]+)">/);assert.ok(nonce);assert.ok(index.headers.get('content-security-policy').includes("'nonce-"+nonce[1]+"'"));
+ assert.equal(sha256(servedHtml.replace(nonce[0],'')),sha256(html));
  const assets=[...html.matchAll(/(?:src|href)="(\/react\/[^\"]+)"/g)].map(m=>m[1]);
  for(const path of assets){const response=await fetch(base+path);assert.equal(response.status,200);assert.equal(sha256(Buffer.from(await response.arrayBuffer())),sha256(await readFile('public'+path)));}
  assert.equal((await fetch(base+'/health')).status,200);

@@ -1,5 +1,7 @@
 import React, { Component, useEffect, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
+import {Button,CssBaseline,ThemeProvider} from '@mui/material';
+import {theme} from '../ui/src/theme';
 import './viewer.css';
 
 type PreviewFile = { format: 'docx' | 'pptx' | 'xlsx'; filename: string; buffer: ArrayBuffer };
@@ -55,13 +57,13 @@ function Preview({ file }: {file: PreviewFile}) {
           return <lib.XlsxViewer controller={controller} height="100dvh" readOnly
             showDefaultToolbar={false} toolbar={<div className="sheet-toolbar">
               <div className="sheet-tabs" aria-label="시트 선택">
-                {controller.tabs.map((tab, index) => <button key={index} type="button"
+                {controller.tabs.map((tab, index) => <Button key={index} type="button" variant={controller.activeTabIndex===index?'contained':'outlined'}
                   aria-pressed={controller.activeTabIndex === index}
-                  onClick={() => controller.setActiveTabIndex(index)}>{tab.name}</button>)}
+                  onClick={() => controller.setActiveTabIndex(index)}>{tab.name}</Button>)}
               </div>
-              <div className="sheet-zoom"><button type="button" aria-label="축소" disabled={!controller.canZoomOut} onClick={controller.zoomOut}>−</button>
+              <div className="sheet-zoom"><Button type="button" aria-label="축소" disabled={!controller.canZoomOut} onClick={controller.zoomOut}>−</Button>
                 <span>{Math.round(controller.zoomScale)}%</span>
-                <button type="button" aria-label="확대" disabled={!controller.canZoomIn} onClick={controller.zoomIn}>+</button></div>
+                <Button type="button" aria-label="확대" disabled={!controller.canZoomIn} onClick={controller.zoomIn}>+</Button></div>
             </div>} loadingState={<p>시트를 여는 중입니다…</p>}
             errorState={failure} />;
         }
@@ -83,7 +85,7 @@ window.addEventListener('message', event => {
   if (!(data.buffer instanceof ArrayBuffer) || data.buffer.byteLength > 5 * 1024 * 1024 ||
       !['docx', 'pptx', 'xlsx'].includes(data.format) || typeof data.filename !== 'string') return;
   accepted = true;
-  root.render(<Preview file={data} />);
+  root.render(<ThemeProvider theme={theme}><CssBaseline/><Preview file={data} /></ThemeProvider>);
 });
 // Document hyperlinks are display-only, including keyboard activation and middle-click.
 for (const name of ['click', 'auxclick']) document.addEventListener(name, event => {

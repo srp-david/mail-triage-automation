@@ -1,3 +1,5 @@
+import {Disclosure,DisclosureTitle} from '../../components/Controls';
+import {Button,Typography} from '@mui/material';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {useSession} from '../../api/client';
 import {activeRun,date,labels,type Attachment,type Body,type Mail,type Run,type Summary} from '../../api/types';
@@ -13,8 +15,8 @@ function AttachmentRow({file,download,preview}:{file:Attachment;download:(file:A
  const blocked=!file.attachmentId||file.size>LIMIT;
  const extension=file.filename?.split('.').pop()?.toUpperCase()??'파일';
  return <li className="attachment-row"><div className="attachment-info"><strong className="attachment-name">{file.filename||'이름 없는 첨부파일'}</strong><span className="attachment-meta">{extension} · {fileSize(file.size)}</span></div><div className="attachment-actions">
-  {previewFormat(file)&&<button type="button" className="preview-button" aria-label={(file.filename||'첨부파일')+' 미리보기'} disabled={blocked} onClick={()=>preview(file)}>미리보기</button>}
-  <button type="button" className="download-button" aria-label={(file.filename||'첨부파일')+' 다운로드'} disabled={blocked||busy} onClick={async()=>{if(lock.current)return;lock.current=true;setBusy(true);setError('');try{await download(file);}catch(e){setError(e instanceof Error?e.message:'다운로드에 실패했습니다. 다시 시도해 주세요.');}finally{lock.current=false;setBusy(false);}}}>{busy?'가져오는 중…':'다운로드'}</button></div>
+  {previewFormat(file)&&<Button type="button" className="preview-button" aria-label={(file.filename||'첨부파일')+' 미리보기'} disabled={blocked} onClick={()=>preview(file)}>미리보기</Button>}
+  <Button type="button" className="download-button" aria-label={(file.filename||'첨부파일')+' 다운로드'} disabled={blocked||busy} onClick={async()=>{if(lock.current)return;lock.current=true;setBusy(true);setError('');try{await download(file);}catch(e){setError(e instanceof Error?e.message:'다운로드에 실패했습니다. 다시 시도해 주세요.');}finally{lock.current=false;setBusy(false);}}}>{busy?'가져오는 중…':'다운로드'}</Button></div>
   <p className="download-status" role="status" hidden={!blocked&&!error}>{file.size>LIMIT?'5 MiB를 초과해 다운로드할 수 없습니다.':!file.attachmentId?'첨부 식별자가 없어 다운로드할 수 없습니다.':error}</p></li>;
 }
 export function MailDetail({id,summary,unavailable,refreshSummary,onHistory,onAnalysis,onBack,onLoaded}:{id:number;summary?:Summary;unavailable:boolean;refreshSummary:()=>Promise<unknown>;onHistory:(id:number,subject:string)=>void;onAnalysis:(id:string,mailId:number,subject:string)=>void;onBack:()=>void;onLoaded:()=>void}){
@@ -35,14 +37,14 @@ export function MailDetail({id,summary,unavailable,refreshSummary,onHistory,onAn
   const run=await api<Run>('/runs',{storeId,mailId:id,messageId:resource.data!.mail.messageId,source:'web',requestId:crypto.randomUUID()});
   if(current===life.current){onAnalysis(run.id,id,resource.data!.mail.subject);await refreshSummary();}
  }
- if(!resource.data)return <><button className="mail-back" onClick={onBack}>메일 목록으로</button><h2>메일을 불러오는 중입니다.</h2><p role="status">{resource.error}</p>{resource.error&&<Action onAction={resource.refresh}>다시 조회</Action>}</>;
+ if(!resource.data)return <><Button className="mail-back" onClick={onBack}>메일 목록으로</Button><Typography component="h2" variant="h2">메일을 불러오는 중입니다.</Typography><p role="status">{resource.error}</p>{resource.error&&<Action onAction={resource.refresh}>다시 조회</Action>}</>;
  const {mail,body}=resource.data;
- return <><button className="mail-back" onClick={onBack}>메일 목록으로</button><h2>{mail.subject}</h2><p className="meta">{(mail.from??[]).map(x=>x.address).join(', ')} · {date(mail.sentAt)}</p>
+ return <><Button className="mail-back" onClick={onBack}>메일 목록으로</Button><Typography component="h2" variant="h2">{mail.subject}</Typography><p className="meta">{(mail.from??[]).map(x=>x.address).join(', ')} · {date(mail.sentAt)}</p>
   <div className="mail-actions"><Action onAction={()=>perform()}>{unavailable?'이력 다시 확인':activeRun(summary?.latestStatus)?'진행 상황 보기':summary?.runCount?(summary.latestStatus==='failed'?'실패 내용 보기':'결과 보기'):'분석 시작'}</Action>
   {!unavailable&&!!summary?.runCount&&!activeRun(summary.latestStatus)&&<Action className="secondary-button" onAction={()=>perform(true)}>새로 분석</Action>}
-  <button className="history-button" onClick={()=>onHistory(id,mail.subject)}>이 메일 분석 이력</button></div>
+  <Button className="history-button" onClick={()=>onHistory(id,mail.subject)}>이 메일 분석 이력</Button></div>
   <p className="meta" role="status">{unavailable?'분석 이력을 확인하지 못했습니다. 다시 확인한 뒤 분석할 수 있습니다.':`분석: ${labels[summary?.latestStatus??'']??'미분석'} · 업무 처리: ${summary?.handledAt?'처리 완료':'완료 표시 없음'}`}</p>
-  {!!attachments.length&&<details className="mail-attachments"><summary>첨부파일 · {attachments.length}개</summary><ul className="attachment-list">{attachments.map((a,i)=><AttachmentRow key={a.attachmentId??i} file={a} download={download} preview={a=>setPreview({...a})}/>)}</ul>{attachments.some(a=>a.size>LIMIT)&&<p className="attachment-limit">현재 파일당 다운로드 한도는 5 MiB입니다.</p>}</details>}
+  {!!attachments.length&&<Disclosure className="mail-attachments"><DisclosureTitle>첨부파일 · {attachments.length}개</DisclosureTitle><ul className="attachment-list">{attachments.map((a,i)=><AttachmentRow key={a.attachmentId??i} file={a} download={download} preview={a=>setPreview({...a})}/>)}</ul>{attachments.some(a=>a.size>LIMIT)&&<p className="attachment-limit">현재 파일당 다운로드 한도는 5 MiB입니다.</p>}</Disclosure>}
   <MailContent body={body} text={mail.body} attachments={attachments} fetchAttachment={fetchAttachment} fallbackHint="본문 서식을 불러오지 못해 텍스트로 표시합니다. 이미지는 첨부파일 목록의 미리보기로 확인할 수 있습니다."/>
   {!!mail.warnings?.length&&<p>조회 경고: {mail.warnings.join(', ')}</p>}
   <PreviewDialog attachment={preview} loadFile={loadFile} download={download}/></>;

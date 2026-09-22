@@ -25,7 +25,7 @@
 | 로컬 실행 | Windows x64, 패키지 Node v24.16.0, CurrentUser DPAPI |
 | 일반 서버 | Node.js 24 + Express 5.2.1. Dockerfile.history는 Node 24.21.0 이미지 고정 |
 | 클라우드 | Supabase Edge Functions의 `history`, PostgreSQL 17.6 배포 확인 |
-| UI | React 19.3.0, TypeScript 7.0.2, Vite 8.3.0, TanStack React Query 5.103.1 |
+| UI | React 19.3.0, Material UI 9.4.0 / Emotion, TypeScript 7.0.2, Vite 8.3.0, TanStack React Query 5.103.1 |
 | DB 드라이버 | pg 8.23.0, PostgreSQL jsonb·advisory lock·부분 unique index |
 | 인증 | jose 6.2.12의 ES256 JWT, hash-wasm 4.12.0의 Argon2id |
 | MCP | SDK 1.30.0, Streamable HTTP |

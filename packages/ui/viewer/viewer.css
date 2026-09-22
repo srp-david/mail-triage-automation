@@ -6,7 +6,4 @@ p[role],#root>p{padding:24px;line-height:1.7}
 a{cursor:default}
 .sheet-toolbar{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;padding:8px 12px;background:white;border-bottom:1px solid #dce4df;flex-shrink:0}
 .sheet-tabs{display:flex;gap:6px;overflow:auto;min-width:0}
-.sheet-toolbar button{font:inherit;border:1px solid #cbd8d0;background:#fff;color:#203341;border-radius:5px;padding:6px 10px;cursor:pointer;white-space:nowrap}
-.sheet-tabs button[aria-pressed=true]{background:#216859;color:white;border-color:#216859}
-.sheet-toolbar button:disabled{opacity:.4;cursor:default}
 .sheet-zoom{display:flex;align-items:center;gap:8px;font-size:12px}

@@ -282,7 +282,7 @@ test('attachment downloads require authentication and return exact bytes as a na
  }finally{await new Promise<void>(resolve=>server.close(()=>resolve()));}
 });
 
-test('Office viewer permits local WASM without relaxing mail-page CSP',async()=>{
+test('MUI styles use fresh nonces while WASM remains isolated to the Office viewer',async()=>{
  const {createApp}=await import('../src/server.js');
  const server=createApp().listen(0,'127.0.0.1');
  await new Promise<void>(resolve=>server.once('listening',resolve));
@@ -293,7 +293,14 @@ test('Office viewer permits local WASM without relaxing mail-page CSP',async()=>
   assert.equal(page.status,200);assert.equal(viewer.status,200);
   const mainCsp=page.headers.get('content-security-policy')!;
   const viewerCsp=viewer.headers.get('content-security-policy')!;
-  assert.ok(!mainCsp.includes('unsafe-inline'));assert.ok(!mainCsp.includes('wasm-unsafe-eval'));
+  const html=await page.text(),nonce=html.match(/<meta name="csp-nonce" content="([A-Za-z0-9+/=]+)">/)?.[1];
+  assert.ok(nonce);assert.ok(mainCsp.includes(`style-src-elem 'self' 'nonce-${nonce}'`));
+  assert.ok(mainCsp.includes("style-src-attr 'unsafe-inline'"));
+  assert.ok(mainCsp.includes("script-src 'self';"));assert.ok(!mainCsp.includes('wasm-unsafe-eval'));
+  assert.ok(!mainCsp.includes("style-src 'self' 'unsafe-inline'"));assert.equal(page.headers.get('cache-control'),'no-store');
+  const second=await fetch(base+'/react/index.html'),secondHtml=await second.text();
+  const secondNonce=secondHtml.match(/name="csp-nonce" content="([A-Za-z0-9+/=]+)"/)?.[1];
+  assert.ok(secondNonce);assert.notEqual(nonce,secondNonce);assert.ok(second.headers.get('content-security-policy')!.includes(`'nonce-${secondNonce}'`));
   assert.ok(viewerCsp.includes("script-src 'self' 'wasm-unsafe-eval'"));
   assert.ok(viewerCsp.includes("connect-src 'self'"));
   assert.ok(viewerCsp.includes('img-src data: blob:'));

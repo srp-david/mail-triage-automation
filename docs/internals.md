@@ -80,6 +80,10 @@ route 모듈은 입력을 검증하고 도메인 메서드를 호출한다. 주�
 
 React 화면은 `packages/ui/ui/src`에서 메일·이력·설정·사용자명 인증으로 나뉜다. 공용 UI를 v0와 local-app이 사용하지만 서버 API와 인증 경로는 서로 다르다. TanStack Query 캐시, IME-safe 검색, 헤더 기반 스레드와 수동 링크, Office 미리보기는 기존 검증을 보존한다.
 
+화면은 MUI 9와 Emotion을 사용한다. `theme.ts`는 한국어 글꼴·색상·작은 입력 크기를, `components/Controls.tsx`는 native 이벤트를 보존하는 MUI 입력과 패널을 정의한다. `layout.css`는 분할/반응형 배치만 담당하며 메인 화면은 기존 `public/style.css`를 로드하지 않는다. 메일·Markdown 본문 서식은 `document-content.css`로 분리했다. 스레드 펼침은 MUI `styled`와 native disclosure를 함께 사용한다.
+
+보고서와 첨부 미리보기는 MUI Dialog로 표시한다. 본문 정화·CID 해석과 Office 파서는 유지하며 Markdown 도구, 이미지 재시도, XLSX 시트/확대·축소 제어도 MUI로 표시한다. `packages/ui/security.ts`는 HTML 응답에 요청별 CSP nonce를 주입한다. Windows 패키지는 이 서버 모듈도 포함해야 한다. `scripts/verify-mui-ui.mjs`는 합성 local-app 로그인·설정·관리자·IME·nonce·모바일 회귀를 검사한다.
+
 | 설치 경로 | 내용·갱신 방식 |
 |---|---|
 | `releases/<version>` | manifest 해시 검증 대상 코드·Node·의존성·UI. 같은 버전의 다른 내용을 덮어쓰지 않음 |

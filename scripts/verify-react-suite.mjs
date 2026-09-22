@@ -1,7 +1,7 @@
 import {spawn} from 'node:child_process';
 import {mkdir,writeFile} from 'node:fs/promises';
 const names=process.argv.slice(2);
-const suite=names.length?names:['pre-p1-ux','status-filter','mail-threads','manual-threads','mail-scroll','image-preview','preview','mail-analysis','analysis-progress','handling-ui','related-mails','history-ui','markdown','maintenance-ui','sync-refresh'];
+const suite=names.length?names:['pre-p1-ux','status-filter','mail-threads','manual-threads','mail-scroll','image-preview','preview','mail-analysis','analysis-progress','handling-ui','related-mails','history-ui','markdown','maintenance-ui','sync-refresh','mui-ui'];
 const directory='.runtime/react-validation/react';
 await mkdir(directory,{recursive:true});
 const results=[];

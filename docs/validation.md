@@ -2,6 +2,16 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-22 전체 화면 MUI 전환
+
+- 메일함·검색·상태·보고서·관련 메일·이전 이력·설정·로그인·관리자를 MUI 9.4.0 / Emotion 공통 테마로 전환했다. 기존 전역 CSS를 메인 앱에서 제거하고 배치와 문서 본문 서식을 분리했다. Dialog, Snackbar/Alert, Chip, CircularProgress, 버튼/입력/선택/체크박스와 MUI styled disclosure를 사용한다. 메일 본문 정화·CID·Office 파서는 유지하며 Markdown 도구·이미지 재시도·XLSX 시트/확대 제어도 MUI를 사용한다.
+- Node API와 local-app HTML 응답에 매번 새 CSP nonce를 넣고 Emotion cache에 전달한다. script 정책은 유지하며 동적 스타일 속성만 별도로 허용한다. `/react/index.html` 우회 경로도 같은 헤더·nonce를 적용한다. Windows 패키징에 새 `packages/ui/security` 서버 모듈을 포함했다.
+- `npm.cmd run check`, 전체 build, `verify-build-compat.mjs` 통과. 메인 JS는 657.51 kB / gzip 204.50 kB이며 MUI 및 기존 Office 번들의 크기 경고는 남아 있다.
+- 합성 Chrome 회귀 **16/16 통과**: 검색/상태 필터, 스레드/수동 연결, 독립 스크롤·읽기 위치, 이미지·Office 3형식 미리보기/실패/재시도/닫기, 분석·처리 완료, 관련 메일, 이력, Markdown, 유지보수·동기화, native 로그인/로그아웃·설정 저장·관리자 입력·모바일 메뉴·IME Enter·nonce. `.runtime/react-validation/react/results.json`과 `.runtime/mui/`에 기록/합성 화면을 보관한다. 마지막 설정/관리자 CSS 범위 조정 후 `verify-mui-ui.mjs`를 재통과하고 캡처를 확인했다.
+- 독립 임시 PostgreSQL에서 백엔드 **130/130 통과**: `.runtime/triage-free-tests-a34c0cd1/tests.log`. 최초 호스트 실행은 테스트 DB 미설정으로 9개 파일이 실행되지 않았고, 첫 독립 DB 실행은 이전 CSP 기대값 1개가 실패했다. nonce·스타일 속성 정책, 스크립트 제한, nonce 재발급을 검증하도록 갱신 후 전체 통과했다.
+- 로컬 Docker API만 `--no-deps --no-build --wait`로 교체했다. `/health`, 제공 JS/CSS SHA-256 및 nonce를 제외한 HTML 일치, 실제 메일/보고서 읽기, 모바일 가로 넘침 없음, pageerror 0을 확인했다. 보고서 **12개**, 이전 문서 **33개**, 수동 연결 해시를 보존했고 DB/Worker 컨테이너 ID도 동일하다. `.runtime/react-deployment/after.json` 참조.
+- 실제 고객 분석·동기화·메일 상태 변경은 실행하지 않았다. ERP 코드/DB 및 Supabase 서비스 변경 없음. 별도 Windows 파일럿(43180)은 실행 중이지 않아 기존 설치본을 갱신하지 않았으며 새 Windows 배포 후보 생성/설치 검증은 이번 범위 밖이다.
+
 ## 2026-09-22 문서 체계 정리와 현재 구조 명세
 
 - 루트 README와 문서 안내를 현재 Supabase 공용 API·Windows local-app 기준으로 다시 작성했다. 아키텍처·내부 모듈·로그인/분석/동기화/복구 흐름·제품 스펙·API·데이터 모델·보안·개발/운영 절차를 분리했다.
