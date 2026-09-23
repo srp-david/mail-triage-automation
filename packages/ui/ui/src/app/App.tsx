@@ -509,7 +509,7 @@ export function App() {
         </div>
         <Snackbar
           open={!!notice && !history}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
         >
           <Alert
             id="notice"
