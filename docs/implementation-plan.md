@@ -14,7 +14,7 @@
 | 인증 유지 | 사용자명 + 앱 비밀번호, 관리자 생성 계정, 공개 가입 없음, JWT + 현재 계정/세션/자료 권한 검사 |
 | 화면 구성 | 전체 React UI는 MUI 공통 테마로 통일. 기존 업무 동작·분할 화면·본문/Office 렌더러 유지. UI 전환으로 M4~M5 범위를 앞당기지 않음 |
 | 보고서 협업 | 대화·결정 저장, 명시적 보고서 반영·새 revision, 낙관적 락을 추가한다. 로컬 Agent를 사용하는 M3 기능 확장 배치안이며 첫 파일럿의 선행 조건으로 만들지 않음 |
-| 앱 배포 방향 | [srp-david/mail-triage-automation](https://github.com/srp-david/mail-triage-automation)의 기존 41개 이력을 제외한 공개용 첫 커밋 `3803669f801ec8b52bc3614d367b830e5e38b2a9`에 후속 커밋 `cb64f473123807a981de83e1b8332b1e3772a063`·candidate.10 prerelease 게시. GitHub Release에 앱 파일·변경 내역 보관, 필요 시 private 전환. 실사용 업데이트는 별도 |
+| 앱 배포 방향 | [srp-david/mail-triage-automation](https://github.com/srp-david/mail-triage-automation)의 기존 41개 이력을 제외한 공개용 첫 커밋 `2b9e223e005f214e408edd19f31967bc8705e004`에 후속 커밋 `bb797d83b742bc90d2395298585142e372077e44`·candidate.10 prerelease 게시. GitHub Release에 앱 파일·변경 내역 보관, 필요 시 private 전환. 실사용 업데이트는 별도 |
 | 앱 업데이트 기본안 | 인증된 공용 API가 사용자별 버전·채널·호환성·배포 중단을 결정. public 파일은 직접 다운로드, 알림 후 사용자가 설치 선택. 완전 자동 설치는 후속 안정화 대상으로 분리 |
 | 첫 호스팅 | Supabase Edge 공용 API + Supabase PostgreSQL. Free로 소규모 파일럿을 준비하고 실제 사용량·한도를 측정. 유료 전환은 별도 결정 |
 | 첫 DB | PostgreSQL 유지, 비공개 앱 schema와 최소 권한 runtime 계정. M1에서 MariaDB 이식하지 않음 |

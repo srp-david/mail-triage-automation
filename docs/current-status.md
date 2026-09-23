@@ -13,7 +13,7 @@
 | Data API | 사용자 비활성화 확인, publishable key 접근 401 확인 | 모든 관리 키까지 차단했다는 의미는 아님 |
 | 로그인 | 최초 관리자 생성, hosted 로그인·첫 변경 제한 확인 | 팀원 계정 발급·각 사용자 최초 변경 |
 | Windows 앱 | candidate.10 setup.exe의 합성 stale lock 복구→설치·기존 historyUrl/port 보존, 한글 경로 lifecycle start/pause/stop 통과. candidate.9 UI E2E 1 passed, .10 UI 동일 | candidate.10의 별도 UI E2E·깨끗한 팀 PC/2PC 수용·실업무 분석 |
-| GitHub 저장소 | 기존 41개 이력 제외 첫 커밋 `3803669f801ec8b52bc3614d367b830e5e38b2a9` 후 새 소스 커밋 `cb64f473123807a981de83e1b8332b1e3772a063`와 `v0.3.0-candidate.10` 태그 push | 후속 버전 공개 범위·이력 검사 지속 |
+| GitHub 저장소 | 기존 41개 이력 제외 첫 커밋 `2b9e223e005f214e408edd19f31967bc8705e004` 후 새 소스 커밋 `bb797d83b742bc90d2395298585142e372077e44`와 `v0.3.0-candidate.10` 태그 push | 후속 버전 공개 범위·이력 검사 지속 |
 | Release 업데이트 | candidate.10 prerelease 게시·서버 asset digest 일치. hosted `history` 함수는 .9 배포 코드 유지, `UPDATE_CATALOG_JSON`을 .10으로 갱신. health 200·비인증 update check 401 확인 | 실계정 `offered`·게시 asset 다운로드/설치 미검증 |
 | 보고서 협업 | 추가 답변→새 분석 구현 | 지속 대화·보고서 반영/revision·낙관적 락 미구현. M3 확장 배치안 |
 | 작업 시작·업무 등록부 | 분석용 requestId·메일당 활성 분석 제한 존재 | 선택한 Agent/repo로 구현 시작·brief 고정·업무 단위 중복 방지 미구현, M5 |
@@ -38,7 +38,7 @@
 ## 설치본과 패키지
 
 - 최신 게시 후보 `0.3.0-candidate.10`: 기존 개인 candidate.5 홈에서 종료된 PID의 stale `app.lock`을 읽기 전용으로 확인했다. setup.exe는 기존 설치본의 `lifecycle.mjs recover-lock`을 설치 전에 호출하도록 바뀌었다. 합성 candidate.9 홈에서 stale lock 복구→candidate.10 설치·기존 `historyUrl`/port 보존 통과; 살아 있는 프로세스의 lock은 거절한다. 한글 경로 lifecycle start/pause/stop, npm check/build, unit **8/8** 통과. 실제 Claude Code **2.1.280**의 probe는 `supported=true`; 실제 분석 실행은 아직 하지 않았다.
-- [candidate.10 GitHub prerelease](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.0-candidate.10)는 `draft=false`, `prerelease=true`, 소스 커밋 `cb64f473123807a981de83e1b8332b1e3772a063`. setup.exe SHA-256 `a54825403f9f56ea2e84dc6b08100d955605212ab9e5ab63a7a906fc8cac5879`, ZIP SHA-256 `79d40fb700814aa85aa44f577cc40e81c6430024bcea1ba907dd920c6f3931fb`, 서명 metadata SHA-256 `0918d1128a8e2f051c4d2fc26b8abf3d8742659df8064a2edf51f1683836da36`; 서버 asset digest와 일치했다. metadata 만료는 `2026-10-07T02:42:05.088Z`. setup.exe URL은 HTTP 302 → release-assets 도메인, 두 번째 GET HTTP 200·Content-Length 45,374,976 bytes로 asset size 일치. 전체 다운로드/설치는 미실행이다.
+- [candidate.10 GitHub prerelease](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.0-candidate.10)는 `draft=false`, `prerelease=true`, 소스 커밋 `bb797d83b742bc90d2395298585142e372077e44`. setup.exe SHA-256 `a54825403f9f56ea2e84dc6b08100d955605212ab9e5ab63a7a906fc8cac5879`, ZIP SHA-256 `79d40fb700814aa85aa44f577cc40e81c6430024bcea1ba907dd920c6f3931fb`, 서명 metadata SHA-256 `c6a7c8523ebc410a95140ee45cc5f589280e8ef93f673c2bd712bfccc355b7ff`; 서버 asset digest와 일치했다. metadata 만료는 `2026-10-07T03:24:06.802Z`. setup.exe URL은 HTTP 302 → release-assets 도메인, 두 번째 GET HTTP 200·Content-Length 45,374,976 bytes로 asset size 일치. 전체 다운로드/설치는 미실행이다.
 - hosted Supabase `history` function은 candidate.9에 배포한 동일 API 코드를 유지했다. 사용자 승인 범위의 `UPDATE_CATALOG_JSON`만 candidate.10으로 secret set(exit 0)했고 hosted `/health/live` HTTP 200·비인증 `/api/v1/updates/check` HTTP 401을 확인했다. 실계정 `offered`·실사용 업데이트·실 MCP/Agent 분석은 미검증이다.
 - candidate.9의 fresh 설치·8→9 업그레이드/설정 보존·브라우저 로그인→비밀번호 변경→업데이트 버튼→로그아웃 E2E **1 passed**는 이전 후보의 증거다. candidate.10은 UI 코드가 동일하지만 .9 E2E를 .10 실행 증거로 재사용하지 않는다.
 - 아래 candidate.5 기록은 2026-09-22에 설치한 기존 개발 PC 상태와 당시 해시의 기록이다. 새 setup.exe·GitHub Release의 배포 증거로 재사용하지 않는다.

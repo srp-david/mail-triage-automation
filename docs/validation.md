@@ -2,6 +2,12 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-23 공개 커밋 이력 한글화·Release 재발행
+
+- 공개 저장소의 커밋 메시지 5개를 한글로 다시 작성했다. 각 단계의 파일 트리와 최종 소스 내용은 동일하다. main과 두 Release 태그의 SHA가 바뀌었으며, 기존 SHA로 받은 clone은 새 main을 다시 맞춰야 한다. candidate.9 태그는 `2b9e223e005f214e408edd19f31967bc8705e004`, candidate.10 태그는 `bb797d83b742bc90d2395298585142e372077e44`를 가리킨다.
+- 설치 파일·ZIP의 내용과 SHA-256은 유지했다. Release 자산은 재발행하고 태그의 새 SHA를 가리키도록 서명 메타데이터를 다시 만들었다. candidate.9 metadata SHA-256은 `2d30c1d3ca4e4798cb73f18cb1ce1906d900915c7f50bd3ee61ee90bec1e46b7`, candidate.10은 `c6a7c8523ebc410a95140ee45cc5f589280e8ef93f673c2bd712bfccc355b7ff`다. 기존 metadata 해시는 아래 최초 게시 당시 기록으로만 남긴다.
+- hosted `UPDATE_CATALOG_JSON`을 새 candidate.10 서명 메타데이터로 갱신했다. 실계정 업데이트 제안·설치는 여전히 사용자 검증 전이다.
+
 ## 2026-09-23 candidate.10 stale lock 복구·prerelease 갱신
 
 - 개인 기존 candidate.5 설치에 종료된 PID의 stale `app.lock`이 실제로 남은 것을 읽기 전용으로 확인했다. 새 setup.exe가 설치 전 기존 설치본의 `lifecycle.mjs recover-lock`을 호출하도록 보완했다. 합성 candidate.9 홈에서 stale lock 복구→candidate.10 설치와 기존 `historyUrl`/port 보존 통과. 개인 설치 상태는 변경하지 않았다.
