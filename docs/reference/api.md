@@ -116,3 +116,9 @@ lease는 `{runnerId,leaseToken,generation}`이다. 토큰을 로그나 URL에 �
 네트워크 실패에서 쓰기 요청을 새 requestId로 다시 보내지 않는다. 멱등 계약이 있는 동작만 같은 입력·ID로 재전송하며, 권한·lease·동기화 불확실은 복구 판단이 필요하다.
 
 근거: [공용 앱](../../apps/history-api/src/username-app.ts), [기본 API](../../apps/history-api/src/app.ts), [run](../../apps/history-api/src/run-routes.ts), [sync](../../apps/history-api/src/sync-routes.ts), [로컬 route](../../apps/local-app/src/ui-routes.ts), [공유 이력](../../apps/history-api/src/shared-history-routes.ts), [기존 문서](../../apps/history-api/src/shared-archive-routes.ts).
+
+## 9. 아직 제공하지 않는 계약
+
+인증된 업데이트 조회·설치 전 정책 재확인·로컬 다운로드/updater API는 미구현이다. 경로/필드 제안은 [Release 업데이트 계획](../operations/releases.md)에 있으며 위 현재 API 목록에 포함하지 않는다. 구버전 앱의 인증/업데이트 탈출 경로와 새 API 호환 정책을 함께 구현해야 한다.
+
+지속 대화·명시적 보고서 반영·`expectedVersion` 저장, 구현 작업 시작/업무 등록부도 미구현이다. [통합 계획](../implementation-plan.md) 6.1절과 8절에 따라 보고서 revision 충돌과 요청 멱등성, 업무 단위 활성 작업 제약을 각각 설계한다. 기존 `/runs`의 추가 답변·메일 분석 잠금으로 이 계약을 대신하지 않는다.

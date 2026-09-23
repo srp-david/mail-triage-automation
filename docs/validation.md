@@ -2,6 +2,21 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-22 GitHub 대상 저장소 확인과 작업 순서 보완
+
+- 사용자가 생성한 `srp-david/mail-triage-automation`을 GitHub CLI로 읽기 전용 조회했다. visibility=PUBLIC, isEmpty=true, 기본 branch 이름 없음 확인. 로컬 remote는 미설정이다. 웹 조회 실패와 sandbox의 CLI 설정 접근 제한 후 권한 있는 읽기 전용 CLI 조회로 확인했으며 인증 정보는 출력하지 않았다.
+- 계획/현재 상태/Release 안내에 저장소 확정을 반영하고 D13의 공개 범위·서명·게시 정책 등 남은 결정을 구분했다. 개인 연결/실분석 → Release 배포 기반·metadata 계약 → 간편 설치/앱 업데이트 → 파일럿 순서로 보완했다. 저장소 생성과 Release 게시/업데이트 기능 완료는 구분한다.
+- 문서만 변경하며 remote 설정·commit/push·Release 게시·제품 배포는 수행하지 않았다.
+
+## 2026-09-22 계획 v3.2 · Release 업데이트와 보고서 협업 문서 통합
+
+- 사용자 제공 Release 업데이트 인수인계를 읽고 `implementation-plan.md`를 v3.2로 갱신했다. public 우선·GitHub Release 보관·인증된 버전/채널/호환 조회 방향, 직접 다운로드/버튼 설치 기본안, D13의 저장소/공개 범위·서명/게시·private 전환 결정을 구분했다.
+- `operations/releases.md`에 현재 재사용 코드·제안 API/메타데이터·서명 신뢰/키 교체·drain/updater·정상 종료/재시작/롤백·개인 상태 보존·구버전 호환·public→private 전환과 수용표를 추가했다. package 스크립트의 candidate 전용/승인 false, 로컬 설치의 app.lock 검사, CI 예시의 이전 테스트 명령/게시 부재를 정적으로 대조했다. GitHub Release/asset·공개 범위 변경 및 Supabase Edge 공식 문서를 확인했다.
+- 보고서 지속 대화·명시적 반영/새 revision·`expectedVersion` 낙관적 락을 C1~C3로 추가하고 M3 확장 배치안/D14로 표시했다. 구현 작업 시작·brief 고정·업무별 등록부/중복 방지는 M5로 유지했다. 현재 추가 답변 재분석·메일 분석 잠금과 구분한다.
+- 13절에 남은 작업 ID·상태·의존 단계·완료 근거를 통합했다. 현재 상태/스펙/API·데이터 모델/보안·Windows/팀 파일럿·Supabase/문서 사이트 안내를 맞추고 오래된 candidate.3의 현재형 안내를 candidate.5와 역사 증거로 구분했다. Auth0 시절 파일럿 검사기 정합화는 T1의 미구현 작업으로 남겼다.
+- 문서 정적 빌드와 내부 링크 검사 통과. 기존 문서 Playwright **6/6 통과**: 탐색·한국어 검색·모바일 메뉴/가로 넘침·현재/보존 문서 Mermaid 렌더링·pageerror 없음. Windows 테스트 서버의 종료가 지연되어 이 검사가 만든 4175 서버의 부모/자식 관계를 확인하고 정리한 뒤 실행기 exit 0·6 passed를 확인했다. 결과/trace 위치는 `.runtime/docs-test-results`, `.runtime/docs-test-report`다. `git diff --check` 통과.
+- 문서만 변경했다. 제품 기능/테스트·DB migration·기존 파일럿 검사기 수정, 저장소 생성/공개·push·Release 게시, 서버/Windows 재배포, 실제 Agent/MCP/ERP 실행은 수행하지 않았다. 백업 보류와 `releaseApproved=false`를 유지한다. 이 기록은 새 업데이트/대화 기능의 실행 검증이 아니다.
+
 ## 2026-09-22 로그아웃 상단 이동
 
 - 개인 앱의 로그아웃을 상단 오른쪽으로 통합했다. 사이드 메뉴와 최초 비밀번호 변경 본문의 중복 버튼을 제거했다. 모바일 메뉴를 열지 않아도 사용할 수 있고, 로그아웃 후 세션·초안·연결 상태·펼친 메뉴를 정리한다.

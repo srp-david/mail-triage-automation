@@ -1,6 +1,6 @@
 # Supabase 팀 배포 안내
 
-갱신: 2026-09-22. [통합 계획 v3.1](../implementation-plan.md)의 M1~M3 실행 안내다. **첫 hosted API·DB 배포 및 합성 검증 완료**, 실제 두 PC 업무 파일럿은 미완료다. Supabase Edge `history` + PostgreSQL, 각 팀원 PC의 local-app/MCP/AI Agent 구성이다. 백업 설정은 사용자 요청으로 보류했다. 기존 운영 서비스/DB는 유지한다.
+갱신: 2026-09-22. [통합 계획 v3.2](../implementation-plan.md)의 M1~M3 실행 안내다. **첫 hosted API·DB 배포 및 합성 검증 완료**, 실제 두 PC 업무 파일럿은 미완료다. Supabase Edge `history` + PostgreSQL, 각 팀원 PC의 local-app/MCP/AI Agent 구성이다. 백업 설정은 사용자 요청으로 보류했다. 기존 운영 서비스/DB는 유지한다.
 
 ## 1. 준비 상태와 배포 대상
 
@@ -9,7 +9,7 @@
 - 사용자가 만든 `mail-triage-automation` 프로젝트를 연결했다. 서울 `ap-northeast-2`, PostgreSQL 17.6, 상태 ACTIVE_HEALTHY 확인. 요금제·조직 합산 한도는 Dashboard에서 확인하며 유료 add-on은 추가하지 않았다.
 - 사용자가 Supabase CLI 로그인을 완료했다. 비밀번호/PAT/DB URL/서명키는 채팅·Git에 전달하지 않는다.
 - Supabase CLI `2.117.0` 실행 확인. 전역 설치 없이 다음 명령을 사용할 수 있다. 로그인은 사용자 대화형 터미널에서 완료한다. [CLI 설치](https://supabase.com/docs/guides/local-development/cli/getting-started), [배포](https://supabase.com/docs/guides/functions/deploy).
-- 현재 재검증: check/build/Edge/compat, backend 130/130, 로컬 Edge·브라우저·Runner·복원 12군 통과. Windows `0.3.0-candidate.3`(3,723파일) 설치/기동/정상 중지/설정 보존 제거 통과. ZIP SHA-256 `87624689ca2c711564dfd5c4b358149efd082a68cac27f3d5bedb01ca073272d`, `releaseApproved=false`. hosted 인증·ACL·보고서·Runner 재전송 7군도 통과했다. 실제 두 PC 업무 수용은 남아 있다. 이번 CA 변경은 서버 전용으로 클라이언트 후보에는 영향이 없다.
+- 최초 v3.1 검증: check/build/Edge/compat, backend 130/130, 로컬 Edge·브라우저·Runner·복원 12군 통과. 당시 Windows `0.3.0-candidate.3` 설치 수명주기와 hosted 인증·ACL·보고서·Runner 재전송 7군을 검증했다. CA 변경은 서버 전용이었다. 이후 UI를 반영한 현재 후보는 candidate.5이며 ZIP/hash·설치 검증 범위는 [현재 상태](../current-status.md)를 따른다. 정식 승인과 실제 두 PC 업무 수용은 남아 있다.
 
 ```powershell
 npx.cmd --yes supabase@2.117.0 login
@@ -73,13 +73,13 @@ Free는 [7일간 낮은 활동으로 일시정지될 수 있고](https://supabas
 
 ## 4. 최초 설치와 팀 파일럿
 
-2026-09-22 개발 PC에는 `%LOCALAPPDATA%\MailTriagePilot`에 candidate.3을 설치했다. `powershell.exe -NoProfile -File "$env:LOCALAPPDATA\MailTriagePilot\start-pilot.ps1"`로 전용 브라우저 진입을 연다. 단순 URL 접속 대신 일회용 browser ticket을 발급하는 실행 경로를 사용한다. `david`로 로그인하여 보호 파일로 전달된 임시 비밀번호를 변경한 뒤 개인 MCP/Agent를 연결한다. 팀 PC 배포·실업무 검증은 아래 절차로 별도 진행한다.
+2026-09-22 개발 PC의 `%LOCALAPPDATA%\MailTriagePilot`은 candidate.5로 업데이트했다. 기동/종료는 [Windows 안내](windows.md)의 활성 버전 기준 명령을 사용한다. 개발 PC의 `start-pilot.ps1`은 개인 보조 파일이며 팀 배포 묶음이 아니다. 단순 URL 대신 일회용 browser ticket으로 진입한다. 각 팀원은 발급 계정의 첫 비밀번호 변경 후 개인 MCP/Agent를 연결하며 팀 PC·실업무 검증은 아래 절차로 진행한다.
 
 
 1. 소규모 파일럿은 서로 다른 사용자 최소 2명/2PC로 시작한다. 관리자·백업/복구 담당과 지정 업무 사례를 정한다. 기존 이력을 통째로 업로드하지 않고 신규 지정 사례부터 시작하며 이관은 source 귀속 확인 후 별도로 한다.
 2. [로컬 설정 예시](../../deploy/supabase/local-settings.example.json)의 PROJECT를 실제 프로젝트로 바꾸고 개인 `config/settings.json`에 저장한다. `historyUrl`, `auth.issuer`, `auth.audience`는 서버와 일치해야 한다. API 주소와 issuer에 DPAPI 세션이 묶이므로 이전 시 재로그인한다. DB URL/서명키는 PC에 넣지 않는다.
 3. 현재 운영 v0와 충돌하지 않도록 예시 포트 43180을 사용한다. 개인 Mail MCP URL·지원 Agent 실행 경로·ERP 읽기 자료 경로를 본인 환경에서 지정하고 기존 개인 설정은 보존한다.
-4. 현재 candidate.3은 이미 생성되어 있다. 새 코드의 후보는 `node scripts/package-windows.mjs 새후보버전`으로 만들고 `node scripts/verify-windows-lifecycle.mjs .runtime/packages/새후보버전`으로 확인한다. 동일 번호를 덮어쓰지 않는다. 설치/후보 실행은 [Windows 안내](windows.md)를 따른다. 실제 팀 수용 전 manifest의 releaseApproved는 false다.
+4. 현재 candidate.5는 이미 생성되어 있다. 새 코드의 후보는 `node scripts/package-windows.mjs 새후보버전`으로 만들고 `node scripts/verify-windows-lifecycle.mjs .runtime/packages/새후보버전`으로 확인한다. 동일 번호를 덮어쓰지 않는다. 설치/후보 실행은 [Windows 안내](windows.md)를 따른다. 실제 팀 수용 전 manifest의 releaseApproved는 false다.
 5. 첫 로그인 → 비밀번호 변경 → 본인 출처/Runner 등록 → 지정 실제 사례 분석 → 보고서 저장/공유를 확인한다. 다른 PC에 원본이 없으면 보고서만 조회됨을 확인한다. 별도 사용자 자료 접근 거절, 재로그인, 중단/재전송, 설정 보존 업데이트를 검사한다.
 6. 초기 제안은 실제 업무 5일 관찰이다. 날짜/버전/실행 ID, 기대·실제 결과, 오류 코드, 재현 절차, 심각도, 담당/해결 버전만 기록한다. 비밀번호·토큰·메일 원문을 피드백 게시물에 붙이지 않는다. 기간/목표는 팀과 조정한다.
 
@@ -94,3 +94,9 @@ Free는 [7일간 낮은 활동으로 일시정지될 수 있고](https://supabas
 ## 5. AWS 이전 시 보존할 계약
 
 API 주소를 설정으로 분리하고 팀/사용자/source/보고서 UUID·ACL을 유지한다. Node 진입점과 Edge 어댑터를 분리하며 새 Supabase Auth/Storage/Realtime 의존성을 추가하기 전 이전 비용을 평가한다. PostgreSQL dump/restore·권한·extension 호환성과 실제 보고서 hash를 확인한 뒤 writer 정지/최종 복사/API 전환/세션 폐기/재로그인을 수행한다. 새 결과를 잃는 DB 롤백은 하지 않는다. MariaDB `cvslog` 재사용은 별도 이식 작업이다.
+
+## 6. 앱 Release와 서버 배포의 구분
+
+[Release 업데이트 계획](releases.md)은 미구현이다. 공용 API가 인증된 업데이트 조회·사용자 채널·호환성·중단 정책을 제공하고 public 파일은 GitHub에서 직접 내려받는 방식이 기본안이다. 이 문서 갱신에서 update route/catalog를 hosted에 배포하지 않았다.
+
+API/DB 변경은 PC 앱과 별도 배포하며 구/신 앱의 지원 범위와 outbox 제출 호환성을 확인한다. 구버전이 업무 API에서 거절되더라도 인증/업데이트 또는 수동 복구로 이동할 경로가 필요하다. private 전환의 GitHub 인증은 서버에만 두고 중계 위치·대용량 전송 한도는 D13에서 정한다. Release 게시가 서버 migration이나 ERP 운영 배포를 실행하지 않는다.

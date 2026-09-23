@@ -26,7 +26,8 @@ slug: /
 |---|---|
 | [개발 안내](guides/development.md) | 현재 사용자명 인증 코드의 빌드·별도 실행·검증 |
 | [기술 문서 사이트](guides/documentation.md) | Docusaurus 빌드·탐색·검색·도표 검증 |
-| [Windows 후보 설치](operations/windows.md) | 현재 candidate.3의 설치·기동·종료·진단·업데이트 |
+| [Windows 후보 설치](operations/windows.md) | 현재 candidate.5의 수동 설치·기동·종료·진단·업데이트 |
+| [Release 업데이트 계획](operations/releases.md) | GitHub public→private, 인증된 조회·채널/호환·버튼 설치·서명/복구. 미구현 설계 |
 | [Supabase 운영](operations/supabase.md) | 현재 공용 API·비공개 DB와 최초 계정·운영 절차 |
 | [팀 파일럿](operations/team-pilot.md) | 제한된 2명/2PC 수용과 피드백. 간편 배포 묶음은 미구현 |
 | [일반 Node 서버](operations/node-server.md) | 이후 자체 호스팅 코드 경로. 실제 AWS 배포 완료 아님 |
@@ -35,7 +36,7 @@ slug: /
 
 ## 계획과 증거
 
-- [통합 구현 계획](implementation-plan.md): M1 공용 기반 → M2 제한 배포 → M3 안정화 → M4 원격 분석 → M5 SR→PR. 범위·순서·수용 기준의 단일 기준이다.
+- [통합 구현 계획](implementation-plan.md): v3.2, M1 공용 기반 → M2 제한 배포 → M3 안정화 → M4 원격 분석 → M5 SR→PR. Release 업데이트·보고서 대화/낙관적 락·작업 시작과 13절 남은 작업 등록부를 포함하는 단일 기준이다.
 - [검증 일지](validation.md): 날짜별 실제 수행 결과. 과거의 미완료 상태를 현재 사실로 읽지 않는다.
 - [기능별 검증 기록](validation/README.md): UI 전환·메일 스레드·기존 문서 연결 등의 근거.
 - [보존 문서](archive/README.md): 이전 Auth0·VM 제안, 옛 계획, 인계, 당시 개발·설치 안내. 현재 실행 명령의 기준으로 사용하지 않는다.

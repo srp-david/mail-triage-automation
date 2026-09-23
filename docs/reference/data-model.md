@@ -92,3 +92,12 @@ baseline을 논리 ID `000_baseline.sql`로 적용하고 `001_identity`부터 `0
 Supabase 운영자는 schema를 먼저 준비하고 별도 migration 자격으로 적용한다. API 일반 시작은 migration을 수행하지 않는다. [private-grants.sql](../../deploy/supabase/private-grants.sql)은 DDL·ledger 쓰기를 runtime에 주지 않고 보고서/감사 등 불변 영역은 제한된 권한으로 다룬다. 정확한 테이블별 권한은 SQL 원본을 따른다.
 
 백업 시 앱 DB·메일 MCP 원본·AI 자격·로컬 outbox를 별도 대상으로 본다. DB 복원은 격리 DB에서 내용·관계·보고서 hash를 확인하고 공개 전 세션을 폐기한다. 앱 버전 롤백과 DB 데이터 롤백을 혼동하지 않는다. 현재 hosted 백업·복원은 [보류 상태](../current-status.md)다.
+
+## 7. 후속 모델과 현재 schema의 구분
+
+아래는 [통합 계획](../implementation-plan.md)의 미구현 모델 요구이며 이번 문서 갱신에서 migration이나 grants를 변경하지 않았다.
+
+- 대화/메시지/결정, 편집 보고서 ID·head·불변 revision·기준 분석 참조가 필요하다. 현재 run당 결과 하나인 `report_version`과 구분하며 기존 결과를 덮어쓰지 않는다. `expectedVersion` 비교와 새 revision/head 저장은 하나의 트랜잭션으로 처리하고 충돌한 초안은 클라이언트에 보존한다.
+- 구현 작업 등록부는 업무 ID·대상 repo/프로젝트·작업 종류의 활성 unique 제약, 요청 ID/입력 hash, brief/report revision, 담당자·Agent·진행 상태를 연결한다. 메일 분석의 `one_active_mail`과 별도이며 8절의 attempt/lease/발행 계약으로 확장한다.
+- 업데이트 catalog에는 Release/asset 식별자·버전/채널·플랫폼·API 호환·서명/digest·제공/중단 정책과 변경 감사가 필요하다. 사용자별 제공 정책과 설치 진행 기록의 저장 범위/보존 기간은 D13에서 확정한다. GitHub 토큰을 클라이언트 조회 가능한 행에 넣지 않는다.
+- 모든 추가 모델은 새 migration·최소 grants·ACL·구/신 클라이언트 호환 검증을 거친다. 앱 업데이트나 문서 변경만으로 hosted DB가 갱신되는 것은 아니다.
