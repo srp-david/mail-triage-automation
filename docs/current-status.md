@@ -1,6 +1,6 @@
 # 현재 구현·배포 상태
 
-구현·검증 기준일: 2026-09-23(로컬 후보 검증까지). 최초 hosted 검증은 `dea1e2c`, 이후 개인 연결 UI·상단 로그아웃 및 candidate.5 설치 검증을 반영했다. 새 Release/설치 기능은 소스와 로컬 후보 단계이며 hosted 반영·GitHub 게시·실업무 수용을 뜻하지 않는다.
+구현·검증 기준일: 2026-09-23. 최초 hosted 합성 검증은 `dea1e2c`이며, 이후 새 update route를 포함한 Supabase `history` function과 catalog secret을 갱신했다. Windows candidate.9의 로컬 설치·업그레이드·브라우저 검증과 공개 저장소 첫 커밋·GitHub prerelease 게시를 확인했다. 인증 실계정의 업데이트 제공·설치와 실업무 수용은 아직 검증하지 않았다.
 
 ## 제품 경계
 
@@ -12,9 +12,9 @@
 | 공용 DB | PostgreSQL 17.6, `triage_private`, migration 6개, runtime DDL 차단 | 외부 백업·복원과 운영 담당 확정 |
 | Data API | 사용자 비활성화 확인, publishable key 접근 401 확인 | 모든 관리 키까지 차단했다는 의미는 아님 |
 | 로그인 | 최초 관리자 생성, hosted 로그인·첫 변경 제한 확인 | 팀원 계정 발급·각 사용자 최초 변경 |
-| Windows 앱 | self-extracting setup.exe 빌더와 실행·작업 중지·앱 종료 shortcut 소스 추가. candidate.7 한글 경로 설치·기동·중지·종료·업그레이드 로컬 검증. 업데이트 안내 배너와 로그아웃 버튼 겹침을 조정한 candidate.9를 최종 배포 후보로 선택 | candidate.9 패키징·설치·UI 회귀 검증, 깨끗한 팀 PC 수용 |
-| GitHub 저장소 | 사용자 생성 `srp-david/mail-triage-automation`, 2026-09-22 public·빈 저장소 확인 | 로컬 remote 미설정, 소스/이력 공개 범위·패키징/게시 기반 준비 |
-| Release 업데이트 | 서명 메타데이터·인증 update API·로컬 다운로드/updater·사용자 버튼 소스 추가. check/build/Edge bundle과 로컬 후보 검증 통과 | 실제 hosted API 갱신, GitHub push/Release 게시·게시 asset 다운로드·실사용 업데이트 미검증 |
+| Windows 앱 | candidate.9 fresh setup.exe 한글 경로 설치, candidate.8→.9 업그레이드·설정 보존, lifecycle start/pause/stop, 브라우저 로그인·비밀번호 변경·업데이트 버튼·로그아웃 E2E 1 passed | 깨끗한 팀 PC/2PC 수용·실업무 분석 |
+| GitHub 저장소 | 기존 41개 이력을 제외한 공개용 단일 첫 커밋 `3803669f801ec8b52bc3614d367b830e5e38b2a9`를 `srp-david/mail-triage-automation`의 `main`과 `v0.3.0-candidate.9` 태그로 push | 후속 버전 공개 범위·이력 검사 지속 |
+| Release 업데이트 | 서명 메타데이터·인증 update API·로컬 다운로드/updater·버튼 소스 구현. candidate.9 prerelease 게시·asset digest 일치. hosted `history` function·`UPDATE_CATALOG_JSON` 갱신, health 200·비인증 update check 401 확인 | 실계정 `offered`·게시 asset 다운로드/설치 미검증 |
 | 보고서 협업 | 추가 답변→새 분석 구현 | 지속 대화·보고서 반영/revision·낙관적 락 미구현. M3 확장 배치안 |
 | 작업 시작·업무 등록부 | 분석용 requestId·메일당 활성 분석 제한 존재 | 선택한 Agent/repo로 구현 시작·brief 고정·업무 단위 중복 방지 미구현, M5 |
 | 개인 연결 UI | 메일 → AI·장치 → ERP 자료 → 저장·실행의 4단계, 공유·복구 분리 | 주소·실행 경로는 설정 파일로 지정. 실제 MCP·AI 통신 검증 별도 |
@@ -37,7 +37,9 @@
 
 ## 설치본과 패키지
 
-- 2026-09-23 로컬 개발 후보: `0.3.0-candidate.7-setup.exe`와 같은 버전 ZIP·서명 update 메타데이터를 생성했다. 한글 경로에서 setup 설치·기동·작업 중지·앱 종료·업그레이드를 확인했다. 배너가 로그아웃을 가리지 않도록 UI를 조정한 `candidate.9`가 최종 배포 후보이며, 해당 파일의 패키징·설치·UI 회귀 검증 결과는 아직 대기 중이다. candidate.7 통과를 candidate.9 통과로 대체하지 않는다.
+- 2026-09-23 게시 후보: `0.3.0-candidate.9-setup.exe`의 한글 경로 fresh 설치, candidate.8→.9 업그레이드와 설정 보존, start/pause/stop 검증 통과. 업데이트 배너가 로그아웃을 가리지 않도록 조정한 UI에서 로그인→비밀번호 변경→업데이트 버튼→로그아웃 E2E **1 passed**. `npm check/build/Edge build` 통과.
+- [GitHub prerelease](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.0-candidate.9)는 `draft=false`, `prerelease=true`. setup.exe SHA-256 `8deb34f1edc271d1346278b94a46eadf1568eea8c2ce21b3ea000699b5d69314`, ZIP SHA-256 `75214a5cdaf614e154df228c0289504b07142065f2badeb175893c6d2df71beb`, 서명 metadata SHA-256 `c4ff754fe9a7ebae71040826e52a5647bf2cdeaa53074776486c3ade0f685e58`; 게시 asset digest와 일치했다. metadata 만료는 `2026-10-07T02:22:53.376Z`.
+- hosted Supabase `history` function의 첫 배포 요청은 자동 승인 검토에서 대상 명시 부족으로 거절됐다. 사용자에게 프로젝트와 `UPDATE_CATALOG_JSON` 변경을 명시해 승인받은 뒤 함수 deploy와 secret set 명령이 exit 0으로 끝났고 secrets list에서 이름을 확인했다. hosted `/health/live`는 HTTP 200, 비인증 `/api/v1/updates/check`는 HTTP 401 `UNAUTHENTICATED`였다. 실계정 `offered`·실사용 업데이트·실 MCP/Agent 분석은 미검증이다.
 - 아래 candidate.5 기록은 2026-09-22에 설치한 기존 개발 PC 상태와 당시 해시의 기록이다. 새 setup.exe·GitHub Release의 배포 증거로 재사용하지 않는다.
 - 설치 위치: `%LOCALAPPDATA%\MailTriagePilot`. candidate.5 기동과 43180 포트의 설정 화면·상단 로그아웃을 확인했다. 이후 실행 여부는 별도로 조회한다.
 - 후보 ZIP: `.runtime/packages/0.3.0-candidate.5.zip`, 45,355,411 bytes, 3,724파일. 이전 candidate.4는 롤백용으로 보존했다.
@@ -48,13 +50,13 @@
 
 ## 다음 작업
 
-1. [Release 배포 기반](operations/releases.md)의 새 소스를 검토하고 `candidate.9` 패키징·설치·업데이트·UI 배너 회귀를 완료 검증한다. 공개 범위·정식 버전/승인·서명키 운영·게시 절차 등 D13의 남은 결정을 확정한다.
-2. 설치 파일의 실행/화면 열기·작업 중지·앱 종료와 인증된 조회·stable/test·버튼 설치·정상 종료/재시작·실패 복구를 깨끗한 PC에서 수용 검증한다. Agent의 고정 CLI 버전 검사는 소스에서 제거했으므로 실제 대상 CLI의 실행·MCP·결과 계약을 합성 자료로 확인한다.
-3. 공개 범위와 소스·Git 이력·설치 파일·문서/변경 내역의 비밀·메일 원문 포함 여부를 검토한 뒤, 검증된 소스를 GitHub에 push하고 검증된 설치 파일을 Release로 게시한다. push, Release 게시, 설치본 검증은 각각 기록한다.
+1. [Release 배포 기반](operations/releases.md)의 candidate.9 게시 결과를 기준으로 서명 metadata 유효기간·채널 정책·후속 버전 공개 범위·게시 절차를 관리한다. 정식 버전/승인·서명키 운영 등 D13의 남은 결정은 별도로 확정한다.
+2. 배포된 hosted update API의 실계정 `offered`·test 채널 정책·설치 전 재확인을 확인한다. 게시 asset 다운로드·서명 검증·설치·재시작·롤백까지 실제 앱 업데이트를 검증한다. 현재 health 200·비인증 401은 제공/설치 성공 증거가 아니다.
+3. 설치 파일의 실행/화면 열기·작업 중지·앱 종료와 게시 asset 다운로드·stable/test·버튼 설치·정상 종료/재시작·실패 복구를 깨끗한 팀 PC에서 수용 검증한다. Agent의 고정 CLI 버전 검사는 소스에서 제거했으므로 실제 대상 CLI의 실행·MCP·결과 계약을 합성 자료로 확인한다.
 4. 새 설치본에서 개인 MCP·AI Agent·ERP 읽기 자료를 연결·진단하고 지정 사례로 실제 분석·저장·공용 보고서 재조회를 확인한다. DB 조회가 필요한 사례는 실제 ERP DB provider도 읽기 전용으로 연결/검증한다.
 5. 팀원 계정과 2PC 파일럿을 구성해 지정 업무·공유 권한·원본 부재·중단 복구·업데이트를 확인한다. 이전 Auth0 기준 수용 양식/검사기를 현재 사용자명 방식으로 정합화한다.
 6. 피드백·사용량/비용·pause/resume·운영 항목을 확인한다. 백업은 요청으로 보류되어 있으므로 자동 재개하지 않는다.
 7. 보고서 대화·명시적 반영/버전·낙관적 락은 M3 확장 배치안으로 추적하고 D14에서 출시 범위를 정한다. 작업 시작·brief 고정·업무 등록부·구현/검증/PR은 M5로 유지한다.
 8. 기존 이력 L1~L3와 팀 문서 사이트 제공을 별도 추적한다. 상세 상태·의존성·완료 근거는 [계획서 13절](implementation-plan.md#13-남은-작업-등록부)을 따른다.
 
-M1/M2를 완료로 표시하지 않는다. v3.3 계획 뒤 설치 파일·업데이트 기능의 소스와 candidate.7 로컬 후보 검증은 진전됐지만 `candidate.9` 검증·GitHub push·Release 게시·hosted API 갱신·실 MCP/Agent 분석은 아직 완료가 아니다. AWS 이전 및 원격 SR→PR은 [통합 계획](implementation-plan.md)의 후속 단계다.
+M1/M2를 완료로 표시하지 않는다. candidate.9 로컬 후보 검증, GitHub push·prerelease 게시, hosted 함수·catalog secret 갱신은 완료했지만 실계정 `offered`·실사용 업데이트·실 MCP/Agent 분석은 아직 완료가 아니다. AWS 이전 및 원격 SR→PR은 [통합 계획](implementation-plan.md)의 후속 단계다.

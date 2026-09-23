@@ -1,20 +1,20 @@
 # GitHub Release 배포·업데이트 계획
 
-2026-09-23 · **소스 구현·candidate.7 로컬 검증 완료, candidate.9 게시 전 검증 대기**. [통합 계획 v3.3](../implementation-plan.md)의 5.5절과 U1~U3를 구체화한다. 인증 update API·서명 메타데이터·로컬 다운로드/updater·버튼·setup.exe 빌더를 소스에 추가했고 candidate.7 설치 수명주기를 로컬 검증했다. 업데이트 안내 배너가 로그아웃을 가리지 않게 UI를 조정한 candidate.9를 최종 배포 후보로 선택했다. candidate.9 패키징/설치·UI 회귀, hosted API 갱신, GitHub push/Release 게시, 실사용 업데이트는 아직 검증하지 않았다. 현재 수동 후보 절차는 [Windows 안내](windows.md), 증거 범위는 [현재 상태](../current-status.md)를 따른다.
+2026-09-23 · **candidate.9 로컬 검증·GitHub prerelease·hosted update route 배포 완료, 실사용 업데이트 미검증**. [통합 계획 v3.3](../implementation-plan.md)의 5.5절과 U1~U3를 구체화한다. candidate.9 fresh 한글 설치·8→9 업그레이드/설정 보존·lifecycle·브라우저 E2E를 로컬 검증했고 [GitHub prerelease](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.0-candidate.9) asset digest 일치를 확인했다. 사용자 명시 승인 후 Supabase `history` function과 `UPDATE_CATALOG_JSON` 설정을 갱신했다. hosted health 200·비인증 update check 401까지 확인했으며 실계정 `offered`·다운로드·설치는 사용자 테스트 전이다. 증거 범위는 [현재 상태](../current-status.md)를 따른다.
 
 ## 1. 결정·기본안·미정 사항
 
 | 구분 | 내용 |
 |---|---|
 | 사용자 방향 | GitHub 저장소는 public으로 시작하고 필요하면 private 전환. Release에 앱 파일과 변경 내역 보관 |
-| 확정 저장소 | [srp-david/mail-triage-automation](https://github.com/srp-david/mail-triage-automation), Git URL `https://github.com/srp-david/mail-triage-automation.git`. 사용자 생성 후 2026-09-22 public·빈 저장소 확인 |
+| 확정 저장소 | [srp-david/mail-triage-automation](https://github.com/srp-david/mail-triage-automation), Git URL `https://github.com/srp-david/mail-triage-automation.git`. 공개용 단일 첫 커밋 `3803669f801ec8b52bc3614d367b830e5e38b2a9`를 main·candidate.9 태그로 push하고 prerelease 게시 |
 | 조회 경계 | public 단계에서도 앱은 공용 API에 인증해 업데이트 조회. API가 사용자별 버전·stable/test 채널·호환성·배포 중단을 결정 |
 | 첫 구현 기본안 | public asset 직접 다운로드, 알림/변경 내역 표시 후 사용자가 버튼으로 설치. 완전 자동 설치는 후속 안정화 |
 | 다운로드 추상화 | API 응답의 다운로드 방식을 사용. 클라이언트에 GitHub 토큰·소유자/저장소 URL 고정 금지 |
 | 독립 배포 | PC 앱, 공용 API/DB, 업무 대상 ERP는 별도 배포 단위. Release 게시로 서버 migration/ERP 운영 배포를 실행하지 않음 |
-| D13의 남은 결정 | 공개할 소스/이력/산출물 범위, 서명/키 보관·교체, 게시 담당/CI, 제공 채널·API 지원 기간, private 다운로드 호스팅 |
+| D13의 남은 결정 | 첫 공개는 기존 41개 이력을 제외한 단일 커밋·candidate.9 prerelease로 실행. 후속 버전의 공개 범위, 서명/키 보관·교체, 게시 담당/CI, 제공 채널·API 지원 기간, private 다운로드 호스팅은 추가 결정 |
 
-저장소는 사용자가 생성했다. 확인 시 로컬 `git remote -v`는 비어 있었고 이 문서 작업에서 remote 설정·push·Release 게시를 수행하지 않았다. 공개 전 소스뿐 아니라 Git 이력/태그·ZIP·번들·문서/검색 인덱스·변경 내역에 비밀·메일 원문·업무 자료가 없는지 검사한다. 기존 저장소를 그대로 공개해도 된다는 뜻이 아니다. 이 저장소에 공개할 이력/산출물 범위와 배포 전용으로 사용할지는 D13에서 정한다. 저장소 주소는 운영 설정이며 클라이언트 다운로드 경로를 고정하는 값으로 사용하지 않는다.
+기존 작업 저장소의 41개 이력을 공개하지 않고 별도 공개용 단일 첫 커밋을 push했다. 후보 게시 전 소스·이력/태그·ZIP·번들·문서/검색 인덱스·변경 내역의 비밀·메일 원문·업무 자료 포함 여부를 검토했다. 후속 버전에서도 이 검사를 반복한다. 저장소 주소는 운영 설정이며 클라이언트 다운로드 경로를 고정하는 값으로 사용하지 않는다.
 
 public Release asset은 인증 없이 직접 다운로드할 수 있다. 앱의 API 인증은 제공 정책과 서비스 사용을 통제하며 공개 파일을 비공개로 만들지 않는다. [GitHub asset API](https://docs.github.com/en/rest/releases/assets). private 전환 시 기존 public fork는 공개 상태로 분리되며 이미 내려받은 사본도 회수되지 않는다. [저장소 공개 범위 변경](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/setting-repository-visibility).
 
@@ -22,11 +22,11 @@ public Release asset은 인증 없이 직접 다운로드할 수 있다. 앱의 
 
 | 현재 파일/영역 | 현재 동작 | 계획 변경 |
 |---|---|---|
-| [package-windows.mjs](../../scripts/package-windows.mjs) | candidate 버전만 허용, Node 포함 ZIP·파일 manifest·SHA-256, 승인 false. 별도 setup.exe 빌더·서명 metadata 생성 소스 추가 | 정식/시험 버전 생성·승인 근거 분리, candidate.9 설치본 검증 |
+| [package-windows.mjs](../../scripts/package-windows.mjs) | candidate 버전만 허용, Node 포함 ZIP·파일 manifest·SHA-256, 승인 false. candidate.9 setup.exe·ZIP·서명 metadata 생성/검증·게시 완료 | 정식/시험 버전 생성·승인 근거 분리 |
 | [release.mjs](../../installer/windows/release.mjs) | 로컬 payload 검증, staging/진단·활성 전환·rollback, app.lock 존재 시 거절. 다운로드/updater 연계 소스 추가 | 게시 asset·전원 손실·설치 경합·중단 복구 검증 |
 | [lifecycle.mjs](../../installer/windows/lifecycle.mjs) / [manage.mjs](../../installer/windows/manage.mjs) | 정상 시작/종료·로컬 설치/rollback. 작업 중지와 setup.exe shortcut 소스 추가 | 별도 updater의 종료/재시작·기동 후 진단 실패 복구 실검증 |
 | [CI 예시](../../deploy/windows-release.workflow.example.yml) | draft, 이전 테스트 명령/후보 번호, publish/upload 없음 | 현재 Vitest 명령/지원 런타임 대조, 고정 action·빌드/검증·서명·게시 단계 준비 |
-| [history-api](../../apps/history-api/src/username-app.ts) | 사용자명 인증·현재 계정/세션 검사와 인증된 업데이트 조회 소스 추가 | hosted API 갱신·실계정 채널/중단 정책·설치 전 재확인 검증 |
+| [history-api](../../apps/history-api/src/username-app.ts) | 인증된 업데이트 조회 route를 hosted `history` function에 배포, catalog secret 등록. health 200·비인증 조회 401 확인 | 실계정 `offered`·채널/중단 정책·설치 전 재확인 검증 |
 | [local-app](../../apps/local-app/src/ui-routes.ts) | 로컬 인증·설정·실행 제어와 조회 façade·다운로드/updater 소스 추가 | 게시 asset 다운로드·진행 상태·drain/updater·CSRF/Host/Origin 실검증 |
 | [UI](../../packages/ui/ui/src/app/App.tsx) | 앱 shell·설정/상태 화면과 업데이트 버튼 소스 추가. candidate.9에서 업데이트 안내 배너·상단 로그아웃 겹침 조정 | 실제 제안·진행·대기·실패/복구와 로그아웃 노출 브라우저 수용 |
 
@@ -34,7 +34,7 @@ public Release asset은 인증 없이 직접 다운로드할 수 있다. 앱의 
 
 ## 3. 업데이트 API·메타데이터 계약안
 
-공용 경로는 `GET /api/v1/updates/check`, 로컬 façade는 `GET /api/updates`를 후보로 둔다. 최종 경로/오류 코드는 구현 전 확정한다. UI는 로컬 API만 호출하고 현재 HistoryClient가 서버 인증을 담당한다. GitHub `latest` 값을 그대로 설치 대상으로 쓰지 않고 서버 catalog에서 사용자/채널/호환 정책을 적용한다. GitHub는 Release/asset 저장소로 이용한다. [GitHub Release API](https://docs.github.com/en/rest/releases/releases).
+공용 `GET /api/v1/updates/check` route는 소스와 hosted `history` function에 반영했다. 비인증 요청은 401 `UNAUTHENTICATED`를 확인했으며 인증 실계정의 `offered` 응답은 아직 검증하지 않았다. UI는 로컬 API만 호출하고 HistoryClient가 서버 인증을 담당한다. GitHub `latest` 값을 그대로 설치 대상으로 쓰지 않고 서버 catalog에서 사용자/채널/호환 정책을 적용한다. GitHub는 Release/asset 저장소로 이용한다. [GitHub Release API](https://docs.github.com/en/rest/releases/releases).
 
 | 계약 | 필요한 필드·규칙 |
 |---|---|
@@ -90,4 +90,4 @@ GitHub 읽기 토큰은 서버에만 두고 다운로드 권한을 현재 앱 �
 
 U1은 metadata/API·서명/호환 계약과 모의 검증, U2는 UI·drain·다운로드/updater, U3는 현재 테스트 체계에 맞춘 CI·게시·private 전환 준비다. **① U3의 파일 형식·재현 패키징·게시 절차와 U1 계약을 먼저 마련한다. ② 같은 배포물을 사용하는 SET1 설치 파일·실행/분석 중지/앱 종료와 U1 API·U2 앱 업데이트를 구현·검증한다. ③ 검토된 소스를 GitHub에 push하고 검증된 설치 파일을 Release로 게시한다. ④ 새 설치본에서 SET2 개인 연결·지정 사례 실분석/저장/재조회를 수행한다.** 완전 자동 게시까지 먼저 완성할 필요는 없지만 검증된 후보를 같은 절차로 반복 배포할 수 있어야 한다.
 
-처음에는 private 다운로드 호환을 모의 검증하고 실제 저장소 private 전환은 필요할 때 별도로 수행한다. 저장소 생성/구현/모의 검증/소스 push/실제 Release 게시/설치본 실분석/팀 PC 수용은 각각 기록한다. push·게시 전에는 공개할 소스·Git 이력·asset·문서/변경 내역에서 비밀·메일 원문·업무 자료를 검토한다. D13의 남은 결정이 미확정이어도 API·updater를 모의 제공자로 개발할 수 있으나 소스/이력 공개·Release 게시·서명키 운영을 완료로 처리하지 않는다.
+첫 공개용 단일 커밋의 main·태그 push, `draft=false`·`prerelease=true`인 candidate.9 Release 게시와 asset digest 일치를 기록했다. setup.exe SHA-256은 `8deb34f1edc271d1346278b94a46eadf1568eea8c2ce21b3ea000699b5d69314`, ZIP은 `75214a5cdaf614e154df228c0289504b07142065f2badeb175893c6d2df71beb`, 서명 metadata는 `c4ff754fe9a7ebae71040826e52a5647bf2cdeaa53074776486c3ade0f685e58`이며 metadata 만료는 `2026-10-07T02:22:53.376Z`다. 이 게시 기록과 hosted route의 health/비인증 거절은 실계정 `offered`·다운로드/설치·팀 PC 수용 증거가 아니다. private 다운로드 호환과 실제 저장소 전환은 필요할 때 별도로 검증한다. 후속 게시 전에도 공개 소스·이력·asset·문서/변경 내역의 비밀·메일 원문·업무 자료 검토를 반복한다.

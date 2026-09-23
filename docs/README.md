@@ -4,7 +4,7 @@ slug: /
 
 # 문서 안내
 
-갱신: 2026-09-22. 현재 제품 설명, 실행 절차, 앞으로의 계획, 과거 증거를 구분해 관리한다. 처음 읽는 사람은 **현재 상태 → 아키텍처 → 주요 흐름 → 제품 스펙** 순서로 읽는다.
+갱신: 2026-09-23. 현재 제품 설명, 실행 절차, 앞으로의 계획, 과거 증거를 구분해 관리한다. 처음 읽는 사람은 **현재 상태 → 아키텍처 → 주요 흐름 → 제품 스펙** 순서로 읽는다.
 
 ## 현재 제품 이해
 
@@ -26,8 +26,8 @@ slug: /
 |---|---|
 | [개발 안내](guides/development.md) | 현재 사용자명 인증 코드의 빌드·별도 실행·검증 |
 | [기술 문서 사이트](guides/documentation.md) | Docusaurus 빌드·탐색·검색·도표 검증 |
-| [Windows 후보 설치](operations/windows.md) | 현재 candidate.5의 수동 설치·기동·종료·진단·업데이트 |
-| [Release 업데이트 계획](operations/releases.md) | GitHub public→private, 인증된 조회·채널/호환·버튼 설치·서명/복구. 미구현 설계 |
+| [Windows 후보 설치](operations/windows.md) | candidate.9 setup.exe 게시·로컬 설치/업그레이드 검증, candidate.5 수동 절차는 이력 |
+| [Release 업데이트](operations/releases.md) | candidate.9 GitHub prerelease·hosted update route 배포, 실계정 제공/설치 검증 대기. public→private·서명키 운영은 후속 결정 |
 | [Supabase 운영](operations/supabase.md) | 현재 공용 API·비공개 DB와 최초 계정·운영 절차 |
 | [팀 파일럿](operations/team-pilot.md) | 제한된 2명/2PC 수용과 피드백. 간편 배포 묶음은 미구현 |
 | [일반 Node 서버](operations/node-server.md) | 이후 자체 호스팅 코드 경로. 실제 AWS 배포 완료 아님 |

@@ -1,6 +1,6 @@
 # Windows 후보 설치·실행·종료
 
-아래 수동 명령은 `0.3.0-candidate.5` 당시 설치 절차다. 개인 연결 UI·상단 로그아웃을 반영하고 개발 PC의 candidate.4를 업데이트했다. 2026-09-23에는 self-extracting `candidate.7-setup.exe`와 실행·작업 중지·앱 종료 shortcut 소스를 만들고 한글 경로 로컬 수명주기를 검증했다. 이후 업데이트 배너가 상단 로그아웃을 가리지 않도록 UI를 조정한 `candidate.9`를 최종 배포 후보로 선택했다. candidate.9 설치·UI 회귀와 깨끗한 팀 PC 수용은 아직 끝나지 않았다. 과거 `0.2.0-candidate.6`은 다른 인증 구성의 기록이므로 새 배포본으로 사용하지 않는다.
+아래 수동 명령은 `0.3.0-candidate.5` 당시 설치 절차다. 현재 배포 후보 `0.3.0-candidate.9`는 [GitHub prerelease](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.0-candidate.9)의 self-extracting setup.exe다. fresh 한글 경로 설치, candidate.8→.9 업그레이드/설정 보존, lifecycle start/pause/stop, 로그인·비밀번호 변경·업데이트 버튼·로그아웃 브라우저 E2E를 로컬 검증했다. hosted update route도 배포됐지만 실계정 `offered`·실사용 업데이트와 팀 PC 수용은 아직 검증하지 않았다. 과거 `0.2.0-candidate.6`은 다른 인증 구성의 기록이다.
 
 ## 1. 포함 내용과 사전 조건
 
@@ -64,8 +64,8 @@ $release = Join-Path (Join-Path $installRoot 'releases') $active.version
 
 ## 6. 팀 배포 묶음으로 남은 작업
 
-setup.exe와 `control.ps1`에 실행/화면 열기(`start`)·작업 중지(`pause`)·앱 종료(`quit`) 조작을 추가했다. 실행 중이면 화면만 열고, 작업 중지는 Runner의 신규 작업 시작을 멈추되 로컬 웹 화면을 유지하며, 앱 종료는 Runner와 로컬 웹 서버를 정상 종료한다. candidate.7에서는 한글 경로 설치·기동·중지·종료·업그레이드를 로컬 검증했다. 최종 후보 candidate.9는 별도로 패키징/설치·업데이트 배너와 로그아웃 버튼의 화면 회귀를 검증해야 한다. 깨끗한 PC의 포트 충돌·설정 보존·재실행·롤백과 사용자 안내/배포 신뢰 경로도 확인해야 한다. 검토된 소스를 GitHub에 push하고 검증된 설치 파일을 Release로 게시한 뒤 그 설치본에서 개인 연결과 지정 사례 실분석·저장·보고서 재조회를 확인한다. 두 PC 수용 결과로 [팀 파일럿](team-pilot.md)의 확대 기준을 판단한다. 현재 후보는 일반 사용자 완료 설치기로 승인되지 않았다.
+setup.exe와 `control.ps1`에 실행/화면 열기(`start`)·작업 중지(`pause`)·앱 종료(`quit`) 조작을 추가했다. 실행 중이면 화면만 열고, 작업 중지는 Runner의 신규 작업 시작을 멈추되 로컬 웹 화면을 유지하며, 앱 종료는 Runner와 로컬 웹 서버를 정상 종료한다. candidate.9 fresh 한글 설치, candidate.8→.9 업그레이드/설정 보존과 start/pause/stop을 로컬 검증했고, 업데이트 배너가 로그아웃을 가리지 않는 브라우저 E2E 1건도 통과했다. 검증된 설치 파일은 GitHub prerelease로 게시했다. 다음으로 깨끗한 팀 PC의 포트 충돌·설정 보존·재실행·롤백과 사용자 안내/배포 신뢰 경로, hosted update API를 통한 실제 업데이트를 확인한다. 그 설치본에서 개인 연결과 지정 사례 실분석·저장·보고서 재조회를 확인하고 두 PC 수용 결과로 [팀 파일럿](team-pilot.md)의 확대 기준을 판단한다. `releaseApproved=false`인 시험 후보는 정식 승인과 구분한다.
 
-GitHub Release를 배포 파일·변경 내역 저장소로 쓰는 [업데이트 계획](releases.md)에 따라 인증 update API·서명 메타데이터·로컬 다운로드/updater·사용자 버튼 소스를 추가했다. public 단계에도 인증된 공용 API로 버전·채널·호환성·중단 정책을 확인하고, 알림 후 사용자가 설치를 선택하는 방식이 기본안이다. 실제 hosted API 갱신과 GitHub Release asset 다운로드·실사용 업데이트 검증은 남아 있으며 위 수동 명령을 아직 대체하지 않는다.
+GitHub Release를 배포 파일·변경 내역 저장소로 쓰는 [업데이트 계획](releases.md)에 따라 인증 update API·서명 메타데이터·로컬 다운로드/updater·사용자 버튼 소스를 추가했다. candidate.9의 게시 asset digest는 검증된 로컬 파일과 일치한다. public 단계에도 인증된 공용 API로 버전·채널·호환성·중단 정책을 확인하고, 알림 후 사용자가 설치를 선택하는 방식이 기본안이다. 새 route를 담은 hosted `history` function의 첫 배포 요청은 자동 승인 검토에서 대상 명시 부족으로 거절됐으나, 사용자 명시 승인 뒤 함수와 catalog secret을 갱신했다. hosted health 200·비인증 update check 401을 확인했다. 실계정 `offered`와 GitHub asset을 실제 앱 업데이트로 내려받아 설치하는 종단 검증은 남아 있다.
 
 현재 패키지 스크립트는 candidate만 만들고 `releaseApproved=false`다. 정식 Release 버전 생성·승인 근거·서명/게시 절차와 public→private 다운로드 전환을 추가 검증해야 한다. 앱 업데이트는 공용 API/DB 및 ERP 운영 배포와 별개다. 완전 자동 설치는 후속 안정화 범위다.

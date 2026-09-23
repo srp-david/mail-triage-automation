@@ -2,7 +2,14 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
-## 2026-09-23 Release·Windows 설치 소스와 로컬 후보 검증 진행
+## 2026-09-23 candidate.9 로컬 검증·GitHub prerelease 게시
+
+- 최종 후보 `0.3.0-candidate.9`의 fresh setup.exe 한글 경로 설치, candidate.8→.9 업그레이드와 개인 설정 보존, lifecycle start/pause/stop이 통과했다. 브라우저 E2E는 로그인·비밀번호 변경·업데이트 버튼·로그아웃 **1 passed**다. check/build/Edge build도 통과했다. 모두 로컬/빌드 증거이며 hosted update API 호출이나 게시 asset을 통한 실사용 업데이트 증거는 아니다.
+- 공개 대상은 기존 41개 이력을 제외한 단일 첫 커밋 `3803669f801ec8b52bc3614d367b830e5e38b2a9`로 만들었다. [공개 저장소](https://github.com/srp-david/mail-triage-automation)의 `main` 및 `v0.3.0-candidate.9` 태그로 push하고 [GitHub prerelease](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.0-candidate.9)를 `draft=false`, `prerelease=true`로 게시했다.
+- 게시 asset digest는 로컬 검증값과 일치했다: setup.exe SHA-256 `8deb34f1edc271d1346278b94a46eadf1568eea8c2ce21b3ea000699b5d69314`, ZIP `75214a5cdaf614e154df228c0289504b07142065f2badeb175893c6d2df71beb`, 서명 metadata `c4ff754fe9a7ebae71040826e52a5647bf2cdeaa53074776486c3ade0f685e58`. metadata 만료 시각은 `2026-10-07T02:22:53.376Z`이다. `releaseApproved=false`인 test 후보로 정식 승인과 구분한다.
+- 새 update route를 포함한 hosted Supabase `history` function 첫 배포 요청은 자동 승인 검토에서 대상 명시 부족으로 거절됐다. 이후 사용자가 프로젝트 `tborximfpwrzzwuazjrb`의 함수와 `UPDATE_CATALOG_JSON` 갱신을 명시 승인했다. 함수 deploy CLI와 catalog secret set CLI가 각각 exit 0, secrets list에서 secret 이름 확인. hosted `/health/live` HTTP 200, 비인증 `/api/v1/updates/check` HTTP 401 `UNAUTHENTICATED` 확인. 인증 실계정의 `offered`·게시 asset 다운로드/설치, 실제 Mail MCP/Agent 분석·2PC 파일럿은 미검증이다.
+
+## 2026-09-23 Release·Windows 설치 소스와 로컬 후보 검증 중간 기록
 
 - Agent adapter의 고정 CLI 버전 일치 검사를 제거하고, 서명 update 메타데이터·인증 update API·로컬 다운로드/updater·업데이트 버튼 소스를 추가했다. self-extracting Windows setup.exe 빌더와 실행/작업 중지/앱 종료 shortcut 스크립트도 추가했다. 이는 소스 구현 상태다.
 - candidate.7까지의 개발 세션에서 check/build/Edge bundle이 통과했고, `0.3.0-candidate.7` setup.exe로 한글 경로 설치·기동·작업 중지·앱 종료·업그레이드를 로컬 검증했다. 이후 UI를 조정한 candidate.9의 회귀 결과와 구분한다. 이전 candidate.5의 설치/해시 기록과도 구분한다.
