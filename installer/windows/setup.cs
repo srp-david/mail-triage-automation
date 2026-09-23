@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 
 // Compiled only by build-windows-setup.ps1. The embedded ZIP is a candidate
 // payload; manage.mjs still verifies its complete manifest before activation.
@@ -46,8 +47,8 @@ internal static class Setup
             {
                 for (int attempt = 0; attempt < 120 && File.Exists(Path.Combine(home, "app.lock")); attempt++)
                     System.Threading.Thread.Sleep(500);
-                if (File.Exists(Path.Combine(home, "app.lock"))) throw new InvalidOperationException("APP_STOP_TIMEOUT");
             }
+            RecoverStaleLock(home);
             Console.WriteLine("설치 파일 검증을 마쳤습니다. 앱을 설치합니다.");
             Run(Path.Combine(payload, "node.exe"),
                 Quote(Path.Combine(payload, "installer", "manage.mjs")) + " install " + Quote(home) + " " + Quote(payload) + " --candidate", payload);
@@ -108,6 +109,17 @@ internal static class Setup
     }
 
     private static string Quote(string value) { return "\"" + value + "\""; }
+    private static void RecoverStaleLock(string home)
+    {
+        if (!File.Exists(Path.Combine(home, "app.lock"))) return;
+        string active = File.ReadAllText(Path.Combine(home, "active.json"));
+        Match version = Regex.Match(active, "\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-z0-9.-]+)?)\"");
+        if (!version.Success) throw new InvalidOperationException("INVALID_ACTIVE_VERSION");
+        string release = Path.Combine(home, "releases", version.Groups[1].Value);
+        Console.WriteLine("기존 앱의 잠금을 확인합니다. 실행 중이면 설치를 중단합니다.");
+        Run(Path.Combine(release, "node.exe"),
+            Quote(Path.Combine(release, "installer", "lifecycle.mjs")) + " recover-lock " + Quote(home), release);
+    }
     private static void Run(string executable, string arguments, string workingDirectory)
     {
         ProcessStartInfo start = new ProcessStartInfo(executable, arguments);

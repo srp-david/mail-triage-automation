@@ -25,7 +25,7 @@ const session=new LocalSession(login,secrets,token=>login.identify(token));
 const history=new HistoryClient(settings.historyUrl,()=>session.token());
 const profile=new LocalProfile(history,session,secrets,settings.mailMcpUrl);
 const receipts=new ProtectedStore(join(root,'work'));await receipts.write('initialized',{version:1});
-const profiles={...(settings.agents?.codex?{codex:{agent:'codex' as const,version:'0.154.0',command:settings.agents.codex}}:{}),...(settings.agents?.claude?{claude:{agent:'claude' as const,version:'2.1.276',command:settings.agents.claude}}:{})};
+const profiles={...(settings.agents?.codex?{codex:{agent:'codex' as const,command:settings.agents.codex}}:{}),...(settings.agents?.claude?{claude:{agent:'claude' as const,command:settings.agents.claude}}:{})};
 await validateEvidenceRoots(settings.evidenceRoots,root);const scratch=join(root,'scratch');await mkdir(scratch,{recursive:true});
 const executor=Object.keys(profiles).length?new LocalExecutor(scratch,profiles,()=>profile.selection(),settings.evidenceRoots):undefined;
 const runtime=new LocalRuntime(history,profile,session,secrets,receipts,executor);
