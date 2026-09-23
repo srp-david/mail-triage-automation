@@ -1,6 +1,6 @@
 # Windows 후보 설치·실행·종료
 
-아래 수동 명령은 `0.3.0-candidate.5` 당시 설치 절차다. 현재 배포 후보 `0.3.0-candidate.9`는 [GitHub prerelease](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.0-candidate.9)의 self-extracting setup.exe다. fresh 한글 경로 설치, candidate.8→.9 업그레이드/설정 보존, lifecycle start/pause/stop, 로그인·비밀번호 변경·업데이트 버튼·로그아웃 브라우저 E2E를 로컬 검증했다. hosted update route도 배포됐지만 실계정 `offered`·실사용 업데이트와 팀 PC 수용은 아직 검증하지 않았다. 과거 `0.2.0-candidate.6`은 다른 인증 구성의 기록이다.
+아래 수동 명령은 `0.3.0-candidate.5` 당시 설치 절차다. 최신 배포 후보 `0.3.0-candidate.10`은 [GitHub prerelease](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.0-candidate.10)의 self-extracting setup.exe다. 합성 candidate.9 홈의 stale lock 복구→.10 설치·기존 historyUrl/port 보존, 한글 경로 lifecycle start/pause/stop을 로컬 검증했다. candidate.9의 로그인·비밀번호 변경·업데이트 버튼·로그아웃 브라우저 E2E 1 passed는 이전 후보 기록이며 .10 UI 코드는 같다. 실계정 `offered`·실사용 업데이트와 팀 PC 수용은 아직 검증하지 않았다. 과거 `0.2.0-candidate.6`은 다른 인증 구성의 기록이다.
 
 ## 1. 포함 내용과 사전 조건
 
@@ -58,14 +58,14 @@ $release = Join-Path (Join-Path $installRoot 'releases') $active.version
 
 설치 버전의 `installer/diagnose.mjs RELEASE HOME`은 파일·개인 CLI·포트 등의 상태를 확인한다. `--connect-mcp`는 도구 목록 연결을 검사하고 실제 메일을 동기화하지 않는다. CLI 자격 존재만으로 제공자 실호출 성공을 보장하지 않는다.
 
-업데이트는 앱 정상 종료 → 새 번호 payload 설치 → 진단 → 활성 버전 확인 순서다. 실행 중 `app.lock`이 있으면 설치가 거절된다. `manage.mjs rollback HOME`은 직전 앱 버전으로 돌리며 공용 DB를 복원하지 않는다. `manage.mjs uninstall HOME`은 개인 설정·자격·outbox를 보존하는 기본 제거다. 전체 사적 데이터 삭제는 별도 명시적 요청·정확한 root 확인 없이는 수행하지 않는다.
+업데이트는 앱 정상 종료 → 새 번호 payload 설치 → 진단 → 활성 버전 확인 순서다. 새 setup.exe는 기존 `app.lock`이 있으면 기존 설치본의 `lifecycle.mjs recover-lock`으로 소유 PID를 검사한다. 종료된 PID의 stale lock만 복구하고 살아 있는 프로세스 잠금이면 설치를 거절한다. `manage.mjs rollback HOME`은 직전 앱 버전으로 돌리며 공용 DB를 복원하지 않는다. `manage.mjs uninstall HOME`은 개인 설정·자격·outbox를 보존하는 기본 제거다. 전체 사적 데이터 삭제는 별도 명시적 요청·정확한 root 확인 없이는 수행하지 않는다.
 
-오래된 잠금 복구는 `lifecycle.mjs recover-lock HOME`이 실제 소유 프로세스 종료를 확인하는 절차를 사용한다. 포트 충돌에서 기존 서비스나 임의 Node 프로세스를 일괄 종료하지 않는다.
+오래된 잠금 복구는 `lifecycle.mjs recover-lock HOME`이 실제 소유 프로세스 종료를 확인하는 절차를 사용한다. 개인 candidate.5에서 dead PID 잠금이 남은 것을 읽기 전용으로 확인했고, candidate.10 합성 설치·별도 살아 있는 PID 잠금 거절/종료 후 복구를 검증했다. 포트 충돌에서 기존 서비스나 임의 Node 프로세스를 일괄 종료하지 않는다.
 
 ## 6. 팀 배포 묶음으로 남은 작업
 
-setup.exe와 `control.ps1`에 실행/화면 열기(`start`)·작업 중지(`pause`)·앱 종료(`quit`) 조작을 추가했다. 실행 중이면 화면만 열고, 작업 중지는 Runner의 신규 작업 시작을 멈추되 로컬 웹 화면을 유지하며, 앱 종료는 Runner와 로컬 웹 서버를 정상 종료한다. candidate.9 fresh 한글 설치, candidate.8→.9 업그레이드/설정 보존과 start/pause/stop을 로컬 검증했고, 업데이트 배너가 로그아웃을 가리지 않는 브라우저 E2E 1건도 통과했다. 검증된 설치 파일은 GitHub prerelease로 게시했다. 다음으로 깨끗한 팀 PC의 포트 충돌·설정 보존·재실행·롤백과 사용자 안내/배포 신뢰 경로, hosted update API를 통한 실제 업데이트를 확인한다. 그 설치본에서 개인 연결과 지정 사례 실분석·저장·보고서 재조회를 확인하고 두 PC 수용 결과로 [팀 파일럿](team-pilot.md)의 확대 기준을 판단한다. `releaseApproved=false`인 시험 후보는 정식 승인과 구분한다.
+setup.exe와 `control.ps1`에 실행/화면 열기(`start`)·작업 중지(`pause`)·앱 종료(`quit`) 조작을 추가했다. 실행 중이면 화면만 열고, 작업 중지는 Runner의 신규 작업 시작을 멈추되 로컬 웹 화면을 유지하며, 앱 종료는 Runner와 로컬 웹 서버를 정상 종료한다. candidate.10 합성 stale lock 복구·설치/설정 보존과 한글 경로 start/pause/stop을 로컬 검증했다. GitHub prerelease asset digest도 확인했다. 다음으로 깨끗한 팀 PC의 포트 충돌·설정 보존·재실행·롤백과 사용자 안내/배포 신뢰 경로, hosted update API를 통한 실제 업데이트를 확인한다. 그 설치본에서 개인 연결과 지정 사례 실분석·저장·보고서 재조회를 확인하고 두 PC 수용 결과로 [팀 파일럿](team-pilot.md)의 확대 기준을 판단한다. `releaseApproved=false`인 시험 후보는 정식 승인과 구분한다.
 
-GitHub Release를 배포 파일·변경 내역 저장소로 쓰는 [업데이트 계획](releases.md)에 따라 인증 update API·서명 메타데이터·로컬 다운로드/updater·사용자 버튼 소스를 추가했다. candidate.9의 게시 asset digest는 검증된 로컬 파일과 일치한다. public 단계에도 인증된 공용 API로 버전·채널·호환성·중단 정책을 확인하고, 알림 후 사용자가 설치를 선택하는 방식이 기본안이다. 새 route를 담은 hosted `history` function의 첫 배포 요청은 자동 승인 검토에서 대상 명시 부족으로 거절됐으나, 사용자 명시 승인 뒤 함수와 catalog secret을 갱신했다. hosted health 200·비인증 update check 401을 확인했다. 실계정 `offered`와 GitHub asset을 실제 앱 업데이트로 내려받아 설치하는 종단 검증은 남아 있다.
+GitHub Release를 배포 파일·변경 내역 저장소로 쓰는 [업데이트 계획](releases.md)에 따라 인증 update API·서명 메타데이터·로컬 다운로드/updater·사용자 버튼 소스를 추가했다. candidate.10의 게시 asset digest는 검증된 로컬 파일과 일치한다. public 단계에도 인증된 공용 API로 버전·채널·호환성·중단 정책을 확인하고, 알림 후 사용자가 설치를 선택하는 방식이 기본안이다. hosted `history` function은 candidate.9에 배포한 API 코드를 유지하고 승인된 `UPDATE_CATALOG_JSON`만 candidate.10으로 갱신했다. hosted health 200·비인증 update check 401을 확인했다. 실계정 `offered`와 GitHub asset을 실제 앱 업데이트로 내려받아 설치하는 종단 검증은 남아 있다.
 
 현재 패키지 스크립트는 candidate만 만들고 `releaseApproved=false`다. 정식 Release 버전 생성·승인 근거·서명/게시 절차와 public→private 다운로드 전환을 추가 검증해야 한다. 앱 업데이트는 공용 API/DB 및 ERP 운영 배포와 별개다. 완전 자동 설치는 후속 안정화 범위다.

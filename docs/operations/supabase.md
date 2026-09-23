@@ -1,6 +1,6 @@
 # Supabase 팀 배포 안내
 
-갱신: 2026-09-23. [통합 계획 v3.3](../implementation-plan.md)의 M1~M3 실행 안내다. **첫 hosted API·DB 배포 및 합성 검증 완료**, 이후 update route를 포함한 `history` function·catalog secret 갱신과 health 200/비인증 조회 401까지 확인했다. 실계정 업데이트 제공/설치와 실제 두 PC 업무 파일럿은 미완료다. Supabase Edge `history` + PostgreSQL, 각 팀원 PC의 local-app/MCP/AI Agent 구성이다. 백업 설정은 사용자 요청으로 보류했다. 기존 운영 서비스/DB는 유지한다.
+갱신: 2026-09-23. [통합 계획 v3.3](../implementation-plan.md)의 M1~M3 실행 안내다. **첫 hosted API·DB 배포 및 합성 검증 완료**. update route를 포함한 `history` function은 candidate.9 배포 코드를 유지하고 catalog secret을 candidate.10으로 갱신했으며 health 200/비인증 조회 401까지 확인했다. 실계정 업데이트 제공/설치와 실제 두 PC 업무 파일럿은 미완료다. Supabase Edge `history` + PostgreSQL, 각 팀원 PC의 local-app/MCP/AI Agent 구성이다. 백업 설정은 사용자 요청으로 보류했다. 기존 운영 서비스/DB는 유지한다.
 
 ## 1. 준비 상태와 배포 대상
 
@@ -9,7 +9,7 @@
 - 사용자가 만든 `mail-triage-automation` 프로젝트를 연결했다. 서울 `ap-northeast-2`, PostgreSQL 17.6, 상태 ACTIVE_HEALTHY 확인. 요금제·조직 합산 한도는 Dashboard에서 확인하며 유료 add-on은 추가하지 않았다.
 - 사용자가 Supabase CLI 로그인을 완료했다. 비밀번호/PAT/DB URL/서명키는 채팅·Git에 전달하지 않는다.
 - Supabase CLI `2.117.0` 실행 확인. 전역 설치 없이 다음 명령을 사용할 수 있다. 로그인은 사용자 대화형 터미널에서 완료한다. [CLI 설치](https://supabase.com/docs/guides/local-development/cli/getting-started), [배포](https://supabase.com/docs/guides/functions/deploy).
-- 최초 v3.1 검증: check/build/Edge/compat, backend 130/130, 로컬 Edge·브라우저·Runner·복원 12군 통과. 당시 Windows `0.3.0-candidate.3` 설치 수명주기와 hosted 인증·ACL·보고서·Runner 재전송 7군을 검증했다. CA 변경은 서버 전용이었다. 이후 candidate.9 setup.exe의 한글 경로 설치·8→9 업그레이드/설정 보존·브라우저 E2E 1건과 GitHub prerelease 게시를 확인했다. 정식 승인과 실제 두 PC 업무 수용은 남아 있다. 세부 해시·검증 범위는 [현재 상태](../current-status.md)를 따른다.
+- 최초 v3.1 검증: check/build/Edge/compat, backend 130/130, 로컬 Edge·브라우저·Runner·복원 12군 통과. 당시 Windows `0.3.0-candidate.3` 설치 수명주기와 hosted 인증·ACL·보고서·Runner 재전송 7군을 검증했다. CA 변경은 서버 전용이었다. 이후 candidate.9 setup.exe 한글 설치·8→9 업그레이드/설정 보존·브라우저 E2E 1건을 검증했고, 최신 candidate.10에서는 합성 stale lock 복구·9→10 설치/설정 보존·한글 lifecycle·GitHub prerelease 게시를 확인했다. 정식 승인과 실제 두 PC 업무 수용은 남아 있다. 세부 해시·검증 범위는 [현재 상태](../current-status.md)를 따른다.
 
 ```powershell
 npx.cmd --yes supabase@2.117.0 login
@@ -73,13 +73,13 @@ Free는 [7일간 낮은 활동으로 일시정지될 수 있고](https://supabas
 
 ## 4. 최초 설치와 팀 파일럿
 
-2026-09-22 개발 PC의 `%LOCALAPPDATA%\MailTriagePilot` candidate.5 설치는 이전 기록이다. 2026-09-23 candidate.9 setup.exe는 한글 경로 fresh 설치와 8→9 업그레이드를 로컬 검증하고 [GitHub prerelease](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.0-candidate.9)로 게시했다. 기동/종료는 [Windows 안내](windows.md)의 활성 버전 기준 명령 또는 설치 shortcut을 사용한다. 단순 URL 대신 일회용 browser ticket으로 진입한다. 각 팀원은 발급 계정의 첫 비밀번호 변경 후 개인 MCP/Agent를 연결하며 팀 PC·실업무 검증은 아래 절차로 진행한다.
+2026-09-22 개발 PC의 `%LOCALAPPDATA%\MailTriagePilot` candidate.5 설치는 이전 기록이다. 이 개인 설치에 종료된 PID의 stale lock이 남은 것을 읽기 전용으로 확인했다. 최신 candidate.10 setup.exe는 합성 홈에서 잠금 복구→설치·설정 보존을 검증하고 [GitHub prerelease](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.0-candidate.10)로 게시했다. 개인 설치 상태는 이 검증에서 변경하지 않았다. 기동/종료는 [Windows 안내](windows.md)의 활성 버전 기준 명령 또는 설치 shortcut을 사용한다. 단순 URL 대신 일회용 browser ticket으로 진입한다. 각 팀원은 발급 계정의 첫 비밀번호 변경 후 개인 MCP/Agent를 연결하며 팀 PC·실업무 검증은 아래 절차로 진행한다.
 
 
 1. 소규모 파일럿은 서로 다른 사용자 최소 2명/2PC로 시작한다. 관리자·백업/복구 담당과 지정 업무 사례를 정한다. 기존 이력을 통째로 업로드하지 않고 신규 지정 사례부터 시작하며 이관은 source 귀속 확인 후 별도로 한다.
 2. [로컬 설정 예시](../../deploy/supabase/local-settings.example.json)의 PROJECT를 실제 프로젝트로 바꾸고 개인 `config/settings.json`에 저장한다. `historyUrl`, `auth.issuer`, `auth.audience`는 서버와 일치해야 한다. API 주소와 issuer에 DPAPI 세션이 묶이므로 이전 시 재로그인한다. DB URL/서명키는 PC에 넣지 않는다.
 3. 현재 운영 v0와 충돌하지 않도록 예시 포트 43180을 사용한다. 개인 Mail MCP URL·지원 Agent 실행 경로·ERP 읽기 자료 경로를 본인 환경에서 지정하고 기존 개인 설정은 보존한다.
-4. 현재 candidate.9는 게시되어 있다. 후속 코드의 후보는 `node scripts/package-windows.mjs 새후보버전`으로 만들고 `node scripts/verify-windows-lifecycle.mjs .runtime/packages/새후보버전`으로 확인한다. 동일 번호를 덮어쓰지 않는다. 설치/후보 실행은 [Windows 안내](windows.md)를 따른다. 실제 팀 수용 전 manifest의 releaseApproved는 false다.
+4. 현재 candidate.10은 게시되어 있다. 후속 코드의 후보는 `node scripts/package-windows.mjs 새후보버전`으로 만들고 `node scripts/verify-windows-lifecycle.mjs .runtime/packages/새후보버전`으로 확인한다. 동일 번호를 덮어쓰지 않는다. 설치/후보 실행은 [Windows 안내](windows.md)를 따른다. 실제 팀 수용 전 manifest의 releaseApproved는 false다.
 5. 첫 로그인 → 비밀번호 변경 → 본인 출처/Runner 등록 → 지정 실제 사례 분석 → 보고서 저장/공유를 확인한다. 다른 PC에 원본이 없으면 보고서만 조회됨을 확인한다. 별도 사용자 자료 접근 거절, 재로그인, 중단/재전송, 설정 보존 업데이트를 검사한다.
 6. 초기 제안은 실제 업무 5일 관찰이다. 날짜/버전/실행 ID, 기대·실제 결과, 오류 코드, 재현 절차, 심각도, 담당/해결 버전만 기록한다. 비밀번호·토큰·메일 원문을 피드백 게시물에 붙이지 않는다. 기간/목표는 팀과 조정한다.
 
@@ -97,6 +97,6 @@ API 주소를 설정으로 분리하고 팀/사용자/source/보고서 UUID·ACL
 
 ## 6. 앱 Release와 서버 배포의 구분
 
-[Release 업데이트](releases.md)의 candidate.9 파일은 GitHub prerelease에 게시됐고 update route/catalog 소스도 준비했다. hosted `history` function 첫 배포 요청은 자동 승인 검토에서 대상 명시 부족으로 거절됐으나, 사용자가 프로젝트 `tborximfpwrzzwuazjrb`의 함수와 `UPDATE_CATALOG_JSON` 갱신을 명시 승인한 뒤 함수 deploy와 secret set이 각각 exit 0으로 끝났다. secrets list에서 이름을 확인했고 hosted `/health/live` HTTP 200, 비인증 `/api/v1/updates/check` HTTP 401 `UNAUTHENTICATED`를 확인했다. 인증 실계정의 `offered`·실제 다운로드/설치는 아직 검증하지 않았다. public 파일은 GitHub에서 직접 내려받는 방식이 기본안이다.
+[Release 업데이트](releases.md)의 최신 candidate.10 파일은 GitHub prerelease에 게시됐다. hosted `history` function 첫 배포 요청은 자동 승인 검토에서 대상 명시 부족으로 거절됐으나, 사용자가 프로젝트 `tborximfpwrzzwuazjrb`의 함수와 `UPDATE_CATALOG_JSON` 갱신을 명시 승인한 뒤 candidate.9 API 코드 배포를 완료했다. candidate.10은 API 코드가 같아 함수를 다시 배포하지 않고 승인된 catalog secret만 candidate.10으로 갱신했다(secret set exit 0). hosted `/health/live` HTTP 200, 비인증 `/api/v1/updates/check` HTTP 401을 확인했다. 인증 실계정의 `offered`·전체 다운로드/설치는 아직 검증하지 않았다. public 파일은 GitHub에서 직접 내려받는 방식이 기본안이다.
 
 API/DB 변경은 PC 앱과 별도 배포하며 구/신 앱의 지원 범위와 outbox 제출 호환성을 확인한다. 구버전이 업무 API에서 거절되더라도 인증/업데이트 또는 수동 복구로 이동할 경로가 필요하다. private 전환의 GitHub 인증은 서버에만 두고 중계 위치·대용량 전송 한도는 D13에서 정한다. Release 게시가 서버 migration이나 ERP 운영 배포를 실행하지 않는다.

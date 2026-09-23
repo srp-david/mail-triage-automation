@@ -26,8 +26,8 @@ slug: /
 |---|---|
 | [개발 안내](guides/development.md) | 현재 사용자명 인증 코드의 빌드·별도 실행·검증 |
 | [기술 문서 사이트](guides/documentation.md) | Docusaurus 빌드·탐색·검색·도표 검증 |
-| [Windows 후보 설치](operations/windows.md) | candidate.9 setup.exe 게시·로컬 설치/업그레이드 검증, candidate.5 수동 절차는 이력 |
-| [Release 업데이트](operations/releases.md) | candidate.9 GitHub prerelease·hosted update route 배포, 실계정 제공/설치 검증 대기. public→private·서명키 운영은 후속 결정 |
+| [Windows 후보 설치](operations/windows.md) | 최신 candidate.10 setup.exe 게시·stale lock 복구/한글 경로 수명주기 검증, candidate.5 수동 절차는 이력 |
+| [Release 업데이트](operations/releases.md) | candidate.10 GitHub prerelease·hosted catalog 갱신, 실계정 제공/설치 검증 대기. public→private·서명키 운영은 후속 결정 |
 | [Supabase 운영](operations/supabase.md) | 현재 공용 API·비공개 DB와 최초 계정·운영 절차 |
 | [팀 파일럿](operations/team-pilot.md) | 제한된 2명/2PC 수용과 피드백. 간편 배포 묶음은 미구현 |
 | [일반 Node 서버](operations/node-server.md) | 이후 자체 호스팅 코드 경로. 실제 AWS 배포 완료 아님 |

@@ -1,6 +1,6 @@
 # mail-triage-web 통합 구현 계획
 
-문서 버전: 3.3 · 갱신일: 2026-09-23 · 상태: **Release 배포 기반 → 간편 설치·업데이트 → GitHub push·Release 게시 → 설치본 실분석 → 팀 파일럿 → 피드백·안정화 → AWS 이전 검토 → 원격 분석 → SR 구현·검증·PR 자동화**. 첫 Supabase API·DB 배포와 합성 종단 검증을 완료했다. candidate.9의 로컬 설치·업그레이드·UI 검증, 공개용 첫 커밋·GitHub prerelease 게시, 새 update route의 hosted 함수·catalog secret 갱신을 완료했다. 실계정 업데이트 제공·설치와 실 MCP/Agent 분석은 아직 검증하지 않았다. 사용자 요청으로 백업 설정은 보류하며, 실제 두 PC 업무 파일럿과 M1 운영 준비 완료는 별도로 판정한다.
+문서 버전: 3.3 · 갱신일: 2026-09-23 · 상태: **Release 배포 기반 → 간편 설치·업데이트 → GitHub push·Release 게시 → 설치본 실분석 → 팀 파일럿 → 피드백·안정화 → AWS 이전 검토 → 원격 분석 → SR 구현·검증·PR 자동화**. 첫 Supabase API·DB 배포와 합성 종단 검증을 완료했다. 최신 candidate.10에서 stale lock 복구·설치/설정 보존·한글 경로 lifecycle과 실제 Claude Code 2.1.280 probe를 로컬 검증하고 GitHub prerelease를 게시했다. hosted update route 코드는 candidate.9 배포본을 유지하며 catalog를 candidate.10으로 갱신했다. 실계정 업데이트 제공·설치와 실 MCP/Agent 분석은 아직 검증하지 않았다. 사용자 요청으로 백업 설정은 보류하며, 실제 두 PC 업무 파일럿과 M1 운영 준비 완료는 별도로 판정한다.
 
 ## 1. 목표와 현재 우선순위
 
@@ -14,7 +14,7 @@
 | 인증 유지 | 사용자명 + 앱 비밀번호, 관리자 생성 계정, 공개 가입 없음, JWT + 현재 계정/세션/자료 권한 검사 |
 | 화면 구성 | 전체 React UI는 MUI 공통 테마로 통일. 기존 업무 동작·분할 화면·본문/Office 렌더러 유지. UI 전환으로 M4~M5 범위를 앞당기지 않음 |
 | 보고서 협업 | 대화·결정 저장, 명시적 보고서 반영·새 revision, 낙관적 락을 추가한다. 로컬 Agent를 사용하는 M3 기능 확장 배치안이며 첫 파일럿의 선행 조건으로 만들지 않음 |
-| 앱 배포 방향 | [srp-david/mail-triage-automation](https://github.com/srp-david/mail-triage-automation)의 기존 41개 이력을 제외한 공개용 첫 커밋 `3803669f801ec8b52bc3614d367b830e5e38b2a9` 및 candidate.9 prerelease 게시. GitHub Release에 앱 파일·변경 내역 보관, 필요 시 private 전환. hosted API 배포·실사용 업데이트는 별도 |
+| 앱 배포 방향 | [srp-david/mail-triage-automation](https://github.com/srp-david/mail-triage-automation)의 기존 41개 이력을 제외한 공개용 첫 커밋 `3803669f801ec8b52bc3614d367b830e5e38b2a9`에 후속 커밋 `cb64f473123807a981de83e1b8332b1e3772a063`·candidate.10 prerelease 게시. GitHub Release에 앱 파일·변경 내역 보관, 필요 시 private 전환. 실사용 업데이트는 별도 |
 | 앱 업데이트 기본안 | 인증된 공용 API가 사용자별 버전·채널·호환성·배포 중단을 결정. public 파일은 직접 다운로드, 알림 후 사용자가 설치 선택. 완전 자동 설치는 후속 안정화 대상으로 분리 |
 | 첫 호스팅 | Supabase Edge 공용 API + Supabase PostgreSQL. Free로 소규모 파일럿을 준비하고 실제 사용량·한도를 측정. 유료 전환은 별도 결정 |
 | 첫 DB | PostgreSQL 유지, 비공개 앱 schema와 최소 권한 runtime 계정. M1에서 MariaDB 이식하지 않음 |
@@ -33,7 +33,7 @@ M1은 Supabase PostgreSQL과 로컬 실행을 유지해 합성/복제본에서 �
 | 기존 P1~P6/candidate.6 | 당시 로컬 구현·합성/후보 검증 기록 존재 | 새 인증/배포 환경의 완료로 재사용하지 않음 |
 | 이전 PoC `8303d52` | 기존 작업 폴더/브랜치는 현재 없음. Git 객체·인계 보고서 보존, 제품 커밋 3개 복구·통합 | 사라진 로컬 패키지/시험 산출물을 배포본으로 쓰지 않고 현재 코드에서 재생성 |
 | hosted/팀 파일럿 | 서울 프로젝트에 API·비공개 DB 배포, TLS/pooler·인증·권한·Runner 합성 검증 통과 | 백업 보류. 개인 MCP/Agent·실제 두 PC 업무 파일럿 진행 필요 |
-| Windows 배포·업데이트 | self-extracting setup.exe·실행/작업 중지/앱 종료 shortcut·서명 메타데이터·인증 update API·다운로드/updater·버튼 소스 추가. candidate.9 fresh 한글 설치·8→9 업그레이드/설정 보존·lifecycle·브라우저 E2E 1 passed, GitHub prerelease 게시. hosted 함수/catalog 갱신 후 health 200·비인증 조회 401 확인 | 실계정 `offered`·게시 asset 실사용 업데이트, 팀 PC 수용·실분석 대기 |
+| Windows 배포·업데이트 | candidate.10 setup.exe에 기존 lifecycle의 stale lock 복구 연계. 합성 9→10 설치·historyUrl/port 보존, 살아 있는 PID 잠금 거절, 한글 경로 start/pause/stop, Claude Code 2.1.280 probe, unit 8/8 통과. GitHub prerelease 게시·hosted catalog .10 갱신 | 실계정 `offered`·게시 asset 실사용 업데이트, 팀 PC 수용·실분석 대기. UI E2E 1 passed는 candidate.9 증거 |
 | 보고서 협업·작업 시작 | 추가 답변→새 분석, 분석 요청 멱등성과 메일당 활성 분석 제한 구현 | 지속 대화·보고서 편집 낙관적 락·업무별 작업 등록부·구현 시작 미구현 |
 | 원격 SR 자동화 | 원격 자료·Agent·구현·PR 종단 미구현/미검증 | M3 안정화 판정 뒤 M4~M5 착수 |
 
@@ -162,7 +162,7 @@ GitHub Release를 앱 파일·변경 내역 저장소로 사용하고, 앱은 pu
 
 M1에서 계약·신뢰 메타데이터·간편 설치를 준비하고 M2에서 조회/알림→작업 종료 대기→다운로드/검증→별도 updater의 정상 종료/설치/재시작→진단/롤백을 구현·검증한다. 완전 자동 설치는 후속 안정화 대상으로 남긴다. 최초 후보는 기존 수동 절차로 시험할 수 있으나 앱 내 업데이트 수용 완료와 구분한다.
 
-현재 `package-windows.mjs`는 candidate만 생성하고 승인 값은 false다. `release.mjs`의 검증·staging·활성 버전 전환·개인 상태 보존에 서명 메타데이터 검증·로컬 다운로드/updater 조정 소스를 추가했다. setup.exe 빌더·shortcut과 인증 update API·버튼도 소스에 있으며 candidate.9의 한글 경로 설치·8→9 업그레이드/설정 보존·lifecycle·브라우저 E2E를 로컬 검증했다. candidate.9 파일을 GitHub prerelease로 게시하고 asset digest 일치를 확인했다. hosted `history` function 갱신의 첫 요청은 자동 승인 검토에서 대상 명시 부족으로 거절됐지만 사용자 명시 승인 후 함수·catalog secret을 갱신했다. hosted health 200·비인증 update check 401을 확인했으며 실계정 `offered`·게시 asset을 통한 설치는 대기 중이다. 정식 버전 생성/승인, 게시 CI, 서명키 신뢰·교체, API 지원 기간과 private 전환은 D13에서 확정한다. 공용 API/DB 배포는 PC 앱 업데이트와 별도이며 GitHub Release 게시가 서버나 ERP 운영 배포를 실행하지 않는다.
+현재 `package-windows.mjs`는 candidate만 생성하고 승인 값은 false다. `release.mjs`의 검증·staging·활성 버전 전환·개인 상태 보존에 서명 메타데이터 검증·로컬 다운로드/updater 조정 소스를 추가했다. candidate.10 setup.exe는 설치 전 기존 설치본의 `lifecycle.mjs recover-lock`으로 종료된 PID의 stale lock만 복구한다. 합성 candidate.9 홈에서 복구→.10 설치·historyUrl/port 보존, 살아 있는 PID 잠금 거절, 한글 경로 lifecycle을 확인했다. Agent Profile의 미사용 고정 버전 문자열을 제거하고 실제 Claude Code 2.1.280 probe가 `supported=true`였으나 실분석은 아직이다. candidate.10 GitHub prerelease asset digest 일치를 확인했다. hosted `history` function은 candidate.9 코드 그대로 두고 `UPDATE_CATALOG_JSON`을 candidate.10으로 갱신했다. hosted health 200·비인증 update check 401을 확인했으며 실계정 `offered`·게시 asset을 통한 설치는 대기 중이다. 정식 버전 생성/승인, 게시 CI, 서명키 신뢰·교체, API 지원 기간과 private 전환은 D13에서 확정한다. 공용 API/DB 배포는 PC 앱 업데이트와 별도이며 GitHub Release 게시가 서버나 ERP 운영 배포를 실행하지 않는다.
 
 세부 계약·구현 위치·장애/전환 수용표는 [Release 업데이트 계획](operations/releases.md)에 둔다. 사용자 생성 저장소에 게시하기 전 소스·Git 이력·ZIP·문서/변경 내역의 비밀·메일 원문·업무 자료 포함 여부를 검토한다. push·Release 게시는 공개 범위와 게시 준비를 갖춘 별도 실행이다.
 
@@ -320,7 +320,7 @@ DB 복원 시 신규 claim/발행을 먼저 중지한다. DB에 남은 intent만
 | D10 | repo/base·checkout 읽기/발행 쓰기·허용/보호 경로·자동/사람 리뷰 정책·CI/PR 가시성·ERP 지침 조정 | M5 실제 수정/push 전 | brief·bundle·중복/발행 모의 검증 |
 | D11 | 원격 사용량·로그/첨부 보존·운영 장애/복구 담당·수용 기준 | M4~M5 운영 수용 전 | 비용/복원 시나리오 |
 | D12 | 원격 ERP 코드 mirror/commit·DB 읽기 계정·망 경로·갱신 담당 | M4 분석 전 | 자료 버전·쓰기 차단 명세 |
-| D13 | `srp-david/mail-triage-automation`에 기존 41개 이력을 제외한 공개용 첫 커밋·candidate.9 test prerelease 게시. 후속 공개 범위, stable/test 제공 정책·정식 패키징/승인·서명키/교체·게시 담당·최소 API 지원 기간·private 다운로드 방식은 남음 | 후속 Release·정식/실사용 업데이트 제공 전 | update API·UI·updater·서명/전환 검증과 실계정 수용 |
+| D13 | `srp-david/mail-triage-automation`에 기존 41개 이력을 제외한 공개용 첫 커밋과 후속 candidate.10 test prerelease 게시. 후속 공개 범위, stable/test 제공 정책·정식 패키징/승인·서명키/교체·게시 담당·최소 API 지원 기간·private 다운로드 방식은 남음 | 후속 Release·정식/실사용 업데이트 제공 전 | update API·UI·updater·서명/전환 검증과 실계정 수용 |
 | D14 | 보고서 대화 C1~C3의 M3 확장 출시 시점·지원 Agent·편집 권한·대화 보존/근거 범위 | 협업 schema/API 구현 전 | 대화/보고서 분리·충돌 UI·권한·동시 저장 수용 설계 |
 
 PoC 통합·후보 검증·Supabase 첫 배포와 hosted 합성 검증은 수행했다. M1~M3의 다음 작업은 간편 배포 묶음·개인 MCP/Agent/읽기 자료 연결 → 제한 팀 배포 → 피드백 안정화다. 실제 ERP DB provider와 운영/백업 수용은 별도이며 백업은 사용자 요청으로 보류한다. D8~D12 및 AWS 이전 시점 미확정을 이유로 첫 팀 배포 개발을 멈추지 않는다. 비밀번호·개인키·DB 자격을 채팅/Git으로 요구하지 않는다. 외부 자원 생성·실데이터 이관·실제 repo 쓰기는 구체적 대상과 실행 범위가 마련됐을 때 수행한다.
@@ -366,12 +366,12 @@ v3.2는 2026-09-22 사용자 제공 인수인계 `brief-bccc96dc-801e-4b3d-a492-
 
 | ID | 남은 작업·현재 상태 | 단계·의존성 | 완료 근거 |
 |---|---|---|---|
-| SET1 | setup.exe·shortcut 구현. candidate.9 fresh 한글 설치·8→9 업그레이드/설정 보존·start/pause/stop 로컬 검증 통과, 팀 PC 수용 대기 | M1~M2, D5/D6 | 설치·포트/한글 경로·실행/작업 중지/앱 종료 구분·설정 보존·롤백 |
-| SET2 | 개인 Mail MCP·Agent·ERP 읽기 경로 연결/진단: 새 설치본 실업무 대기. Agent 고정 버전 검사 제거 소스 추가 | M1~M2, 검증된 Release 설치본·지정 자료/개인 환경 | 실제 CLI 실행·MCP·결과 계약을 합성 자료로 검증하고, 실통신·지정 사례 분석/저장·공용 보고서 재조회 |
+| SET1 | setup.exe·shortcut 구현. candidate.10 합성 stale lock 복구·9→10 설치/설정 보존·한글 경로 start/pause/stop 로컬 검증 통과, 팀 PC 수용 대기 | M1~M2, D5/D6 | 설치·포트/한글 경로·실행/작업 중지/앱 종료 구분·설정 보존·롤백 |
+| SET2 | 개인 Mail MCP·Agent·ERP 읽기 경로 연결/진단: 새 설치본 실업무 대기. Agent Profile 고정 버전 문자열 제거·실제 Claude Code 2.1.280 probe `supported=true` | M1~M2, 검증된 Release 설치본·지정 자료/개인 환경 | 실제 CLI 실행·MCP·결과 계약을 합성 자료로 검증하고, 실통신·지정 사례 분석/저장·공용 보고서 재조회 |
 | SET3 | 실제 ERP DB provider: local-app 미연결 | M1~M3, 허용 조회/읽기 계정·접속 경로 | 실제 읽기 성공·권한 밖 조회/쓰기 거절 |
 | U1 | 서명 메타데이터·인증 update API 소스 추가. 사용자 명시 승인 후 hosted `history` function·catalog secret 갱신, health 200·비인증 조회 401 확인 | M1~M2, D13 | 실계정 사용자/채널·버전·호환·중단·서명 검증 |
 | U2 | 로컬 다운로드/updater·업데이트 버튼 소스 추가. 게시 asset·실사용 업데이트 검증 대기 | M2, U1/SET1 | 작업 대기·중단 다운로드·재시작·롤백·개인 상태 보존 |
-| U3 | candidate.9 설치 파일/ZIP/서명 메타데이터 생성·로컬 검증, 공개용 단일 첫 커밋 push·GitHub prerelease 게시 및 asset digest 일치. 자동 CI·private 전환 수용은 별도 | M1~M3, D6/D13·후속 버전 공개 전 검토 | 재현 빌드·게시 기록·기존 클라이언트 모의 전환 수용. 실제 private 전환은 필요 시 별도 |
+| U3 | candidate.10 설치 파일/ZIP/서명 메타데이터 생성·로컬 검증, 후속 소스 커밋·GitHub prerelease 게시 및 asset digest 일치. 자동 CI·private 전환 수용은 별도 | M1~M3, D6/D13·후속 버전 공개 전 검토 | 재현 빌드·게시 기록·기존 클라이언트 모의 전환 수용. 실제 private 전환은 필요 시 별도 |
 | T1 | 팀원 계정·2명/2PC 파일럿·현행 수용 양식/검사기: 대기 | M2, SET1/SET2·D1~D7 | 권한·공유·원본 부재·PC 종료·복구·업데이트 기록 |
 | T2 | 품질/오류 개선·부하/비용·pause/resume·운영 담당: 대기 | M3, T1 | 피드백 조치·실측·회귀·안정화 판단 |
 | C1~C3 | 보고서 대화·명시적 반영/버전·낙관적 락: 미구현 | M3 확장 배치안, D14 | 6.1절 대화/ACL·동시 수정·초안/이력 보존 |
@@ -382,4 +382,4 @@ v3.2는 2026-09-22 사용자 제공 인수인계 `brief-bccc96dc-801e-4b3d-a492-
 | W1 | 작업 시작·brief 고정·업무 등록부/중복 방지: 미구현 | M5, 8.1~8.2·D10 | 두 사용자 동시 시작·입력 고정·멱등성·상태 안내 |
 | W2 | 격리 구현·불변 commit·검증/CI·PR·발행 복원: 미구현 | M5, W1·D10 | 8.3~9절 종단/실패/외부 효과 대조 |
 
-현재 실행 순서는 **① U3의 Release 파일 형식·재현 빌드·게시 절차와 U1의 버전·서명·호환 계약 → ② SET1 간편 설치 파일·실행/분석 중지/앱 종료와 U1 API/U2 앱 업데이트 구현·검증 → ③ 검토된 소스의 GitHub push 및 검증된 설치 파일의 Release 게시 → ④ 새 설치본에서 SET2 개인 연결·지정 사례 실분석/저장/재조회 → ⑤ T1 → T2**다. ①~③의 소스·로컬 검증·candidate.9 게시와 hosted route 배포는 수행했으며, 인증 실계정 `offered`·다운로드/설치가 남아 있어 앱 업데이트 수용 완료로 판정하지 않는다. ④가 앞서 논의한 1번 실분석이다. 공개 전 소스·Git 이력·설치 파일·문서/변경 내역의 비밀·메일 원문·업무 자료를 검사하고, push·게시·실분석은 각각의 증거로 완료 판정한다. U3의 private 전환 호환 검증은 후속이며 실제 전환을 첫 설치의 조건으로 만들지 않는다. SET3는 지정 사례에 DB 조회가 필요하면 SET2와 함께, L1~L3는 자료/권한이 갖춰지는 대로 추적한다. SET ID는 과거 P1~P6 검증 단계와 구분한다. C1~C3는 D14에서 확장 출시 순서를 정한다. 설정 파일 편집을 대체하는 UI, 완전 자동 설치, 번들 크기 개선은 후속 개선 후보이며 이번 문서 갱신만으로 필수 출시 조건이 되지 않는다. 원격 SR 구현은 M4~M5 순서를 유지하고, 운영 DB 쓰기·자동 merge·자동 운영 배포는 미완료 작업이 아니라 제외 범위다.
+현재 실행 순서는 **① U3의 Release 파일 형식·재현 빌드·게시 절차와 U1의 버전·서명·호환 계약 → ② SET1 간편 설치 파일·실행/분석 중지/앱 종료와 U1 API/U2 앱 업데이트 구현·검증 → ③ 검토된 소스의 GitHub push 및 검증된 설치 파일의 Release 게시 → ④ 새 설치본에서 SET2 개인 연결·지정 사례 실분석/저장/재조회 → ⑤ T1 → T2**다. ①~③의 소스·로컬 검증·candidate.10 게시와 hosted catalog 갱신은 수행했으며, 인증 실계정 `offered`·다운로드/설치가 남아 있어 앱 업데이트 수용 완료로 판정하지 않는다. ④가 앞서 논의한 1번 실분석이다. 공개 전 소스·Git 이력·설치 파일·문서/변경 내역의 비밀·메일 원문·업무 자료를 검사하고, push·게시·실분석은 각각의 증거로 완료 판정한다. U3의 private 전환 호환 검증은 후속이며 실제 전환을 첫 설치의 조건으로 만들지 않는다. SET3는 지정 사례에 DB 조회가 필요하면 SET2와 함께, L1~L3는 자료/권한이 갖춰지는 대로 추적한다. SET ID는 과거 P1~P6 검증 단계와 구분한다. C1~C3는 D14에서 확장 출시 순서를 정한다. 설정 파일 편집을 대체하는 UI, 완전 자동 설치, 번들 크기 개선은 후속 개선 후보이며 이번 문서 갱신만으로 필수 출시 조건이 되지 않는다. 원격 SR 구현은 M4~M5 순서를 유지하고, 운영 DB 쓰기·자동 merge·자동 운영 배포는 미완료 작업이 아니라 제외 범위다.

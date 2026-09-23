@@ -2,6 +2,14 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-23 candidate.10 stale lock 복구·prerelease 갱신
+
+- 개인 기존 candidate.5 설치에 종료된 PID의 stale `app.lock`이 실제로 남은 것을 읽기 전용으로 확인했다. 새 setup.exe가 설치 전 기존 설치본의 `lifecycle.mjs recover-lock`을 호출하도록 보완했다. 합성 candidate.9 홈에서 stale lock 복구→candidate.10 설치와 기존 `historyUrl`/port 보존 통과. 개인 설치 상태는 변경하지 않았다.
+- candidate.10 설치본의 `recover-lock`에 살아 있는 PowerShell PID의 합성 잠금을 넣으면 `PROCESS_STILL_PRESENT`/exit 1이고 잠금이 유지됐다. 해당 프로세스가 종료된 뒤 같은 합성 홈에서 복구가 성공했다. `.runtime` 합성 홈만 사용했다.
+- Agent Profile의 사용하지 않는 고정 버전 문자열을 제거했다. 실제 Claude Code 2.1.280 probe `supported=true`; 이는 CLI 옵션 확인이며 실제 Mail MCP/Agent 분석 성공 증거는 아니다. npm check/build, unit **8/8**, candidate.10 한글 경로 lifecycle start/pause/stop 통과. candidate.9의 UI E2E **1 passed**는 이전 후보 결과이며 candidate.10 UI 코드는 동일하다.
+- 새 소스 커밋 `cb64f473123807a981de83e1b8332b1e3772a063`과 `v0.3.0-candidate.10` 태그를 push하고 [GitHub prerelease](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.0-candidate.10)를 `draft=false`, `prerelease=true`로 게시했다. setup.exe SHA-256 `a54825403f9f56ea2e84dc6b08100d955605212ab9e5ab63a7a906fc8cac5879`, ZIP `79d40fb700814aa85aa44f577cc40e81c6430024bcea1ba907dd920c6f3931fb`, 서명 metadata `0918d1128a8e2f051c4d2fc26b8abf3d8742659df8064a2edf51f1683836da36`; 서버 asset digest 일치. metadata 만료 `2026-10-07T02:42:05.088Z`. setup.exe 공개 URL GET은 HTTP 302 → `release-assets.githubusercontent.com`, 두 번째 GET은 HTTP 200·Content-Length **45,374,976 bytes**로 asset size 일치. 전체 본문 다운로드/설치는 수행하지 않았다.
+- Supabase `history` function은 candidate.9 배포 코드와 동일하다. 승인된 `UPDATE_CATALOG_JSON`을 candidate.10으로 secret set(exit 0)했고 hosted health 200·비인증 update check 401을 확인했다. 실계정 `offered`, 실제 다운로드/설치, 실메일 분석은 사용자 테스트 전이다.
+
 ## 2026-09-23 candidate.9 로컬 검증·GitHub prerelease 게시
 
 - 최종 후보 `0.3.0-candidate.9`의 fresh setup.exe 한글 경로 설치, candidate.8→.9 업그레이드와 개인 설정 보존, lifecycle start/pause/stop이 통과했다. 브라우저 E2E는 로그인·비밀번호 변경·업데이트 버튼·로그아웃 **1 passed**다. check/build/Edge build도 통과했다. 모두 로컬/빌드 증거이며 hosted update API 호출이나 게시 asset을 통한 실사용 업데이트 증거는 아니다.
