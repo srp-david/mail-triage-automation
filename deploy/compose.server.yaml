@@ -1,0 +1,69 @@
+name: mail-triage-history
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: triage_migrator
+      POSTGRES_DB: triage
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
+    volumes: [history:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U triage_migrator -d triage]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [database]
+  api:
+    image: ${HISTORY_IMAGE:?Set reviewed history image tag or digest}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.history
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      DATABASE_URL_FILE: /run/secrets/runtime_database_url
+      AUTH_ISSUER: ${AUTH_ISSUER:?Set issuer}
+      AUTH_AUDIENCE: ${AUTH_AUDIENCE:?Set API audience}
+      AUTH_SIGNING_KEY_FILE: /run/secrets/auth_signing_key
+      TEAM_ID: ${TEAM_ID:?Set team UUID}
+    secrets: [runtime_database_url,auth_signing_key]
+    networks: [database,edge]
+    depends_on:
+      db: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3081/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+  proxy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      HISTORY_DOMAIN: ${HISTORY_DOMAIN:?Set API DNS name}
+      TLS_EMAIL: ${TLS_EMAIL:?Set TLS contact}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge]
+secrets:
+  db_password:
+    file: ${SECRET_DIR:?Set secret directory}/db-password
+  runtime_database_url:
+    file: ${SECRET_DIR:?Set secret directory}/runtime-database-url
+  auth_signing_key:
+    file: ${SECRET_DIR:?Set secret directory}/auth-signing-key.json
+volumes:
+  history:
+  caddy_data:
+  caddy_config:
+networks:
+  database: {internal: true}
+  edge: {}

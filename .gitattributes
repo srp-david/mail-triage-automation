@@ -1,0 +1,8 @@
+packages/ui/ui/** text eol=lf
+packages/ui/viewer/** text eol=lf
+eslint.config.mjs text eol=lf
+.prettierrc.json text eol=lf
+.prettierignore text eol=lf
+website/** text eol=lf
+playwright.docs.config.ts text eol=lf
+test/docs-e2e/** text eol=lf

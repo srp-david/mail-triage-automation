@@ -1,0 +1,10 @@
+{
+  "localPort": 43180,
+  "historyUrl": "http://127.0.0.1:3081",
+  "auth": {
+    "issuer": "https://tenant.example.invalid/",
+    "clientId": "replace-with-native-application-client-id",
+    "audience": "https://history.example.invalid",
+    "refreshMode": "rotating"
+  }
+}

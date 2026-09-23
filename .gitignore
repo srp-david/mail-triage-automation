@@ -1,0 +1,16 @@
+node_modules/
+dist/
+public/preview/
+public/markdown/
+public/react/
+.env
+.runtime/
+*.log
+
+*.dump
+supabase/functions/history/index.js
+supabase/functions/history/index.ts
+supabase/.temp/
+website/.docusaurus/
+website/build/
+website/.generated-assets/

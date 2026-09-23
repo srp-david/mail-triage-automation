@@ -1,0 +1,993 @@
+/* Layout and content flow; Material UI owns controls, typography, and surfaces. */
+.settings-shell {
+  max-width: 1180px;
+  margin-inline: auto;
+}
+.settings-account {
+  max-width: 1180px;
+  margin-inline: auto;
+}
+.setup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 4px 20px;
+}
+.setup-header h2 {
+  margin-bottom: 6px;
+}
+.setup-tabs {
+  border-bottom: 1px solid var(--mui-palette-divider);
+  margin-bottom: 20px;
+}
+.setup-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.setup-next {
+  background: #eef6f3;
+  border-left: 3px solid var(--mui-palette-primary-main);
+  padding: 14px 18px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+}
+.setup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.setup-step {
+  border: 1px solid var(--mui-palette-divider);
+  border-radius: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.setup-step-heading {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid var(--mui-palette-divider);
+}
+.setup-step-heading h3 {
+  margin: 0 0 4px;
+}
+.setup-number {
+  color: var(--mui-palette-primary-main);
+  background: #eef6f3;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 9px;
+  border-radius: 8px;
+}
+.setup-step-body {
+  padding: 16px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.setup-step-body > .MuiButton-root {
+  align-self: flex-start;
+}
+.setup-step-body details {
+  margin: 0;
+}
+.setup-step-body summary {
+  font-size: 13px;
+}
+.setup-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+#view-settings .setup-step-body label:not(.MuiFormLabel-root) {
+  margin: 0;
+}
+.setup-registration {
+  margin-top: 16px;
+  align-items: flex-start;
+}
+.setup-registration > .MuiTextField-root {
+  flex: 1 1 170px;
+}
+.setup-registration > .MuiAlert-root {
+  width: 100%;
+}
+.setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.setup-note {
+  background: var(--mui-palette-background-default);
+  padding: 14px;
+  border-radius: 8px;
+}
+.setup-guide {
+  margin-top: 20px;
+}
+.setup-guide-list {
+  line-height: 1.8;
+  padding-left: 22px;
+  overflow-wrap: anywhere;
+}
+.setup-guide-list li + li {
+  margin-top: 8px;
+}
+.setup-management {
+  max-width: 780px;
+  padding: 4px;
+}
+.setup-management > div > .MuiButton-root,
+.setup-management > .MuiButton-root {
+  margin: 6px 8px 6px 0;
+}
+@media (max-width: 1100px) {
+  .setup-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .setup-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .setup-step-heading {
+    flex-wrap: wrap;
+    row-gap: 10px;
+    padding: 16px 12px;
+  }
+  .setup-step-heading > .MuiChip-root {
+    margin-left: 0;
+  }
+  .setup-step-body {
+    padding: 14px 12px;
+  }
+  .setup-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+main {
+  width: 100%;
+  padding: 20px 28px;
+  margin: auto;
+}
+footer {
+  padding: 12px;
+  text-align: center;
+  color: var(--mui-palette-text-secondary);
+  font-size: 11px;
+}
+section.MuiPaper-root {
+  padding: 20px;
+  margin-bottom: 16px;
+  min-width: 0;
+}
+p {
+  line-height: 1.65;
+  color: var(--mui-palette-text-secondary);
+}
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  line-height: 1.8;
+  padding: 16px;
+  background: var(--mui-palette-background-default);
+  border-radius: 8px;
+}
+.meta {
+  font-size: 12px;
+  color: var(--mui-palette-text-secondary);
+}
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.section-head h2 {
+  margin-bottom: 0;
+}
+.empty {
+  padding: 48px 12px;
+  color: var(--mui-palette-text-secondary);
+  text-align: center;
+}
+#login {
+  max-width: 680px;
+  margin: 48px auto;
+}
+#login form {
+  align-items: flex-end;
+}
+#login label:not(.MuiFormLabel-root),
+.username-panel label:not(.MuiFormLabel-root),
+#view-settings label:not(.MuiFormLabel-root) {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0;
+  min-width: 0;
+}
+.username-panel label:has(input[type='checkbox']),
+#view-settings label:has(input[type='checkbox']) {
+  flex-direction: row;
+  align-items: center;
+}
+.username-panel > fieldset {
+  min-width: 0;
+  border: 1px solid var(--mui-palette-divider);
+  border-radius: 8px;
+  margin: 16px 0;
+  padding: 16px;
+}
+.username-panel > fieldset > .MuiButton-root {
+  margin: 4px 8px 4px 0;
+}
+#login form > label {
+  flex: 1;
+  min-width: 180px;
+}
+#login form > p {
+  flex-basis: 100%;
+  margin-bottom: 0;
+}
+.username-panel > .MuiButton-root,
+#view-settings section > .MuiButton-root {
+  margin: 4px 8px 4px 0;
+}
+#workspace {
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  position: relative;
+}
+#workspace > .workspace-nav {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+}
+.workspace-nav .MuiButton-root {
+  justify-content: flex-start;
+  padding: 10px 14px;
+}
+#view-mailbox,
+#view-history,
+#view-legacy,
+#view-settings,
+#view-admin {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 0;
+}
+#view-settings,
+#view-admin {
+  overflow: auto;
+}
+#menu-toggle {
+  display: none;
+}
+.toolbar.MuiPaper-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+}
+.toolbar p {
+  margin: 0;
+}
+#search-form {
+  display: grid;
+  grid-template-columns: minmax(160px, 280px) minmax(120px, 220px) 150px 140px auto auto;
+  gap: 8px;
+  align-items: center;
+}
+#search-form > * {
+  min-width: 0;
+}
+#search-form .MuiInputBase-root {
+  height: 38px;
+}
+.toolbar-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
+}
+#sync-status {
+  flex: 1;
+  font-size: 12px;
+}
+#sync-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--mui-palette-primary-main);
+}
+#sync-message {
+  font-size: 12px;
+}
+.search-help {
+  margin-left: auto;
+  font-size: 12px;
+  position: relative;
+}
+.search-help #analysis-filter-help {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 6;
+  width: 290px;
+  max-width: calc(100vw - 60px);
+  padding: 12px;
+  background: var(--mui-palette-background-paper);
+  border: 1px solid var(--mui-palette-divider);
+  border-radius: 8px;
+  box-shadow: var(--mui-shadows-3);
+}
+.columns {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.9fr) minmax(400px, 1.4fr);
+  gap: 18px;
+  align-items: start;
+}
+.columns > section {
+  min-width: 0;
+}
+.mail-list-head,
+.mail-list-bottom {
+  flex: none;
+  min-width: 0;
+}
+.mail-list-head {
+  position: relative;
+}
+.mail-list-options {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.mail-view-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.mail-view-tools .MuiInputBase-root {
+  font-size: 12px;
+}
+.mail-view-tools select {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.mail-list-help,
+#thread-link-manager {
+  font-size: 12px;
+}
+.mail-help-content,
+#thread-link-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 6;
+  width: 320px;
+  max-width: 100%;
+  max-height: min(35dvh, 200px);
+  overflow: auto;
+  padding: 12px;
+  background: var(--mui-palette-background-paper);
+  border: 1px solid var(--mui-palette-divider);
+  border-radius: 8px;
+  box-shadow: var(--mui-shadows-3);
+}
+.mail-help-content p {
+  margin: 0 0 8px;
+}
+#applied-filters {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0 0 8px;
+}
+#mails {
+  overflow-anchor: none;
+}
+.mail.MuiButtonBase-root {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border-radius: 6px;
+  text-align: left;
+  border-bottom: 1px solid var(--mui-palette-divider);
+  color: var(--mui-palette-text-primary);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.mail.MuiButtonBase-root:hover {
+  background: var(--mui-palette-action-hover);
+}
+.mail.is-selected.MuiButtonBase-root {
+  background: #e5f2ec;
+  box-shadow: inset 3px 0 var(--mui-palette-primary-main);
+}
+.mail strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+.mail-meta {
+  display: block;
+  color: var(--mui-palette-text-secondary);
+  font-size: 12px;
+  margin-top: 6px;
+}
+.mail-analysis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 7px;
+}
+.mail-thread {
+  border-bottom: 1px solid var(--mui-palette-divider);
+}
+.thread-summary {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.thread-meta {
+  display: block;
+  font-size: 12px;
+  margin-top: 5px;
+  color: var(--mui-palette-text-secondary);
+}
+.thread-count,
+.thread-manual-badge {
+  margin-left: 6px;
+}
+.thread-analysis {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+  max-width: 100%;
+}
+.thread-members {
+  margin-left: 12px;
+  padding-left: 8px;
+  border-left: 2px solid var(--mui-palette-divider);
+}
+.mail-thread.has-selected-mail > summary {
+  background: #e5f2ec;
+}
+.thread-singleton {
+  min-width: 0;
+}
+.thread-draggable {
+  cursor: grab;
+}
+.thread-draggable:active {
+  cursor: grabbing;
+}
+.thread-drop-target {
+  outline: 2px solid var(--mui-palette-info-main);
+  outline-offset: -2px;
+  background: #eff6ff !important;
+}
+.mail.thread-dragging {
+  background: var(--mui-palette-background-paper);
+  box-shadow: var(--mui-shadows-4);
+}
+.thread-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--mui-palette-divider);
+}
+.thread-link-row > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#thread-action-status:not(:empty) {
+  margin-bottom: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #eff6ff;
+  max-height: 100px;
+  overflow: auto;
+  font-size: 12px;
+}
+#thread-detach-zone {
+  padding: 9px;
+  margin-bottom: 8px;
+  border: 1px dashed var(--mui-palette-divider);
+  border-radius: 8px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--mui-palette-text-secondary);
+}
+#thread-detach-zone.is-dragging {
+  background: #fff6ec;
+  border-color: var(--mui-palette-warning-main);
+}
+.mail-list-bottom {
+  padding-top: 8px;
+  background: var(--mui-palette-background-paper);
+  border-top: 1px solid var(--mui-palette-divider);
+}
+.pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+#detail {
+  overflow-wrap: anywhere;
+}
+.mail-back.MuiButton-root {
+  display: none;
+  margin-bottom: 16px;
+}
+.mail-actions,
+.attachment-actions,
+.related-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.mail-attachments {
+  margin: 16px 0;
+  border: 1px solid var(--mui-palette-divider);
+}
+.attachment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.attachment-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 12px;
+  border-top: 1px solid var(--mui-palette-divider);
+}
+.attachment-name {
+  display: block;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.attachment-meta {
+  display: block;
+  font-size: 12px;
+  color: var(--mui-palette-text-secondary);
+  margin-top: 4px;
+}
+.download-status {
+  grid-column: 1/-1;
+  margin: 0;
+  font-size: 12px;
+  color: var(--mui-palette-error-main);
+}
+.attachment-limit {
+  font-size: 12px;
+  margin: 8px 12px;
+}
+.run {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-top: 1px solid var(--mui-palette-divider);
+}
+.run > button {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  justify-content: flex-start;
+  overflow-wrap: anywhere;
+}
+.history-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--mui-palette-divider);
+}
+.history-head > div {
+  min-width: 0;
+}
+.history-head h2 {
+  margin: 0;
+}
+.history-head p {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+.history-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 24px;
+}
+.history-tools p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.history-head,
+.history-tools {
+  flex-shrink: 0;
+}
+.history-body {
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+  padding: 20px 24px;
+  overscroll-behavior: contain;
+  background: var(--mui-palette-background-default);
+}
+.history-body h2,
+#legacy-document {
+  overflow-wrap: anywhere;
+}
+.history-body #report:focus {
+  outline: none;
+}
+.document-info {
+  padding: 8px;
+  margin-bottom: 16px;
+  background: var(--mui-palette-background-default);
+}
+.handling-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
+  border: 1px solid var(--mui-palette-divider);
+  border-radius: 8px;
+}
+.handling-actions p {
+  flex: 1;
+  min-width: 180px;
+  margin: 0;
+}
+.report-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+.analysis-progress {
+  overflow-wrap: anywhere;
+}
+.analysis-progress-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.analysis-progress ol {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+  max-height: 240px;
+  overflow: auto;
+}
+.analysis-progress li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 7px 0;
+  border-top: 1px solid var(--mui-palette-divider);
+  font-size: 12px;
+}
+.analysis-progress-warning,
+.event-failed {
+  color: var(--mui-palette-error-main);
+}
+.related-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--mui-palette-divider);
+}
+.related-row > div:first-child {
+  flex: 1;
+  min-width: 180px;
+}
+.related-status {
+  color: var(--mui-palette-error-main);
+}
+.related-status:empty {
+  display: none;
+}
+.related-picker {
+  margin-top: 12px;
+}
+.related-picker form > .MuiTextField-root {
+  flex: 1;
+  min-width: 150px;
+}
+.related-results {
+  max-height: 320px;
+  overflow: auto;
+  margin: 12px 0;
+}
+.related-candidate.MuiButton-root {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 6px;
+  overflow-wrap: anywhere;
+}
+.related-candidate .meta {
+  display: block;
+}
+.related-preview {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--mui-palette-divider);
+  border-radius: 8px;
+}
+.related-body .mail-body {
+  max-height: none;
+  overflow: visible;
+}
+.preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--mui-palette-divider);
+}
+.preview-head h2 {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.preview-controls {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.preview-hint,
+.preview-status {
+  margin: 0;
+  padding: 8px 20px;
+  font-size: 12px;
+}
+.preview-viewport {
+  flex: 1;
+  min-height: 0;
+  background: var(--mui-palette-background-default);
+  overflow: hidden;
+}
+.preview-viewport iframe {
+  display: block;
+  border: 0;
+  width: 100%;
+  height: 100%;
+}
+.image-preview-viewport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+.image-preview-viewport img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+@media (max-width: 1250px) {
+  #search-form {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  #search-form > .MuiTextField-root:nth-child(-n + 2) {
+    grid-column: span 2;
+  }
+  .columns {
+    grid-template-columns: minmax(260px, 0.9fr) minmax(300px, 1.4fr);
+    gap: 14px;
+  }
+}
+@media (min-width: 901px) and (min-height: 701px) {
+  body:has(#workspace:not([hidden])) {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  body:has(#workspace:not([hidden])) > header,
+  body:has(#workspace:not([hidden])) > footer {
+    flex: none;
+  }
+  body:has(#workspace:not([hidden])) > footer {
+    padding: 5px 16px;
+  }
+  body:has(#workspace:not([hidden])) > main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 16px 28px 8px;
+    margin: 0;
+    overflow: hidden;
+  }
+  #workspace {
+    flex: 1;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
+  }
+  #workspace > .workspace-nav {
+    align-self: start;
+  }
+  #view-mailbox {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .toolbar {
+    flex: none;
+  }
+  .columns {
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
+  }
+  .columns > section {
+    margin: 0;
+    padding: 16px;
+    min-height: 0;
+  }
+  #mail-list {
+    display: flex;
+    flex-direction: column;
+  }
+  #mails {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+  #detail,
+  #view-history,
+  #view-legacy {
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    margin-bottom: 0;
+  }
+  #detail .mail-body {
+    max-height: none;
+    overflow: visible;
+  }
+}
+@media (max-width: 900px) {
+  main {
+    padding: 14px;
+  }
+  #workspace {
+    display: block;
+  }
+  #menu-toggle {
+    display: inline-flex;
+    margin-bottom: 12px;
+  }
+  #workspace > .workspace-nav {
+    display: none;
+    margin-bottom: 12px;
+    padding: 8px;
+    border-radius: 8px;
+    background: var(--mui-palette-background-paper);
+  }
+  #workspace.menu-open > .workspace-nav {
+    display: flex;
+  }
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #view-mailbox:not(.show-detail) #detail {
+    display: none;
+  }
+  #view-mailbox.show-detail > .toolbar,
+  #view-mailbox.show-detail #mail-list {
+    display: none;
+  }
+  .mail-back.MuiButton-root {
+    display: inline-flex;
+  }
+}
+@media (max-width: 900px), (max-height: 700px) {
+  #mails {
+    overflow: visible;
+  }
+  .mail-list-bottom {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding-bottom: 8px;
+  }
+  #detail .mail-back {
+    position: sticky;
+    top: 8px;
+    z-index: 3;
+    background: var(--mui-palette-background-paper);
+  }
+  .columns > section {
+    padding: 16px;
+  }
+}
+@media (max-width: 600px) {
+  #search-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #search-form > .MuiTextField-root:nth-child(-n + 2) {
+    grid-column: auto;
+  }
+  .search-help {
+    margin-left: 0;
+  }
+  .search-help #analysis-filter-help {
+    left: 0;
+    right: auto;
+  }
+  .history-head {
+    padding: 16px;
+  }
+  .history-tools {
+    padding: 10px 16px;
+  }
+  .history-body {
+    padding: 12px;
+  }
+  .attachment-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .attachment-actions {
+    justify-content: flex-start;
+  }
+  .preview-head {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 12px;
+  }
+  .preview-controls {
+    justify-content: flex-end;
+  }
+  .run {
+    flex-wrap: wrap;
+  }
+  .run > button {
+    flex-basis: 100%;
+  }
+}

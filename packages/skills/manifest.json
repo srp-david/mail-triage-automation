@@ -1,0 +1,23 @@
+{
+  "id": "mail-triage-readonly",
+  "version": "1.0.0",
+  "contracts": [
+    "1"
+  ],
+  "agents": [
+    "codex",
+    "claude"
+  ],
+  "requiredTools": [
+    "mail.get_email",
+    "erp.readonly_query"
+  ],
+  "references": [
+    "ERP_SOURCE_ROOT",
+    "BUSINESS_DOCUMENT_ROOT"
+  ],
+  "files": {
+    "mail-triage/SKILL.md": "cc5e5f1026362acfb817516406dc48af87164e239090096a537eb86e2795d6e5"
+  },
+  "releaseApproved": false
+}

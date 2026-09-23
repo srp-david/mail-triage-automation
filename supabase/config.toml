@@ -1,0 +1,7 @@
+project_id = "mail-triage-free-poc"
+
+[functions.history]
+verify_jwt = false
+entrypoint = "./functions/history/index.js"
+# Custom ES256 JWT + live DB session/ACL verification is mandatory inside the function.
+# No Supabase anon/service_role credentials are used by local PCs.

@@ -1,0 +1,6 @@
+{
+  "name": "@mail-triage/local-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module"
+}

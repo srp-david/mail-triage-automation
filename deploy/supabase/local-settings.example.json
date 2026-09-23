@@ -1,0 +1,6 @@
+{
+  "localPort": 43180,
+  "historyUrl": "https://PROJECT.supabase.co/functions/v1/history",
+  "auth": {"mode":"username","issuer":"https://PROJECT.supabase.co/history-auth","audience":"mail-triage"},
+  "evidenceRoots": {}
+}

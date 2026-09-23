@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "status": "not_started",
+  "releaseVersion": null,
+  "apiDeployment": null,
+  "approvedMailIds": [],
+  "participants": [
+    {"alias": "A", "pcAlias": null, "agent": "codex", "installedVersion": null},
+    {"alias": "B", "pcAlias": null, "agent": "claude", "installedVersion": null}
+  ],
+  "checks": {
+    "verifiedEmail": null,
+    "sharedSourceRead": null,
+    "privateSourceDenied": null,
+    "originalUnavailable": null,
+    "developerPcOff": null,
+    "runnerPcOff": null,
+    "duplicateAndResponseLoss": null,
+    "settingsAndRollback": null,
+    "backupRestore": null,
+    "agentReadOnly": null
+  },
+  "observations": [],
+  "openDefects": [],
+  "operator": null,
+  "expansionDecision": "pending"
+}

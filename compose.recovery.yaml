@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: triage
+      POSTGRES_PASSWORD: recovery-fixture-only
+      POSTGRES_DB: triage
+    volumes:
+      - fixture:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U triage"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  runner:
+    image: mail-triage-web:local
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://triage:recovery-fixture-only@db:5432/triage
+      TRIAGE_TOKEN: synthetic-recovery-fixture-token-not-for-production-0000000000
+    command: ["node", "scripts/recovery-fixture.mjs", "seed"]
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  fixture:

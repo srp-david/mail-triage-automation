@@ -1,0 +1,54 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  min-width: 0;
+}
+body {
+  font:
+    14px 'Segoe UI',
+    'Malgun Gothic',
+    sans-serif;
+  background: #f3f5f7;
+  color: #203341;
+  overflow: auto;
+}
+* {
+  box-sizing: border-box;
+}
+p[role],
+#root > p {
+  padding: 24px;
+  line-height: 1.7;
+}
+#root > div {
+  height: 100%;
+  min-width: 0;
+}
+a {
+  cursor: default;
+}
+.sheet-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: white;
+  border-bottom: 1px solid #dce4df;
+  flex-shrink: 0;
+}
+.sheet-tabs {
+  display: flex;
+  gap: 6px;
+  overflow: auto;
+  min-width: 0;
+}
+.sheet-zoom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}

@@ -1,0 +1,22 @@
+FROM node:24.21.0-bookworm-slim@sha256:2fe369e969550cde8e867afc3fe370b260140cab4a23d467074295b42163d553 AS build
+WORKDIR /app
+COPY package*.json ./
+COPY apps ./apps
+COPY packages ./packages
+RUN npm ci
+COPY tsconfig.json ./
+COPY src ./src
+COPY scripts/build-compat.mjs ./scripts/build-compat.mjs
+RUN npx tsc && node scripts/build-compat.mjs && npm prune --omit=dev
+
+FROM node:24.21.0-bookworm-slim@sha256:2fe369e969550cde8e867afc3fe370b260140cab4a23d467074295b42163d553
+WORKDIR /app
+ENV NODE_ENV=production HISTORY_BIND=0.0.0.0 PORT=3081
+COPY --from=build /app/node_modules ./node_modules
+COPY package.json ./package.json
+COPY --from=build /app/dist/apps/history-api ./dist/apps/history-api
+COPY --from=build /app/dist/packages/contracts ./dist/packages/contracts
+COPY --from=build /app/dist/src/config.js /app/dist/src/db.js /app/dist/src/history.js /app/dist/src/related.js /app/dist/src/schema.js /app/dist/src/progress.js /app/dist/src/migration.sql ./dist/src/
+USER node
+EXPOSE 3081
+CMD ["node","dist/apps/history-api/src/main.js"]

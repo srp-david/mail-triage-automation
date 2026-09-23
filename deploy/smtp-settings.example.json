@@ -1,0 +1,9 @@
+{
+  "provider": "configure-in-auth0-dashboard",
+  "host": "smtp.example.invalid",
+  "port": 587,
+  "tlsRequired": true,
+  "from": "Mail Triage <noreply@example.invalid>",
+  "credentials": "secret-manager-only",
+  "requiredChecks": ["SPF", "DKIM", "DMARC", "Hiworks inbox delivery", "verification link", "password reset"]
+}
