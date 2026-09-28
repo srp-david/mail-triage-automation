@@ -3,6 +3,7 @@ dist/
 public/preview/
 public/markdown/
 public/react/
+public/docs/
 .env
 .runtime/
 *.log

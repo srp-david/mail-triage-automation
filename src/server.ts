@@ -1,6 +1,7 @@
 import express from 'express';
 import {readFile} from 'node:fs/promises';
 import {sendUiDocument} from '../packages/ui/security.js';
+import {mountDocumentation} from '../packages/ui/docs.js';
 import { z } from 'zod';
 import { config, HttpError } from './config.js';
 import { pool, migrate } from './db.js';
@@ -206,6 +207,7 @@ export function createApp(mailCall = callMail, mailRead = fullMail, attachmentRe
   });
   // React uses the same origin, cookies and API contract as the API.
   app.get(['/','/react','/react/','/react/index.html'],async(_req,res)=>sendUiDocument(res,await readFile('public/react/index.html','utf8')));
+  mountDocumentation(app,'public');
   app.use(express.static('public'));
   app.use((err:any,_req:express.Request,res:express.Response,_next:express.NextFunction)=>{
     const status=err instanceof z.ZodError?400:err instanceof HttpError?err.status:err.code==='23505'?409:500;

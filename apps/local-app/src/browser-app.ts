@@ -1,5 +1,6 @@
 import express from 'express';
 import {sendUiDocument} from '../../../packages/ui/security.js';
+import {mountDocumentation} from '../../../packages/ui/docs.js';
 import {readFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {randomBytes,timingSafeEqual,createHmac} from 'node:crypto';
@@ -88,6 +89,7 @@ export function createBrowserApp(session:LocalSession,options:{port:number;featu
   app.post('/api/logout',async(_req,res)=>{rotate();setCookie(res);await options.beforeLogout?.();res.json(await session.logout());});
   options.features?.(app);
   if(options.staticRoot){
+    mountDocumentation(app,options.staticRoot);
     app.get(['/','/react','/react/','/react/index.html'],async(_req,res)=>sendUiDocument(res,await readFile(join(options.staticRoot!,'react','index.html'),'utf8'),true));
     app.use('/preview',(_req,res,next)=>{res.set('Content-Security-Policy',"default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self'; img-src data: blob:; font-src data: blob:; style-src 'self' 'unsafe-inline'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'");next();});
     app.use(express.static(options.staticRoot,{index:false}));

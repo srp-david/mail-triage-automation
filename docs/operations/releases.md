@@ -4,6 +4,8 @@
 
 ## 1. 결정·기본안·미정 사항
 
+v0.3.10부터 Windows 패키징은 `scripts/build-bundled-docs.mjs`로 Docusaurus 문서를 `/docs/` 기준으로 다시 빌드해 `public/docs`에 포함한다. 패키징 환경은 루트 의존성과 별도로 `npm.cmd run docs:install`이 필요하다. 개발 중 같은 origin의 문서를 확인하려면 `npm.cmd run docs:bundle`을 실행한다. 일반 `docs:dev`/`docs:build`의 루트 경로 설정은 유지한다. 설치형 앱의 기술 문서 링크는 `/docs/`로 고정하고, 서버형 UI에서는 명시한 `VITE_DOCS_URL`을 사용할 수 있다.
+
 | 구분 | 내용 |
 |---|---|
 | 사용자 방향 | GitHub 저장소는 public으로 시작하고 필요하면 private 전환. Release에 앱 파일과 변경 내역 보관 |

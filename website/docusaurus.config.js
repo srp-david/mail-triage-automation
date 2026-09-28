@@ -2,13 +2,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 const readmePath = path.resolve(__dirname, '../README.md');
 const generatedAssets = path.resolve(__dirname, '.generated-assets');
+const baseUrl = process.env.TRIAGE_DOCS_BASE_URL || '/';
 fs.mkdirSync(generatedAssets, { recursive: true });
 
 const config = {
   title: 'Mail Triage 기술 문서',
   tagline: '구조, 개발, 운영과 검증 기록',
   url: 'http://localhost:3000',
-  baseUrl: '/',
+  baseUrl,
   trailingSlash: true,
   onBrokenLinks: 'throw',
   noIndex: true,
@@ -41,7 +42,7 @@ const config = {
           url === '../README.md' &&
           sourceFilePath.replaceAll('\\', '/').endsWith('/docs/README.md')
         )
-          return '/project-readme.txt';
+          return 'pathname://' + baseUrl + 'project-readme.txt';
         throw new Error(`Unresolved Markdown link: ${sourceFilePath} -> ${url}`);
       },
       onBrokenMarkdownImages: 'throw',

@@ -10,6 +10,7 @@ const checksums=await fetch('https://nodejs.org/dist/v24.16.0/SHASUMS256.txt');i
 const expected=(await checksums.text()).split('\n').find(line=>line.trim().endsWith('win-x64/node.exe'))?.split(/\s+/)[0];
 if(!expected||createHash('sha256').update(await readFile(process.execPath)).digest('hex')!==expected)throw new Error('Node runtime checksum mismatch');
 const license=await fetch('https://raw.githubusercontent.com/nodejs/node/v24.16.0/LICENSE');if(!license.ok)throw new Error('Node license fetch failed');
+await exec(process.execPath,['scripts/build-bundled-docs.mjs'],{windowsHide:true,maxBuffer:4000000});
 const target=resolve('.runtime/packages',version);await mkdir(dirname(target),{recursive:true});await mkdir(target,{recursive:false});
 for(const sub of ['apps/local-app','packages/contracts','packages/history-client','packages/runner','packages/agent-adapters','packages/skills','packages/ui'])await cp('dist/'+sub,join(target,'dist',sub),{recursive:true});
 await cp('public',join(target,'public'),{recursive:true});

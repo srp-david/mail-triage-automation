@@ -30,6 +30,7 @@
     "docs:install": "npm --prefix website ci",
     "docs:dev": "npm --prefix website start --",
     "docs:build": "npm --prefix website run build --",
+    "docs:bundle": "node scripts/build-bundled-docs.mjs",
     "docs:serve": "npm --prefix website run serve --",
     "docs:test": "playwright test --config playwright.docs.config.ts"
   },
