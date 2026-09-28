@@ -30,3 +30,13 @@
 질문·추가 조사·결정·미확정 사항·회신 초안을 공용 대화로 저장한다. 개인 Agent 질문은 기준 보고서와 최근 30개 대화의 snapshot을 사용하고 원본 메일을 조회하지 않는다. 사용자가 허용한 경우에만 설정된 로컬 읽기 자료와 DB 도구를 제공한다. AI 답변은 대화에만 추가하며 보고서 반영은 명시적 편집 저장이다. 질문 작업은 실행 장치당 하나, 기존 분석과 합산하여 팀당 두 개로 제한한다. 10분 실행 기한, DPAPI outbox와 요청 대조를 사용하며 불확실한 실행을 자동 반복하지 않는다.
 
 검증: 전체 unit/UI/격리 PostgreSQL 163건, check/build/Edge bundle 통과. 로컬 Supabase Edge의 migration 재실행·runtime grants·인증·Runner·복원 11군 통과. 실제 개인 AI 및 타 PC의 사용 검증은 수행하지 않았다.
+
+## 기존 데이터 이관
+
+`import-history.ts`는 운영자 전용이며 HTTP API에 노출하지 않는다. source/소유자/팀을 명시하고 전체 bundle과 대상 충돌 상태를 포함한 preview hash를 대조한 후 한 트랜잭션으로 반영한다. 원본 UUID·결과 JSON·문서·연관 관계를 보존하며 실행 중 분석과 충돌 자료는 거절한다. 기존 Markdown 보고서 중 메일에 연결된 문서는 결정적인 UUID의 분석 이력으로 추가하여 공유할 수 있다. 미연결 문서는 원문 그대로 컬렉션에 보관한다.
+
+- `scripts/import-shared-history.mjs BUNDLE PLAN [--confirm HASH]`: migration DB 연결 파일과 CA를 사용한다. 먼저 옵션 없이 미리보기한다.
+- `node --import tsx scripts/prepare-shared-history.mjs BUNDLE PLAN OUTPUT_SQL`: 임시 DB에서 이관과 재실행을 검증하고 원자적인 운영 SQL을 만든다. SQL도 실제 데이터이므로 보호된 Git 제외 폴더에 둔다. 기존 migration checksum과 소유자·팀·활성 작업을 검증하며 기존 데이터 충돌 시 전체 rollback한다.
+- schema migration 006~009와 `private-grants.sql` 적용 후 새 Edge API 및 local-app을 배포해야 한다. 설치본 코드만 변경하거나 API만 갱신하는 것으로 신규 UI까지 배포되지는 않는다.
+
+실제 자료 복제본 검증: 기존 메일 39건, 분석 13건, 이전 문서 33건, 기존 문서 연결 30건, 관련 메일 4건. MCP 식별 대조 39/39 일치. 공유 가능한 보고서 43건(기존 분석 13 + 연결된 이전 보고서 30), 미연결 문서 3건. 원본 13개 결과 JSON 일치와 동일 이관 재실행 시 중복 없음 확인. 원본 DB와 ERP 데이터는 수정하지 않는다.

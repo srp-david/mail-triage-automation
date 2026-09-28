@@ -98,3 +98,23 @@ test('AI questions freeze report version, enforce runner limits and preserve rep
  const after=await collaboration.get(owner,row.id);expect(after.version).toBe(2);expect(after.messages.filter(m=>m.kind==='answer')).toHaveLength(1);
  await expect(questions.complete(owner,job.id,{result:{...result,report:'Changed'}},runner.credential)).rejects.toThrow('RESULT_CONFLICT');
 });
+test('operator import previews, preserves originals, replays and rejects altered records atomically',async()=>{
+ const {importHistory,historyTables}=await import('../apps/history-api/src/import-history.js');
+ const owner=await directory.login({issuer:'https://test/',subject:'importer',email:'importer@example.test'});await pool.query("UPDATE membership SET role='admin' WHERE user_id=$1",[owner.userId]);
+ const mailId=randomUUID(),runId=randomUUID();
+ const tables:any=Object.fromEntries(historyTables.map(t=>[t,[]]));
+ tables.mail_identity=[{id:mailId,store_id:'import-fixture',mail_id:42,message_id:evidence.messageId,subject:evidence.subject,created_at:'2026-09-28T00:00:00+00:00',identity_kind:'mcp'}];
+ tables.analysis_run=[{id:runId,mail_key:mailId,source:'direct',request_id:randomUUID(),request_hash:'fixture',status:'completed',created_at:'2026-09-28T00:00:00+00:00',progress_events:[]}];
+ tables.report_version=[{run_id:runId,result:{report:'Original import'},created_at:'2026-09-28T00:00:00+00:00'}];
+ const bundle={format:1,tables},plan={ownerId:owner.userId,teamId:team,collectionId:randomUUID(),permission:'read',sources:[{storeId:'import-fixture',sourceId:randomUUID(),instanceId:randomUUID(),displayName:'Import fixture'}],proofs:[{storeId:'import-fixture',mailId:42,evidence}]};
+ const c=await pool.connect();try{
+  const preview=await importHistory(c,bundle,plan);expect(preview.applied).toBe(false);
+  await expect(importHistory(c,bundle,plan,'0'.repeat(64))).rejects.toThrow('IMPORT_PREVIEW_CHANGED');
+  expect((await c.query('SELECT 1 FROM mail_identity WHERE id=$1',[mailId])).rowCount).toBe(0);
+  expect((await importHistory(c,bundle,plan,preview.previewHash)).applied).toBe(true);
+  const retry=await importHistory(c,bundle,plan);expect(retry.counts.report_version.insert).toBe(0);
+  await importHistory(c,bundle,plan,retry.previewHash);
+  tables.report_version[0].result.report='Changed';await expect(importHistory(c,bundle,plan)).rejects.toThrow('HISTORY_RECORD_CONFLICT');
+  expect((await c.query('SELECT result FROM report_version WHERE run_id=$1',[runId])).rows[0].result.report).toBe('Original import');
+ }finally{c.release();}
+});
