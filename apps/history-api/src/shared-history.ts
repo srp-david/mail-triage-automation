@@ -6,8 +6,9 @@ import {lockShared,lock,sourceAccess,digest} from './directory.js';
 import {ApiError,uuid,type Principal} from '../../../packages/contracts/src/v1.js';
 
 export async function historyAccess(c:PoolClient,actor:Principal,id:string,write=false){
-  const r=(await c.query(`SELECT r.*,m.store_id,m.mail_id,m.message_id,m.subject,m.identity_kind,m.handled_at,s.id AS source_id
-    FROM analysis_run r JOIN mail_identity m ON m.id=r.mail_key JOIN source s ON s.store_id=m.store_id WHERE r.id=$1`,[id])).rows[0];
+  const r=(await c.query(`SELECT r.*,m.store_id,m.mail_id,m.message_id,m.subject,m.identity_kind,h.handled_at,s.id AS source_id
+    FROM analysis_run r JOIN mail_identity m ON m.id=r.mail_key JOIN source s ON s.store_id=m.store_id
+    LEFT JOIN personal_mail_handling h ON h.mail_key=m.id AND h.user_id=$2 WHERE r.id=$1`,[id,actor.userId])).rows[0];
   if(!r)throw new ApiError(404,'RUN_NOT_FOUND');await sourceAccess(c,actor,r.source_id,write);return r;
 }
 const mailProof=z.object({id:z.number().int().positive().safe(),messageId:z.string().max(4000).nullable(),fetchedAt:z.string().min(1).max(100),subject:z.string().max(10000)}).strict();
@@ -32,10 +33,11 @@ export class SharedHistory {
   });}
   async list(actor:Principal,sourceId:string,offset=0,mailId?:number,query=''){return transaction(async c=>{
     await lockShared(c);const s=await sourceAccess(c,actor,sourceId);
-    return (await c.query(`SELECT r.id,r.status,r.created_at AS "createdAt",r.finished_at AS "finishedAt",r.error,m.mail_id AS "mailId",m.subject,m.handled_at AS "handledAt",v.agent
+    return (await c.query(`SELECT r.id,r.status,r.created_at AS "createdAt",r.finished_at AS "finishedAt",r.error,m.mail_id AS "mailId",m.subject,h.handled_at AS "handledAt",v.agent
       FROM analysis_run r JOIN mail_identity m ON m.id=r.mail_key LEFT JOIN v1_run v ON v.run_id=r.id
+      LEFT JOIN personal_mail_handling h ON h.mail_key=m.id AND h.user_id=$5
       WHERE m.store_id=$1 AND ($3::bigint IS NULL OR m.mail_id=$3) AND ($4='' OR strpos(lower(m.subject),lower($4))>0)
-      ORDER BY r.created_at DESC,r.id DESC LIMIT 100 OFFSET $2`,[s.store_id,offset,mailId??null,query])).rows;
+      ORDER BY r.created_at DESC,r.id DESC LIMIT 100 OFFSET $2`,[s.store_id,offset,mailId??null,query,actor.userId])).rows;
   });}
   async review(actor:Principal,id:string,input:unknown){
     const b=z.object({requestId:uuid,body:z.string().trim().min(1).max(500000)}).strict().parse(input);
@@ -49,11 +51,13 @@ export class SharedHistory {
   async handling(actor:Principal,id:string,completed:boolean){return transaction(async c=>{
     await lock(c);const r=await historyAccess(c,actor,id,true);
     if(completed&&(await c.query("SELECT 1 FROM analysis_run WHERE mail_key=$1 AND status IN ('queued','running')",[r.mail_key])).rowCount)throw new ApiError(409,'RUN_ACTIVE');
-    return (await c.query('UPDATE mail_identity SET handled_at=CASE WHEN $2 THEN coalesce(handled_at,now()) ELSE NULL END WHERE id=$1 RETURNING handled_at AS "handledAt"',[r.mail_key,completed])).rows[0];
+    if(completed)return (await c.query('INSERT INTO personal_mail_handling(mail_key,user_id) VALUES($1,$2) ON CONFLICT(mail_key,user_id) DO UPDATE SET handled_at=personal_mail_handling.handled_at RETURNING handled_at AS "handledAt"',[r.mail_key,actor.userId])).rows[0];
+    await c.query('DELETE FROM personal_mail_handling WHERE mail_key=$1 AND user_id=$2',[r.mail_key,actor.userId]);return {handledAt:null};
   });}
   async summaries(actor:Principal,sourceId:string,ids:number[]){return transaction(async c=>{
     await lockShared(c);const s=await sourceAccess(c,actor,sourceId);
-    return (await c.query(`SELECT m.mail_id::text AS "mailId",m.handled_at AS "handledAt",a.*,l."legacyCount" FROM mail_identity m
+    return (await c.query(`SELECT m.mail_id::text AS "mailId",h.handled_at AS "handledAt",a.*,l."legacyCount" FROM mail_identity m
+      LEFT JOIN personal_mail_handling h ON h.mail_key=m.id AND h.user_id=$3
       CROSS JOIN LATERAL (SELECT count(*)::int AS "runCount",count(*) FILTER(WHERE r.status='completed')::int AS "completedCount",(array_agg(r.status ORDER BY r.created_at DESC,r.id DESC))[1] AS "latestStatus" FROM analysis_run r WHERE r.mail_key=m.id) a
       CROSS JOIN LATERAL (SELECT count(*)::int AS "legacyCount" FROM legacy_link ll JOIN legacy_collection_document d ON d.document_id=ll.document_id JOIN legacy_collection lc ON lc.id=d.collection_id
         JOIN membership own ON own.user_id=lc.owner_user_id AND own.team_id=$4 AND own.active

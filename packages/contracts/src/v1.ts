@@ -1,5 +1,6 @@
 import {z} from 'zod';
 import {resultSchema} from './schema.js';
+import {mailEvidence} from './mail-identity.js';
 export {resultSchema};
 export const contractVersion='1' as const;
 export const uuid=z.string().uuid();
@@ -8,6 +9,7 @@ export const runInput=z.object({
   subject:z.string().max(2000),requestId:uuid,runnerId:uuid,
   agent:z.enum(['codex','claude']),executorKind:z.literal('local').default('local'),
   verifiedAt:z.string().datetime(),parentId:uuid.optional(),answer:z.string().max(20000).optional(),
+  mailEvidence:mailEvidence.optional(),
 }).strict();
 export type RunInput=z.infer<typeof runInput>;
 export type Principal={userId:string;sessionId?:string};

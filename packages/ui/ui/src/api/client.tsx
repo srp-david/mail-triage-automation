@@ -24,6 +24,11 @@ export function createApi(unauthorized: () => void, csrf: () => string = () => '
     const value = await response.json();
     if (!response.ok) {
       const messages: Record<string, string> = {
+        COMMON_MAIL_BUSY:
+          '다른 사용자가 같은 메일을 분석 중입니다. 잠시 후 공유 분석을 다시 확인하세요.',
+        COMMON_MAIL_IDENTITY_CHANGED:
+          '기존 연결과 메일 식별 정보가 다릅니다. 담당자에게 연결 확인을 요청하세요.',
+        REPORT_NOT_FOUND: '보고서를 찾을 수 없거나 공유 권한이 변경되었습니다.',
         LOCAL_MCP_NOT_CONFIGURED:
           'Mail MCP 주소가 설정되지 않았습니다. 개인 연결의 연결 환경에서 입력하세요.',
         RUNNER_REQUIRED: '이 PC의 실행 장치를 선택하고 저장하세요.',

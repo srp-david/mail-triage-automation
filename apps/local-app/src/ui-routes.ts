@@ -9,6 +9,7 @@ import {analysisStatus,searchByAnalysis} from './mail-search.js';
 import {searchThreads,scanThreadMails} from './mail-threads.js';
 import {ThreadSearchCache} from './thread-cache.js';
 import {attachmentDownload} from './attachments.js';
+import {evidenceFromMail} from '../../../packages/contracts/src/mail-identity.js';
 // cacheScope is backend-only and binds snapshots to the authenticated user and MCP instance/endpoint.
 export type LocalSelection={sourceId:string;cacheScope?:string;collectionId?:string;runnerId?:string;agent:'codex'|'claude';original?:MailSource};
 export interface LocalUiContext {
@@ -26,10 +27,17 @@ function identity(mail:any,expected?:{id:number;messageId?:string|null;fetchedAt
   if(expected&&(value.id!==expected.id||expected.messageId!==undefined&&value.messageId!==expected.messageId||expected.fetchedAt!==undefined&&value.fetchedAt!==expected.fetchedAt))throw new ApiError(409,'MAIL_IDENTITY_CHANGED');return value;
 }
 const present=(r:any,selection:LocalSelection)=>({...r,store_id:r.sourceId??selection.sourceId,mail_id:r.mailId,message_id:r.messageId,identity_kind:r.identityKind,handled_at:r.handledAt,created_at:r.createdAt,started_at:r.startedAt,finished_at:r.finishedAt,progress_events:r.progress,source:r.agent==='unknown'?'legacy':'web',
-  relatedMails:r.relatedMails?.map((x:any)=>({...x,store_id:r.sourceId,available:!!selection.original&&r.sourceId===selection.sourceId&&x.store_id===r.storeId}))});
+  collaboration:true,relatedMails:r.relatedMails?.map((x:any)=>({...x,store_id:r.sourceId,available:!!selection.original&&r.sourceId===selection.sourceId&&x.store_id===r.storeId}))});
 export function localUiRoutes(app:express.Express,h:HistoryClient,context:LocalUiContext){
   const threadCache=new ThreadSearchCache<Awaited<ReturnType<typeof scanThreadMails>>>();
   const summaries=(sourceId:string,ids:number[])=>h.request<any[]>('/sources/'+sourceId+'/mail-analysis',{mailIds:ids}).then(x=>x??[]);
+  app.get('/api/reports/:id',async(req,res)=>res.json(await h.request('/reports/'+uuid.parse(req.params.id))));
+  app.post('/api/reports/:id/share',async(req,res)=>res.json(await h.request('/reports/'+uuid.parse(req.params.id)+'/share',req.body)));
+  app.post('/api/mails/:id/shared-reports',async(req,res)=>{
+    const s=await context.selection(),mailId=number.parse(req.params.id),raw=await original(s).call('get_email',{id:mailId,body_limit:1});identity(raw,{id:mailId});
+    const match=await h.request('/sources/'+s.sourceId+'/mail-identity',{mailId,evidence:evidenceFromMail(raw),verifiedAt:new Date().toISOString()});
+    res.json({match,reports:await h.request('/sources/'+s.sourceId+'/mails/'+mailId+'/shared-reports')});
+  });
   app.get('/api/status',async(_req,res)=>res.json(await context.status()));
   app.get('/api/sources',async(_req,res)=>res.json(await h.request('/sources')));
   app.post('/api/sources',async(req,res)=>res.json(await context.registerSource(req.body)));
@@ -45,8 +53,8 @@ export function localUiRoutes(app:express.Express,h:HistoryClient,context:LocalU
   app.post('/api/runs',async(req,res)=>{
     const b=z.object({storeId:uuid,mailId:number,messageId:z.string().nullable().optional(),requestId:uuid,parentId:uuid.optional(),answer:z.string().max(20000).optional()}).parse(req.body),s=await context.selection();
     if(b.storeId!==s.sourceId)throw new ApiError(409,'SOURCE_CHANGED');if(!s.runnerId)throw new ApiError(409,'RUNNER_REQUIRED');
-    const mail=identity(await original(s).call('get_email',{id:b.mailId,body_limit:1}),{id:b.mailId,messageId:b.messageId});
-    res.status(201).json(await h.start({sourceId:s.sourceId,mailId:b.mailId,messageId:mail.messageId,subject:mail.subject,requestId:b.requestId,runnerId:s.runnerId,agent:s.agent,executorKind:'local',verifiedAt:new Date().toISOString(),parentId:b.parentId,answer:b.answer}));
+    const raw=await original(s).call('get_email',{id:b.mailId,body_limit:1}),mail=identity(raw,{id:b.mailId,messageId:b.messageId});
+    res.status(201).json(await h.start({sourceId:s.sourceId,mailId:b.mailId,messageId:mail.messageId,subject:mail.subject,mailEvidence:evidenceFromMail(raw),requestId:b.requestId,runnerId:s.runnerId,agent:s.agent,executorKind:'local',verifiedAt:new Date().toISOString(),parentId:b.parentId,answer:b.answer}));
   });
   for(const action of ['handling','reviews','cancel'])app.post('/api/runs/:id/'+action,async(req,res)=>res.json(await h.request('/runs/'+uuid.parse(req.params.id)+'/'+action,req.body)));
   app.get('/api/runs/:id/export',async(req,res)=>{const r=await h.get(uuid.parse(req.params.id));if(!r.result)throw new ApiError(409,'NO_REPORT');const body=r.result.report+r.reviews.map((x:any)=>'\n\n## '+(x.authorDisplay??x.author)+' 리뷰\n\n'+x.body).join('');res.set('X-Report-SHA256',createHash('sha256').update(body).digest('hex')).type('text/markdown').send(body);});

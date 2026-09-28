@@ -14,6 +14,7 @@ import {
 } from '../../api/types';
 import { useLatest, useResource } from '../../hooks/async';
 import { Action } from '../../components/Common';
+import { MailSharedReports } from '../analysis/SharedReports';
 import { MailContent, PreviewDialog } from '../../components/Documents';
 import { previewFormat } from '../../../../../../public/office-preview.js';
 const LIMIT = 5 * 1024 * 1024;
@@ -115,7 +116,7 @@ export function MailDetail({
   onBack: () => void;
   onLoaded: () => void;
 }) {
-  const { api, storeId } = useSession(),
+  const { api, storeId, userId } = useSession(),
     life = useRef(0),
     [preview, setPreview] = useState<Attachment | null>(null);
   const resource = useResource(async (signal) => {
@@ -271,6 +272,7 @@ export function MailDetail({
           ? '분석 이력을 확인하지 못했습니다. 다시 확인한 뒤 분석할 수 있습니다.'
           : `분석: ${labels[summary?.latestStatus ?? ''] ?? '미분석'} · 업무 처리: ${summary?.handledAt ? '처리 완료' : '완료 표시 없음'}`}
       </p>
+      {userId && <MailSharedReports key={id} mailId={id} />}
       {!!attachments.length && (
         <Disclosure className="mail-attachments">
           <DisclosureTitle>첨부파일 · {attachments.length}개</DisclosureTitle>

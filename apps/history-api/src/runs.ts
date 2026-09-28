@@ -6,6 +6,7 @@ import {lock,member,sourceAccess,deviceAccess,digest,secretMatches} from './dire
 import {ApiError,runInput,leaseSchema,uuid,completionSchema,runFailureCode,type Principal,type RunInput} from '../../../packages/contracts/src/v1.js';
 import {progressSchema} from '../../../src/progress.js';
 import {SharedHistory} from './shared-history.js';
+import {bindCommonMail} from './common-mail.js';
 async function expire(c:PoolClient){
   await c.query(`UPDATE analysis_run r SET status=CASE WHEN v.cancel_requested_at IS NULL THEN 'failed' ELSE 'cancelled' END,error='LEASE_OR_QUEUE_EXPIRED',finished_at=now(),lease_until=NULL
     FROM v1_run v WHERE v.run_id=r.id AND ((r.status='running' AND (r.lease_until<=now() OR r.started_at<now()-interval '30 minutes')) OR (r.status='queued' AND r.created_at<now()-interval '24 hours'))`);
@@ -16,8 +17,9 @@ async function target(c:PoolClient,actor:Principal,runnerId:string,sourceId:stri
   return r;
 }
 async function row(c:PoolClient,actor:Principal,id:string,write=false){
-  const r=(await c.query(`SELECT r.*,v.*,m.mail_id,m.message_id,m.subject,m.handled_at,r.lease_until>now() AND r.started_at>now()-interval '30 minutes' AS valid
-    FROM analysis_run r JOIN v1_run v ON v.run_id=r.id JOIN mail_identity m ON m.id=r.mail_key WHERE r.id=$1`,[id])).rows[0];
+  const r=(await c.query(`SELECT r.*,v.*,m.mail_id,m.message_id,m.subject,h.handled_at,r.lease_until>now() AND r.started_at>now()-interval '30 minutes' AS valid
+    FROM analysis_run r JOIN v1_run v ON v.run_id=r.id JOIN mail_identity m ON m.id=r.mail_key
+    LEFT JOIN personal_mail_handling h ON h.mail_key=m.id AND h.user_id=$2 WHERE r.id=$1`,[id,actor.userId])).rows[0];
   if(!r)throw new ApiError(404,'RUN_NOT_FOUND');await sourceAccess(c,actor,r.source_id,write);return r;
 }
 async function owned(c:PoolClient,actor:Principal,id:string,input:unknown,device:string){
@@ -37,13 +39,19 @@ export class Runs {
       const prior=(await c.query('SELECT r.*,v.requested_by FROM analysis_run r JOIN v1_run v ON v.run_id=r.id WHERE request_id=$1',[b.requestId])).rows[0];
       if(prior){if(prior.request_hash!==hash||prior.requested_by!==actor.userId)throw new ApiError(409,'REQUEST_CONFLICT');return {id:prior.id,status:prior.status};}
       if(Math.abs(Date.now()-Date.parse(b.verifiedAt))>300000)throw new ApiError(400,'STALE_MAIL_PROOF');
+      if(b.mailEvidence){
+        if(b.mailEvidence.messageId!==b.messageId||b.mailEvidence.subject!==b.subject)throw new ApiError(409,'MAIL_IDENTITY_CHANGED');
+        await bindCommonMail(c,actor,b.sourceId,{mailId:b.mailId,evidence:b.mailEvidence,verifiedAt:b.verifiedAt});
+      }
       let mail=(await c.query('SELECT * FROM mail_identity WHERE store_id=$1 AND mail_id=$2',[s.store_id,b.mailId])).rows[0];
       if(mail&&mail.message_id!==b.messageId)throw new ApiError(409,'MAIL_IDENTITY_CHANGED');
-      if(mail?.handled_at)throw new ApiError(409,'MAIL_HANDLED');
+      if(mail&&(await c.query('SELECT 1 FROM personal_mail_handling WHERE mail_key=$1 AND user_id=$2',[mail.id,actor.userId])).rowCount)throw new ApiError(409,'MAIL_HANDLED');
       if(!mail)mail=(await c.query('INSERT INTO mail_identity(id,store_id,mail_id,message_id,subject) VALUES($1,$2,$3,$4,$5) RETURNING *',[randomUUID(),s.store_id,b.mailId,b.messageId,b.subject])).rows[0];
       if(b.parentId){const parent=await row(c,actor,b.parentId,true);if(parent.mail_key!==mail.id)throw new ApiError(409,'PARENT_MISMATCH');if(parent.status==='needs_input'&&!b.answer?.trim())throw new ApiError(400,'ANSWER_REQUIRED');}
+      const common=(await c.query('SELECT common_id FROM common_mail_link WHERE mail_key=$1',[mail.id])).rows[0]?.common_id??null;
+      if(common&&(await c.query("SELECT 1 FROM analysis_run WHERE common_mail_id=$1 AND status IN ('queued','running')",[common])).rowCount)throw new ApiError(409,'COMMON_MAIL_BUSY');
       const id=randomUUID();
-      await c.query("INSERT INTO analysis_run(id,mail_key,source,request_id,request_hash,status,parent_id,answer) VALUES($1,$2,'direct',$3,$4,'queued',$5,$6)",[id,mail.id,b.requestId,hash,b.parentId??null,b.answer??null]);
+      await c.query("INSERT INTO analysis_run(id,mail_key,source,request_id,request_hash,status,parent_id,answer,common_mail_id) VALUES($1,$2,'direct',$3,$4,'queued',$5,$6,$7)",[id,mail.id,b.requestId,hash,b.parentId??null,b.answer??null,common]);
       await c.query('INSERT INTO v1_run(run_id,source_id,requested_by,target_runner_id,agent,executor_kind,verified_at,verified_by) VALUES($1,$2,$3,$4,$5,$6,$7,$4)',[id,b.sourceId,actor.userId,b.runnerId,b.agent,b.executorKind,b.verifiedAt]);
       return {id,status:'queued'};
     });
@@ -104,8 +112,11 @@ export class Runs {
       if(Math.abs(Date.now()-Date.parse(b.verifiedAt))>300000||b.messageId!==old.message_id)throw new ApiError(409,'MAIL_REVALIDATION_REQUIRED');
       if(old.handled_at)throw new ApiError(409,'MAIL_HANDLED');await expire(c);
       if((await c.query("SELECT 1 FROM analysis_run WHERE mail_key=$1 AND status IN ('queued','running')",[old.mail_key])).rowCount)throw new ApiError(409,'RUN_ACTIVE');
+      const common=(await c.query('SELECT common_id FROM common_mail_link WHERE mail_key=$1',[old.mail_key])).rows[0]?.common_id??null;
+      if(common&&(await c.query("SELECT 1 FROM analysis_run WHERE common_mail_id=$1 AND status IN ('queued','running')",[common])).rowCount)throw new ApiError(409,'COMMON_MAIL_BUSY');
       const nextId=randomUUID();
       await c.query(`INSERT INTO analysis_run(id,mail_key,source,request_id,request_hash,status,parent_id,started_at,finished_at) VALUES($1,$2,'direct',$3,$4,$5,$6,now(),now())`,[nextId,old.mail_key,b.requestId,requestHash,b.result.outcome,id]);
+      await c.query('UPDATE analysis_run SET common_mail_id=$2 WHERE id=$1',[nextId,common]);
       await c.query(`INSERT INTO v1_run(run_id,source_id,requested_by,target_runner_id,agent,executor_kind,verified_at,verified_by,result_hash,result_request_id) VALUES($1,$2,$3,$4,$5,'local',$6,$4,$7,$8)`,[nextId,old.source_id,actor.userId,b.runnerId,old.agent,b.verifiedAt,digest(JSON.stringify(b.result)),b.requestId]);
       await c.query('INSERT INTO report_version(run_id,result) VALUES($1,$2)',[nextId,JSON.stringify(b.result)]);
       await c.query("INSERT INTO audit_event(actor_id,action,target_id) VALUES($1,'run.recover',$2)",[actor.userId,nextId]);return {id:nextId,status:b.result.outcome,recoveredFrom:id};
