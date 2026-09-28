@@ -1,5 +1,13 @@
 # 검증 기록
 
+## 2026-09-28 v0.3.12 비밀번호 변경 실패 안내
+
+- 기존 API의 현재 비밀번호 오류와 세션 오류가 모두 `401 LOGIN_DENIED`여서 UI가 변경 실패를 로그아웃으로 처리했다. 설치 앱에서 같은 토큰의 `/auth/me` 성공을 확인한 경우에만 `400 CURRENT_PASSWORD_INCORRECT`로 변환한다. 세션 만료는 401 유지, 유효성 확인 실패는 통신 오류 유지, 변경 요청 자동 재전송 없음.
+- 오류를 변경 폼 안에 유지하고 최초 변경의 임시 비밀번호 입력 안내를 보강했다. 실패 시 완료 콜백을 호출하지 않으며 비밀번호 두 입력값은 비운다.
+- `npm.cmd run check`, `npm.cmd run build` 통과. `password-errors`, `username-local`, `Forms` 단위·화면 테스트 **3파일 / 13개** 통과. 잘못된 현재 비밀번호, 세션 무효, 확인 API 503, 횟수 제한, 실패 시 로컬 세션 보존, 성공 후 폐기, 화면 유지·재시도·만료 안내를 포함한다.
+- `playwright test test/e2e/auth-database.spec.ts` **1 passed**. 실제 로컬 API·Chrome·격리 PostgreSQL에서 임시 로그인→현재 비밀번호 오입력→변경 화면 유지 및 서버 세션 유효→올바른 임시 비밀번호로 변경→새 비밀번호 로그인→로그아웃을 확인했다. 개인 계정·실제 비밀번호는 사용하지 않았다.
+- 설치 EXE·공개 배포 검증은 후속 기록으로 추가한다.
+
 ## 2026-09-28 v0.3.11 신규 설치 자동 설정·배포
 
 - `WriteFirstSettings`의 콘솔 입력을 제거하고 공개 API·issuer 기본값을 저장한다. 기존 설정 존재 검사는 유지한다. 배포 소스 `87be9a0aff916c0e35cba7a5f42e7e276e6eb6c3`, [v0.3.11 Release](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.11).
