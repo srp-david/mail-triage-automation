@@ -48,6 +48,7 @@ export async function installRelease(home,payload,{allowCandidate=false,diagnose
     let prior;try{prior=JSON.parse(await readFile(join(root,'active.json'),'utf8'));}catch(e){if(e.code!=='ENOENT')throw e;}
     try{await lstat(join(root,'app.lock'));throw new Error('APP_RUNNING_OR_RECOVERY_LOCK');}catch(e){if(e.code!=='ENOENT')throw e;}
     if(manifest.files['installer/start.ps1'])await cp(join(target,'installer/start.ps1'),join(root,'launch.ps1'));
+    if(manifest.files['installer/control.ps1'])await cp(join(target,'installer/control.ps1'),join(root,'control.ps1'));
     const previous=prior?.version===manifest.version?prior.previous:prior?.version??null;
     await activate(root,{version:manifest.version,previous});return {version:manifest.version,previous};
   }finally{
@@ -70,12 +71,12 @@ export async function uninstallApplication(home,{purgePrivate=false,confirmRoot}
   if(purgePrivate&&confirmRoot!==root)throw new Error('EXACT_ROOT_CONFIRMATION_REQUIRED');
   const versions=await readdir(join(root,'releases'));
   const targets=[];for(const version of versions){if(!versionPattern.test(version))throw new Error('UNKNOWN_RELEASE_ENTRY');const target=inside(join(root,'releases'),join(root,'releases',version));await verifyRelease(target);targets.push(target);}
-  const known=new Set(['releases','staging','config','secrets','work','scratch','logs','active.json','install.json','launch.ps1']);
+  const known=new Set(['releases','staging','config','secrets','work','scratch','logs','active.json','install.json','launch.ps1','control.ps1']);
   if(purgePrivate){for(const name of await readdir(root))if(!known.has(name))throw new Error('UNKNOWN_INSTALL_ENTRY');for(const sub of ['staging','config','secrets','work','scratch','logs'])await files(inside(root,join(root,sub)));}
-  for(const name of ['active.json','launch.ps1'])try{await noLinks(join(root,name));}catch(e){if(e.code!=='ENOENT')throw e;}
+  for(const name of ['active.json','launch.ps1','control.ps1'])try{await noLinks(join(root,name));}catch(e){if(e.code!=='ENOENT')throw e;}
   // Every recursive target was resolved under the marked install root and inspected above.
   for(const target of targets)await rm(target,{recursive:true});
-  for(const name of ['active.json','launch.ps1'])await rm(inside(root,join(root,name)),{force:true});
+  for(const name of ['active.json','launch.ps1','control.ps1'])await rm(inside(root,join(root,name)),{force:true});
   if(purgePrivate){for(const sub of ['staging','config','secrets','work','scratch','logs'])await rm(inside(root,join(root,sub)),{recursive:true});await rm(join(root,'install.json'));await rmdir(join(root,'releases'));await rmdir(root);}
   return {uninstalled:true,privateStatePreserved:!purgePrivate,shortcuts:'Remove any shortcut you created from its chosen location.'};
 }

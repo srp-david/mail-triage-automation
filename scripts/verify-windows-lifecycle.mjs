@@ -1,6 +1,6 @@
 import {createServer} from 'node:net';
 import {installRelease,uninstallApplication} from '../installer/windows/release.mjs';
-import {startApp,stopApp,createShortcut} from '../installer/windows/lifecycle.mjs';
+import {startApp,stopApp,pauseApp,createShortcut} from '../installer/windows/lifecycle.mjs';
 import {mkdir,mkdtemp,writeFile,readFile,access} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 import {ProtectedStore} from '../dist/apps/local-app/src/protected-store.js';
@@ -15,11 +15,13 @@ try{
   await startApp(home,{allowCandidate:true,open:false});running=true;
   const control=await new ProtectedStore(join(home,'secrets')).read('cli-control');
   assert.equal((await fetch(origin+'/api/session')).status,401);
+  assert.equal((await fetch(origin+'/api/app-pause',{method:'POST'})).status,401);
+  assert.equal((await pauseApp(home)).ok,true);
   const ticket=await (await fetch(origin+'/api/browser-ticket',{method:'POST',headers:{authorization:'Bearer '+control.token,'x-local-client':'1'}})).json();
   const enter=await fetch(ticket.url,{redirect:'manual'});assert.equal(enter.status,302);const cookie=enter.headers.get('set-cookie').split(';')[0];
   assert.equal((await (await fetch(origin+'/api/session',{headers:{cookie}})).json()).authenticated,false);
   await createShortcut(home,join(home,'synthetic.lnk'));await access(join(home,'synthetic.lnk'));
   await stopApp(home);running=false;await assert.rejects(access(join(home,'app.lock')));
   assert.ok(await readFile(join(home,'config/settings.json'),'utf8'));assert.equal((await uninstallApplication(home)).privateStatePreserved,true);
-  console.log(JSON.stringify({home,candidateBlocked:true,packagedAppStarted:true,bootstrapProtected:true,shortcut:true,gracefulStop:true,settingsPreserved:true,realAuthentication:false}));
+  console.log(JSON.stringify({home,candidateBlocked:true,packagedAppStarted:true,bootstrapProtected:true,controlledPause:true,shortcut:true,gracefulStop:true,settingsPreserved:true,realAuthentication:false}));
 }finally{if(running)await stopApp(home);}

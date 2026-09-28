@@ -33,7 +33,7 @@ const port=settings.localPort;
 const controlToken=randomBytes(32).toString('base64url');await secrets.write('cli-control',{port,token:controlToken,pid:process.pid});
 let stopping:Promise<void>|undefined;
 const shutdown=()=>stopping??=(async()=>{const result=await shutdownLocal({stop:()=>runtime.stop(),close:()=>new Promise<void>(r=>{server.close(()=>r());server.closeIdleConnections();}),clear:()=>secrets.write('cli-control',{stopped:true}),release});if(!result.ok){console.error('LOCAL_SHUTDOWN_INCOMPLETE');process.exitCode=1;}})();
-const server=createBrowserApp(session,{port,controlToken,shutdown,beforeLogout:()=>runtime.stop(),features:app=>{
+const server=createBrowserApp(session,{port,controlToken,shutdown,pause:()=>runtime.stop(),beforeLogout:()=>runtime.stop(),features:app=>{
   app.get('/api/admin/users',async(_req,res)=>res.json(await history.request('/admin/users')));
   app.post('/api/admin/users',async(req,res)=>res.json(await history.request('/admin/users',req.body)));
   app.post('/api/admin/users/:id',async(req,res)=>res.json(await history.request('/admin/users/'+z.string().uuid().parse(req.params.id),req.body)));
