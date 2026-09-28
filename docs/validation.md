@@ -2,6 +2,44 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-28 기존 로컬 이력 공개 검토·작업별 한글 커밋
+
+- 사용자가 현재 변경 파일 전체 검토와 작업별 한글 커밋, 기존 로컬 41개 이력을 기준으로 원격 main·Release 태그/자산·catalog 통합을 승인했다. 41개 기존 커밋의 SHA는 그대로 보존했다. 코드 변경 21파일을 6개 한글 커밋으로 정리해 코드까지 47개 커밋이다. 문서는 별도 후속 커밋으로 이어가며 해당 커밋의 SHA를 문서에 자기참조하지 않는다.
+- 기존 41개 이력 Gitleaks 검사 no leaks. 추가 검사 41 commits/899 blobs/390 paths에서 findings 0(비밀 token/private key/mail headers/sensitive path). 코드까지 47개 커밋 Gitleaks 재검사도 no leaks였다. npm check/build와 관련 unit **8/8** 통과. 이 결과는 기록된 공개 검사 범위의 증거이며 실메일/Agent 업무 수용 증거는 아니다. 원격 origin 연결/fetch와 로컬 브랜치 main 이름 변경을 수행했으며 기존 이력 SHA는 변하지 않았다. 원격 main/태그 전환은 아직이다.
+- 통합 후보 소스는 candidate.9 `83be2a941f6125db58c70ac05a5efc63f45fe566`, candidate.10 `6fe6de9a93c1df3313541ad4d78a085483edbe17`이다. 이전 스냅샷 공개 및 한글화 기록은 아래 역사 기록으로 보존한다. 기존 Release asset 10개를 백업하고 digest를 검증했다.
+- tag9/10의 docs·README 제외 전체 추적 소스가 기존 공개 tag9/10과 정확히 일치했다(`releaseSourceParity=true`). 한글 경로 lifecycle 재검증의 candidateBlocked/bootstrapProtected/controlledPause/shortcut/gracefulStop/settingsPreserved가 모두 true, `realAuthentication=false`였다. 기존 setup.exe/ZIP 내용과 SHA-256을 보존하는 전환 준비 근거로 기록한다.
+- 새 sourceCommit metadata 재서명 준비 완료: candidate.9 metadata SHA-256 `0d2129a36f39b7caee8f4b905b6634cc2ad5264b1028985e9b9cd49833f95075`, 만료 `2026-10-12T00:51:40.543Z`; candidate.10 metadata SHA-256 `77693d6ee7c0e50faace8b1a12e166bb655512a45ad22b9895579cadfde8ad68`, 만료 `2026-10-12T00:51:40.627Z`. 사용자 요청에 따라 전체 변경을 작업별 커밋한 뒤 전환하므로 현재 원격 main·태그·Release·hosted catalog는 미반영이다. 실계정 `offered`·전체 다운로드/설치·실메일 분석도 사용자 테스트 전이다.
+
+## 2026-09-23 공개 커밋 이력 한글화·Release 재발행
+
+- 공개 저장소의 커밋 메시지 5개를 한글로 다시 작성했다. 각 단계의 파일 트리와 최종 소스 내용은 동일하다. main과 두 Release 태그의 SHA가 바뀌었으며, 기존 SHA로 받은 clone은 새 main을 다시 맞춰야 한다. candidate.9 태그는 `2b9e223e005f214e408edd19f31967bc8705e004`, candidate.10 태그는 `bb797d83b742bc90d2395298585142e372077e44`를 가리킨다.
+- 설치 파일·ZIP의 내용과 SHA-256은 유지했다. Release 자산은 재발행하고 태그의 새 SHA를 가리키도록 서명 메타데이터를 다시 만들었다. candidate.9 metadata SHA-256은 `2d30c1d3ca4e4798cb73f18cb1ce1906d900915c7f50bd3ee61ee90bec1e46b7`, candidate.10은 `c6a7c8523ebc410a95140ee45cc5f589280e8ef93f673c2bd712bfccc355b7ff`다. 기존 metadata 해시는 아래 최초 게시 당시 기록으로만 남긴다.
+- hosted `UPDATE_CATALOG_JSON`을 새 candidate.10 서명 메타데이터로 갱신했다. 실계정 업데이트 제안·설치는 여전히 사용자 검증 전이다.
+
+## 2026-09-23 candidate.10 stale lock 복구·prerelease 갱신
+
+- 개인 기존 candidate.5 설치에 종료된 PID의 stale `app.lock`이 실제로 남은 것을 읽기 전용으로 확인했다. 새 setup.exe가 설치 전 기존 설치본의 `lifecycle.mjs recover-lock`을 호출하도록 보완했다. 합성 candidate.9 홈에서 stale lock 복구→candidate.10 설치와 기존 `historyUrl`/port 보존 통과. 개인 설치 상태는 변경하지 않았다.
+- 추가로 `.runtime/upgrade-5-to-10-한글`에 candidate.5를 새로 설치해 합성 설정·비밀 저장소·작업 파일을 넣고 종료된 PID의 잠금을 남겼다. candidate.10 setup.exe 업데이트가 성공해 `active.version=0.3.0-candidate.10`, `active.previous=0.3.0-candidate.5`, 잠금 제거를 확인했다. `config/settings.json`, `secrets/synthetic-sentinel.txt`, `work/synthetic-sentinel.txt`의 SHA-256은 각각 설치 전후 같았다. 실제 개인 자료를 복사하거나 수정하지 않았다.
+- candidate.10 설치본의 `recover-lock`에 살아 있는 PowerShell PID의 합성 잠금을 넣으면 `PROCESS_STILL_PRESENT`/exit 1이고 잠금이 유지됐다. 해당 프로세스가 종료된 뒤 같은 합성 홈에서 복구가 성공했다. `.runtime` 합성 홈만 사용했다.
+- Agent Profile의 사용하지 않는 고정 버전 문자열을 제거했다. 실제 Claude Code 2.1.280 probe `supported=true`; 이는 CLI 옵션 확인이며 실제 Mail MCP/Agent 분석 성공 증거는 아니다. npm check/build, unit **8/8**, candidate.10 한글 경로 lifecycle start/pause/stop 통과. candidate.9의 UI E2E **1 passed**는 이전 후보 결과이며 candidate.10 UI 코드는 동일하다.
+- 새 소스 커밋 `cb64f473123807a981de83e1b8332b1e3772a063`과 `v0.3.0-candidate.10` 태그를 push하고 [GitHub prerelease](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.0-candidate.10)를 `draft=false`, `prerelease=true`로 게시했다. setup.exe SHA-256 `a54825403f9f56ea2e84dc6b08100d955605212ab9e5ab63a7a906fc8cac5879`, ZIP `79d40fb700814aa85aa44f577cc40e81c6430024bcea1ba907dd920c6f3931fb`, 서명 metadata `0918d1128a8e2f051c4d2fc26b8abf3d8742659df8064a2edf51f1683836da36`; 서버 asset digest 일치. metadata 만료 `2026-10-07T02:42:05.088Z`. setup.exe 공개 URL GET은 HTTP 302 → `release-assets.githubusercontent.com`, 두 번째 GET은 HTTP 200·Content-Length **45,374,976 bytes**로 asset size 일치. 전체 본문 다운로드/설치는 수행하지 않았다.
+- Supabase `history` function은 candidate.9 배포 코드와 동일하다. 승인된 `UPDATE_CATALOG_JSON`을 candidate.10으로 secret set(exit 0)했고 hosted health 200·비인증 update check 401을 확인했다. 실계정 `offered`, 실제 다운로드/설치, 실메일 분석은 사용자 테스트 전이다.
+
+## 2026-09-23 candidate.9 로컬 검증·GitHub prerelease 게시
+
+- 최종 후보 `0.3.0-candidate.9`의 fresh setup.exe 한글 경로 설치, candidate.8→.9 업그레이드와 개인 설정 보존, lifecycle start/pause/stop이 통과했다. 브라우저 E2E는 로그인·비밀번호 변경·업데이트 버튼·로그아웃 **1 passed**다. check/build/Edge build도 통과했다. 모두 로컬/빌드 증거이며 hosted update API 호출이나 게시 asset을 통한 실사용 업데이트 증거는 아니다.
+- 공개 대상은 기존 41개 이력을 제외한 단일 첫 커밋 `3803669f801ec8b52bc3614d367b830e5e38b2a9`로 만들었다. [공개 저장소](https://github.com/srp-david/mail-triage-automation)의 `main` 및 `v0.3.0-candidate.9` 태그로 push하고 [GitHub prerelease](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.0-candidate.9)를 `draft=false`, `prerelease=true`로 게시했다.
+- 게시 asset digest는 로컬 검증값과 일치했다: setup.exe SHA-256 `8deb34f1edc271d1346278b94a46eadf1568eea8c2ce21b3ea000699b5d69314`, ZIP `75214a5cdaf614e154df228c0289504b07142065f2badeb175893c6d2df71beb`, 서명 metadata `c4ff754fe9a7ebae71040826e52a5647bf2cdeaa53074776486c3ade0f685e58`. metadata 만료 시각은 `2026-10-07T02:22:53.376Z`이다. `releaseApproved=false`인 test 후보로 정식 승인과 구분한다.
+- 새 update route를 포함한 hosted Supabase `history` function 첫 배포 요청은 자동 승인 검토에서 대상 명시 부족으로 거절됐다. 이후 사용자가 프로젝트 `tborximfpwrzzwuazjrb`의 함수와 `UPDATE_CATALOG_JSON` 갱신을 명시 승인했다. 함수 deploy CLI와 catalog secret set CLI가 각각 exit 0, secrets list에서 secret 이름 확인. hosted `/health/live` HTTP 200, 비인증 `/api/v1/updates/check` HTTP 401 `UNAUTHENTICATED` 확인. 인증 실계정의 `offered`·게시 asset 다운로드/설치, 실제 Mail MCP/Agent 분석·2PC 파일럿은 미검증이다.
+
+## 2026-09-23 Release·Windows 설치 소스와 로컬 후보 검증 중간 기록
+
+- Agent adapter의 고정 CLI 버전 일치 검사를 제거하고, 서명 update 메타데이터·인증 update API·로컬 다운로드/updater·업데이트 버튼 소스를 추가했다. self-extracting Windows setup.exe 빌더와 실행/작업 중지/앱 종료 shortcut 스크립트도 추가했다. 이는 소스 구현 상태다.
+- candidate.7까지의 개발 세션에서 check/build/Edge bundle이 통과했고, `0.3.0-candidate.7` setup.exe로 한글 경로 설치·기동·작업 중지·앱 종료·업그레이드를 로컬 검증했다. 이후 UI를 조정한 candidate.9의 회귀 결과와 구분한다. 이전 candidate.5의 설치/해시 기록과도 구분한다.
+- 업데이트 안내 배너가 상단 로그아웃을 가리지 않도록 UI를 조정하고 `candidate.9`를 최종 배포 후보로 선택했다. candidate.7 수명주기 통과는 이전 후보의 증거로 보존하며 candidate.9 패키징·설치·UI 회귀 통과로 간주하지 않는다. candidate.8은 중간 후보로 남긴다.
+- 현재 기록 시점에는 candidate.9 검증, GitHub push/Release 게시, hosted API 갱신, 게시 asset 다운로드·실사용 업데이트, 실제 Mail MCP/Agent 분석·저장·재조회, 깨끗한 팀 PC/2PC 수용이 완료되지 않았다. `releaseApproved=false`를 유지한다.
+- 실행 순서는 Release 계약·패키징 → 설치 파일·앱 업데이트 검증 → 검토된 소스 push·검증된 파일 Release 게시 → 새 설치본 실분석으로 갱신했다. ERP 코드/DB는 읽기 전용이며 공개 전 소스·Git 이력·설치 파일·문서/변경 내역의 비밀·메일 원문·업무 자료를 검토한다.
+
 ## 2026-09-22 GitHub 대상 저장소 확인과 작업 순서 보완
 
 - 사용자가 생성한 `srp-david/mail-triage-automation`을 GitHub CLI로 읽기 전용 조회했다. visibility=PUBLIC, isEmpty=true, 기본 branch 이름 없음 확인. 로컬 remote는 미설정이다. 웹 조회 실패와 sandbox의 CLI 설정 접근 제한 후 권한 있는 읽기 전용 CLI 조회로 확인했으며 인증 정보는 출력하지 않았다.
