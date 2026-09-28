@@ -21,8 +21,12 @@ export class AgentAdapter {
   lastSyntheticOutput='';
   constructor(readonly profile:Profile){}
   async probe(){
-    const output=await this.run(['--version'],'',undefined,undefined,10000);
-    return {installed:true,version:output.trim(),supported:output.includes(this.profile.version),releaseApproved:false};
+    const version=(await this.run(['--version'],'',undefined,undefined,10000)).trim();
+    const help=await this.run(this.profile.agent==='codex'?['exec','--help']:['--help'],'',undefined,undefined,10000);
+    const required=this.profile.agent==='codex'
+      ?['--sandbox','--ephemeral','--skip-git-repo-check','--json','--output-schema']
+      :['--restricted','--strict-mcp-config','--mcp-config','--permission-mode','--tools','--allowedTools','--disallowedTools','--no-session-persistence','--verbose','--output-format','--json-schema'];
+    return {installed:true,version,supported:required.every(flag=>help.includes(flag)),releaseApproved:false};
   }
   async prepare(directory:string){
     const root=resolve(directory);await mkdir(root,{recursive:true});
