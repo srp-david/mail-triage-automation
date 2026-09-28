@@ -59,6 +59,12 @@ public Release asset은 인증 없이 직접 다운로드할 수 있다. 앱의 
 
 ## 3. 업데이트 API·메타데이터 계약안
 
+### 숫자 버전의 시험 배포 호환 처리 (2026-09-28)
+
+0.3.11 등 기존 설치 앱은 버전에 `candidate`가 없으면 `stable`로 조회한다. 서버는 이 값을 계정의 시험 배포 자격으로 간주하지 않고 서명된 catalog와 현재 계정 권한으로 제공 여부를 결정한다. catalog가 `test`일 때 관리자 또는 `UPDATE_TEST_USER_IDS`에 지정된 사용자에게는 숫자 버전의 `stable` 조회에도 업데이트를 제공한다. 그 외 계정에는 `channel_denied`를 반환한다. 명시적 `test` 조회의 기존 권한 검사도 유지한다.
+
+따라서 버전 표기 변경 때문에 업데이트 경로가 끊기지 않으며 `test` metadata를 `stable`로 승격하지 않는다. 서명·만료·버전 비교·설치 전 제공 여부 재확인은 그대로 적용한다. 수동 확인은 즉시 서버를 조회하므로 1시간 자동 확인 주기를 기다릴 필요가 없다. 이 수정은 공용 API에 적용하며 기존 0.3.11 앱이나 0.3.12 설치 파일의 교체를 요구하지 않는다.
+
 공용 `GET /api/v1/updates/check` route는 소스와 hosted `history` function에 반영했다. 비인증 요청은 401 `UNAUTHENTICATED`를 확인했으며 인증 실계정의 `offered` 응답은 아직 검증하지 않았다. UI는 로컬 API만 호출하고 HistoryClient가 서버 인증을 담당한다. GitHub `latest` 값을 그대로 설치 대상으로 쓰지 않고 서버 catalog에서 사용자/채널/호환 정책을 적용한다. GitHub는 Release/asset 저장소로 이용한다. [GitHub Release API](https://docs.github.com/en/rest/releases/releases).
 
 | 계약 | 필요한 필드·규칙 |
