@@ -13,6 +13,9 @@ using System.Text.RegularExpressions;
 internal static class Setup
 {
     private const string PayloadSha256 = "__PAYLOAD_SHA256__";
+    // Public service configuration only; credentials remain in the user's protected store.
+    private const string DefaultHistoryUrl = "https://tborximfpwrzzwuazjrb.supabase.co/functions/v1/history";
+    private const string DefaultIssuerUrl = "https://tborximfpwrzzwuazjrb.supabase.co/history-auth";
     private static readonly string TempBase = Path.GetFullPath(Path.GetTempPath()).TrimEnd('\\') + "\\";
 
     private static int Main(string[] args)
@@ -152,21 +155,12 @@ internal static class Setup
 
     private static void WriteFirstSettings(string path)
     {
-        Console.WriteLine("첫 설치: 공용 서버 주소를 입력하세요. 비밀번호나 토큰은 입력하지 않습니다.");
-        Console.Write("공용 API URL (https://.../functions/v1/history): ");
-        string history = (Console.ReadLine() ?? "").Trim();
-        Console.Write("인증 issuer URL (https://.../history-auth): ");
-        string issuer = (Console.ReadLine() ?? "").Trim();
-        Uri api, auth;
-        if (!Uri.TryCreate(history, UriKind.Absolute, out api) || api.Scheme != Uri.UriSchemeHttps ||
-            !Uri.TryCreate(issuer, UriKind.Absolute, out auth) || auth.Scheme != Uri.UriSchemeHttps ||
-            api.UserInfo.Length != 0 || auth.UserInfo.Length != 0)
-            throw new InvalidOperationException("HTTPS_SERVER_SETTINGS_REQUIRED");
-        string content = "{\"localPort\":43180,\"historyUrl\":" + Json(history) +
-            ",\"auth\":{\"mode\":\"username\",\"issuer\":" + Json(issuer) +
+        string content = "{\"localPort\":43180,\"historyUrl\":" + Json(DefaultHistoryUrl) +
+            ",\"auth\":{\"mode\":\"username\",\"issuer\":" + Json(DefaultIssuerUrl) +
             ",\"audience\":\"mail-triage\"},\"evidenceRoots\":{}}";
         using (FileStream file = new FileStream(path, FileMode.CreateNew))
         using (StreamWriter writer = new StreamWriter(file, new UTF8Encoding(false))) writer.Write(content);
+        Console.WriteLine("공용 서버 연결을 자동 설정했습니다. 앱을 열어 계정과 비밀번호로 로그인하세요.");
     }
 
     private static void CreateShortcuts(string home)
