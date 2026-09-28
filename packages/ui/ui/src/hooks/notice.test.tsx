@@ -1,0 +1,22 @@
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
+import { useNotice } from './notice';
+afterEach(() => vi.useRealTimers());
+test('notices disappear after five seconds and repeated messages get a fresh lifetime', () => {
+  vi.useFakeTimers();
+  const { result, unmount } = renderHook(useNotice);
+  act(() => result.current[1]('저장했습니다.'));
+  act(() => vi.advanceTimersByTime(4000));
+  expect(result.current[0]).toBe('저장했습니다.');
+  act(() => result.current[1]('저장했습니다.'));
+  act(() => vi.advanceTimersByTime(1000));
+  expect(result.current[0]).toBe('저장했습니다.');
+  act(() => vi.advanceTimersByTime(4000));
+  expect(result.current[0]).toBe('');
+  act(() => result.current[1]('다음 알림'));
+  act(() => result.current[1](''));
+  expect(result.current[0]).toBe('');
+  act(() => result.current[1]('새 알림'));
+  unmount();
+  expect(vi.getTimerCount()).toBe(0);
+});

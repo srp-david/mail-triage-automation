@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createApi, errorText, SessionContext } from '../api/client';
 import { activeSync, type Status, type Sync } from '../api/types';
 import { useLatest, usePolling } from '../hooks/async';
+import { useNotice } from '../hooks/notice';
 import { MailboxPage, type MailboxHandle } from '../features/mailbox/MailboxPage';
 import {
   HistoryDialog,
@@ -56,11 +57,11 @@ export function App() {
     [role, setRole] = useState('');
   const [authenticated, setAuthenticated] = useState(false),
     [status, setStatus] = useState<Status | null>(null),
-    [notice, setNotice] = useState(''),
     [token, setToken] = useState(''),
     [view, setView] = useState(viewFromHash),
     [menu, setMenu] = useState(false),
     [history, setHistory] = useState<HistoryState | null>(null);
+  const [notice, setNotice] = useNotice();
   const [bootState, setBootState] = useState<'checking' | 'ready' | 'error'>('checking'),
     [bootError, setBootError] = useState('');
   const bootRequest = useRef(0);
@@ -86,7 +87,7 @@ export function App() {
   }, [queryClient]);
   const api = useMemo(() => createApi(unauthorized, () => csrf.current), [unauthorized]);
   const updater = useUpdates(api, native && authenticated);
-  const notify = useCallback((text: string) => setNotice(text), []);
+  const notify = setNotice;
   const session = useMemo(
     () => ({ api, storeId: status?.storeId ?? '', userId, notice: notify, unauthorized }),
     [api, status?.storeId, userId, notify, unauthorized],
@@ -225,7 +226,7 @@ export function App() {
     };
     window.addEventListener('hashchange', navigate);
     return () => window.removeEventListener('hashchange', navigate);
-  }, []);
+  }, [setNotice]);
   useEffect(() => {
     const narrow = matchMedia('(max-width:900px)'),
       close = () => setMenu(false);
