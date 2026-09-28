@@ -98,6 +98,7 @@ export function PasswordForm({
   required?: boolean;
 }) {
   const { api, notice } = useSession();
+  const [submitError, setSubmitError] = useState('');
   const {
     register,
     handleSubmit,
@@ -117,7 +118,8 @@ export function PasswordForm({
       </Typography>
       {required && (
         <Alert severity="info" sx={{ my: 2 }}>
-          계속 사용하려면 임시 비밀번호를 새 비밀번호로 변경하세요.
+          현재 비밀번호에는 발급받은 임시 비밀번호를 입력하고, 새 비밀번호에는 앞으로 사용할
+          비밀번호를 입력하세요.
         </Alert>
       )}
       {!required && (
@@ -132,17 +134,20 @@ export function PasswordForm({
       <Form
         className="account-password-form"
         onSubmit={handleSubmit(async (values) => {
+          setSubmitError('');
           try {
             await api('/password', values);
             await changed();
             notice('비밀번호를 변경했습니다. 다시 로그인하세요.');
           } catch (error) {
+            setSubmitError(errorText(error));
             notice(errorText(error));
           } finally {
             reset();
           }
         })}
       >
+        {submitError && <Alert severity="error">{submitError}</Alert>}
         <label>
           현재 비밀번호
           <Field

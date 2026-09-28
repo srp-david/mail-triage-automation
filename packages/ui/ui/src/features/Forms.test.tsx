@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
 import { UsernameForm, PasswordForm, AdminUsers } from './UsernameAuth';
 import { Settings } from './Settings';
-import { SessionContext } from '../api/client';
+import { createApi, SessionContext } from '../api/client';
 import { passwordSchema } from '../forms/schemas';
 
 test('login validates before sending and submits the registered values once', async () => {
@@ -97,6 +97,67 @@ test('invalid password stays local, successful change clears both secret fields'
   await waitFor(() => expect(changed).toHaveBeenCalledOnce());
   expect(current).toHaveValue('');
   expect(next).toHaveValue('');
+});
+
+test('wrong current password stays visible and allows a successful retry without logout', async () => {
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ code: 'CURRENT_PASSWORD_INCORRECT' }, { status: 400 }))
+    .mockResolvedValueOnce(Response.json({ ok: true, loginRequired: true }));
+  vi.stubGlobal('fetch', fetcher);
+  const unauthorized = vi.fn(),
+    changed = vi.fn();
+  const { container } = render(
+    <SessionContext.Provider
+      value={{ api: createApi(unauthorized), notice: vi.fn(), storeId: '', unauthorized }}
+    >
+      <PasswordForm changed={changed} required />
+    </SessionContext.Provider>,
+  );
+  expect(screen.getByText(/발급받은 임시 비밀번호/)).toBeVisible();
+  const current = screen.getByLabelText(/^현재 비밀번호/);
+  const next = screen.getByLabelText(/^새 비밀번호/);
+  await userEvent.type(current, 'wrong-current');
+  await userEvent.type(next, 'new-password-123');
+  fireEvent.submit(container.querySelector('form')!);
+  expect(
+    await screen.findByText('현재 비밀번호를 확인하세요. 비밀번호는 변경되지 않았습니다.'),
+  ).toBeVisible();
+  expect(changed).not.toHaveBeenCalled();
+  expect(unauthorized).not.toHaveBeenCalled();
+  await waitFor(() => expect(current).toHaveValue(''));
+  expect(next).toHaveValue('');
+  await userEvent.type(current, 'temporary-password');
+  await userEvent.type(next, 'new-password-123');
+  fireEvent.submit(container.querySelector('form')!);
+  await waitFor(() => expect(changed).toHaveBeenCalledOnce());
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(
+    screen.queryByText('현재 비밀번호를 확인하세요. 비밀번호는 변경되지 않았습니다.'),
+  ).not.toBeInTheDocument();
+});
+
+test('expired session still requests login and never reports password change success', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(Response.json({ code: 'LOGIN_DENIED' }, { status: 401 })),
+  );
+  const unauthorized = vi.fn(),
+    changed = vi.fn(),
+    notice = vi.fn();
+  const { container } = render(
+    <SessionContext.Provider
+      value={{ api: createApi(unauthorized), notice, storeId: '', unauthorized }}
+    >
+      <PasswordForm changed={changed} />
+    </SessionContext.Provider>,
+  );
+  await userEvent.type(screen.getByLabelText(/^현재 비밀번호/), 'temporary-password');
+  await userEvent.type(screen.getByLabelText(/^새 비밀번호/), 'new-password-123');
+  fireEvent.submit(container.querySelector('form')!);
+  await waitFor(() => expect(notice).toHaveBeenCalledWith('다시 로그인하세요.'));
+  expect(unauthorized).toHaveBeenCalledOnce();
+  expect(changed).not.toHaveBeenCalled();
 });
 
 test('admin row loads checkbox state and sends edited name, role and active flag', async () => {

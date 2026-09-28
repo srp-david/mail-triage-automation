@@ -127,6 +127,13 @@ test('browser login, password change and logout use real API and PostgreSQL', as
     await page.getByRole('button', { name: '로그인', exact: true }).click();
     await expect(page.getByRole('heading', { name: '비밀번호 변경', exact: true })).toBeVisible();
     const password = 'Synthetic changed password 123!';
+    await page.getByLabel('현재 비밀번호').fill('Synthetic wrong current password');
+    await page.getByLabel('새 비밀번호').fill(password);
+    await page.getByRole('button', { name: '비밀번호 변경', exact: true }).click();
+    await expect(page.getByText('현재 비밀번호를 확인하세요. 비밀번호는 변경되지 않았습니다.').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: '비밀번호 변경', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '로그인', exact: true })).toHaveCount(0);
+    expect((await auth.authenticate(await session.token(), true)).userId).toBe(user.id);
     await page.getByLabel('현재 비밀번호').fill(user.temporaryPassword);
     await page.getByLabel('새 비밀번호').fill(password);
     await page.getByRole('button', { name: '비밀번호 변경', exact: true }).click();

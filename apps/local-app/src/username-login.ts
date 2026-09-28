@@ -11,7 +11,18 @@ export class UsernameLogin {
   }
   credentials(input:unknown){return this.request('login',input);}
   identify(token:string){return this.request('me',undefined,token);}
-  password(token:string,input:unknown){return this.request('password',input,token);}
+  async password(token:string,input:unknown){
+    try{return await this.request('password',input,token);}
+    catch(error){
+      // Older APIs use LOGIN_DENIED for both an invalid session and a wrong current
+      // password. Keep the form only after the server confirms this token is valid.
+      if(error instanceof ApiError&&error.status===401&&error.code==='LOGIN_DENIED'){
+        await this.identify(token);
+        throw new ApiError(400,'CURRENT_PASSWORD_INCORRECT');
+      }
+      throw error;
+    }
+  }
   refresh(refreshToken:string,_subject:string){return this.request('refresh',{refresh_token:refreshToken});}
   async revoke(refreshToken:string){await this.request('logout',{refresh_token:refreshToken});return true;}
   begin():string{throw new ApiError(400,'USERNAME_LOGIN_REQUIRED');}

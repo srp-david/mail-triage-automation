@@ -65,6 +65,8 @@ export function createApi(unauthorized: () => void, csrf: () => string = () => '
         PASSWORD_POLICY: '비밀번호는 12자 이상, UTF-8 128바이트 이하여야 합니다.',
         PASSWORD_UNCHANGED: '이전과 다른 비밀번호를 설정하세요.',
         PASSWORD_CHANGE_REQUIRED: '먼저 비밀번호를 변경하세요.',
+        CURRENT_PASSWORD_INCORRECT: '현재 비밀번호를 확인하세요. 비밀번호는 변경되지 않았습니다.',
+        LOGIN_RATE_LIMIT: '요청 횟수를 초과했습니다. 15분 뒤 다시 시도하세요.',
         ADMIN_REQUIRED: '관리자 권한이 필요합니다.',
         AUTH_BUSY: '인증 요청을 처리 중입니다. 잠시 후 다시 시도하세요.',
         LOGIN_DENIED: '현재 비밀번호를 확인하세요.',
