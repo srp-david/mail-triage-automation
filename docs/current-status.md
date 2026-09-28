@@ -34,13 +34,13 @@ EXE SHA-256 `e77bab9916ac32cb9f818ed4cf32ffec90e257f195de9c105e521f3bce0c2bba`, 
 | 대상 | 확인된 상태 | 남은 항목 |
 |---|---|---|
 | 공용 API | 서울 Supabase의 `history` 배포, HTTPS health·인증·ACL·결과 저장 검증 | 실제 업무 부하·장기 관찰·pause/resume |
-| 공용 DB | PostgreSQL 17.6, `triage_private`, migration 6개, runtime DDL 차단 | 외부 백업·복원과 운영 담당 확정 |
+| 공용 DB | PostgreSQL 17.6, `triage_private`, migration 10개, runtime DDL 차단 | 외부 백업·복원과 운영 담당 확정 |
 | Data API | 사용자 비활성화 확인, publishable key 접근 401 확인 | 모든 관리 키까지 차단했다는 의미는 아님 |
 | 로그인 | 최초 관리자 생성, hosted 로그인·첫 변경 제한 확인 | 팀원 계정 발급·각 사용자 최초 변경 |
-| Windows 앱 | 0.3.3 로컬 설치본 생성, 합성 업그레이드·설정 보존·제공 UI hash 대조 통과. 이전 candidate.10 게시 기록 보존 | 새 소스 게시·숫자 버전 배포·깨끗한 팀 PC/2PC 수용·실업무 분석 |
+| Windows 앱 | 현재 PC 0.3.2→0.3.4 설치·기동, 설정 보존·제공 UI hash·기존 인증 보고서 조회 확인. 이전 candidate.10 게시 기록 보존 | 새 소스 게시·숫자 버전 GitHub 배포·깨끗한 팀 PC/2PC 수용·실업무 분석 |
 | GitHub 저장소 | 기존 41개 SHA 보존·공개 검사 통과, 이전 통합 시 원격 main·태그 확인. 이번 후속 커밋은 로컬만 진행. 원격 candidate.9 태그 `83be2a941f6125db58c70ac05a5efc63f45fe566`·candidate.10 태그 `6fe6de9a93c1df3313541ad4d78a085483edbe17` 및 Release metadata/catalog 대조 완료 | 자동 게시 CI·private 전환·실계정 수용은 별도 |
-| Release 업데이트 | candidate.10 prerelease 게시·서버 asset digest 일치. hosted `history` 함수는 .9 배포 코드 유지, `UPDATE_CATALOG_JSON`을 .10으로 갱신. health 200·비인증 update check 401 확인 | 실계정의 버전별 `current`/`offered`·앱 updater 다운로드/설치 미검증 |
-| 보고서 협업 | 동일 메일 공유·중복 방지, 지속 대화·revision·낙관적 락 구현. 전체 테스트 164건 통과 | Supabase 기존 보고서 43건 공유 이관 완료. 새 API 배포는 자동 승인 검토 거절로 보류. 설치본·실계정 수용은 후속. [상세](operations/shared-analysis.md) |
+| Release 업데이트 | candidate.10 prerelease 게시·서버 asset digest 일치. 공용 분석 API를 새로 배포했으며 catalog는 기존 candidate.10 설정 유지. 이전 비인증 update check 401 확인 | 실계정의 버전별 `current`/`offered`·앱 updater 다운로드/설치 미검증 |
+| 보고서 협업 | 동일 메일 공유·중복 방지, 지속 대화·revision·낙관적 락 구현. 전체 테스트 164건 통과 | Supabase 보고서 43건 공유 이관·새 API 배포·현재 PC 0.3.4 설치 완료. 기존 로그인으로 보고서·협업 조회 확인. 개인 MCP/Agent 연결·두 PC 수용은 후속. [상세](operations/shared-analysis.md) |
 | 작업 시작·업무 등록부 | 분석용 requestId·메일당 활성 분석 제한 존재 | 선택한 Agent/repo로 구현 시작·brief 고정·업무 단위 중복 방지 미구현, M5 |
 | 개인 연결 UI | 0.3.0에서 추가, 0.3.2에서 연결 환경/분석 준비 탭과 카드로 정리. 0.3.3에도 포함 | 기존 candidate.10에는 없음. 실계정 수용 필요 |
 | 로컬 실행 환경 | Runner·Agent adapter·읽기 전용 근거 도구 구현 | 설치본의 개인 Mail MCP·Agent·ERP 경로와 지정 사례 검증 |
@@ -84,7 +84,7 @@ EXE SHA-256 `e77bab9916ac32cb9f818ed4cf32ffec90e257f195de9c105e521f3bce0c2bba`, 
 4. 새 설치본에서 개인 MCP·AI Agent·ERP 읽기 자료를 연결·진단하고 지정 사례로 실제 분석·저장·공용 보고서 재조회를 확인한다. DB 조회가 필요한 사례는 실제 ERP DB provider도 읽기 전용으로 연결/검증한다.
 5. 팀원 계정과 2PC 파일럿을 구성해 지정 업무·공유 권한·원본 부재·중단 복구·업데이트를 확인한다. 이전 Auth0 기준 수용 양식/검사기를 현재 사용자명 방식으로 정합화한다.
 6. 피드백·사용량/비용·pause/resume·운영 항목을 확인한다. 백업은 요청으로 보류되어 있으므로 자동 재개하지 않는다.
-7. 보고서 협업 C1~C3·동일 메일 공유는 구현 및 Supabase 데이터 이관을 완료했다. 신규 API 배포의 명시적 승인과 준비된 0.3.4 설치본 적용·실계정 수용이 남았다. 작업 시작·brief 고정·업무 등록부·구현/검증/PR은 M5로 유지한다.
+7. 보고서 협업 C1~C3·동일 메일 공유는 구현·Supabase 데이터 이관·API 배포·현재 PC 0.3.4 설치를 완료했다. 기존 로그인으로 이관 보고서·협업 조회를 확인했으며 개인 MCP/Agent 연결과 두 PC 업무 수용은 남았다. 작업 시작·brief 고정·업무 등록부·구현/검증/PR은 M5로 유지한다.
 8. 기존 이력 L1~L3와 팀 문서 사이트 제공을 별도 추적한다. 상세 상태·의존성·완료 근거는 [계획서 13절](implementation-plan.md#13-남은-작업-등록부)을 따른다.
 
 M1/M2를 완료로 표시하지 않는다. candidate.10 로컬 후보 검증·GitHub prerelease 게시·hosted catalog 갱신은 완료했지만 실계정 `offered`·실사용 업데이트·실 MCP/Agent 분석은 아직 완료가 아니다. AWS 이전 및 원격 SR→PR은 [통합 계획](implementation-plan.md)의 후속 단계다.

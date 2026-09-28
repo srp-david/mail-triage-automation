@@ -45,7 +45,10 @@
 
 - Supabase 프로젝트 `tborximfpwrzzwuazjrb`에 migration 006~009, 최소 runtime 권한, David 소유 자료 이관 완료. 기존 hosted 합성 자료·계정은 보존했다. 최초 CLI 호출은 `--linked` 누락으로 실행 전에 실패했고, 수정한 호출은 exit 0이다.
 - UTC `2026-09-28T03:58:51.148Z` 읽기 전용 대조: 기존 분석 13개 결과 JSON, 이전 문서 33개 본문 일치. 공통 메일 연결 39건, 팀 읽기 공유 보고서 43건, ledger 총 10개 확인. 원본 로컬 DB는 검증 후 다시 중지했다.
-- 새 `history` 함수 배포는 자동 승인 검토가 거절했다. 원격 운영 함수 변경 및 기존 `--no-verify-jwt` 설정의 명시적 승인 부족이 사유다. `supabase/config.toml`에도 기존 verify_jwt=false가 있고 앱은 ES256 자체 JWT·현재 세션·자료 ACL을 검사한다. 이를 우회해 다른 배포 명령을 실행하지 않았다. 신규 공용 API는 아직 활성화되지 않았다.
+- 새 `history` 함수 배포는 최초 자동 승인 검토에서 원격 운영 함수 변경 및 기존 `--no-verify-jwt` 설정의 명시적 승인 부족으로 거절됐다. 이후 사용자가 배포·설치를 명시 승인하여 같은 설정으로 배포했다(exit 0). 기존 gateway 설정을 유지하며 앱은 ES256 자체 JWT·현재 세션·자료 ACL을 검사한다. hosted `/health/live`·`/health/ready` 200, `x-contract-version: 1`을 포함한 비인증 보고서 조회 401 확인.
 - 최종 전체 unit/UI/격리 DB 164건, check/build/Edge bundle 통과. 로컬 Supabase Edge 11군 통과. 실제 개인 Agent·타 PC 사용과 신규 API의 hosted 종단 수용은 미실행이다. GitHub push/Release/catalog 갱신은 수행하지 않았다.
 - 이후 최소 권한 runtime의 신규 HTTP API 검증까지 확장하여 로컬 Edge 총 12군 통과: 공통 메일 공유, revision 동시 저장, 대화·질문 결과 저장, 공유 회수 확인.
-- 로컬 검증용 `.runtime/packages/0.3.4.zip` 생성(3,736개 파일, SHA-256 `0667d0b6a9fbb718ed3f0c581dfa68fd3a53239183873ac3ee85c9d729c3ed97`). 임시 한글 경로 설치·기동·bootstrap 보호·작업 중지·단일 트레이·정상 종료·설정 보존 통과. 실제 인증은 실행하지 않았고 `releaseApproved=false`다. 사용자 `MailTriagePilot`의 활성 0.3.2는 유지했다. 새 API 배포 후 0.3.4 적용과 기존 source 원본 대조를 진행한다.
+- 로컬 검증용 `.runtime/packages/0.3.4.zip` 생성(3,736개 파일, SHA-256 `0667d0b6a9fbb718ed3f0c581dfa68fd3a53239183873ac3ee85c9d729c3ed97`). 임시 한글 경로 설치·기동·bootstrap 보호·작업 중지·단일 트레이·정상 종료·설정 보존 통과. `releaseApproved=false`인 시험용 패키지다.
+- UTC `2026-09-28T04:37:55.865Z` hosted 원본 재대조 통과: 기존 결과 JSON 13개·문서 33개 일치, 공유 보고서 43건·메일 연결 39건·migration 10개 유지.
+- 현재 PC `MailTriagePilot`을 0.3.2→0.3.4로 설치하고 기동했다. 이전 버전 0.3.2와 설정 파일 바이트 보존, 설치 파일 전체 무결성 검사 통과. UTC `2026-09-28T04:40:09.394Z` 시작한 HTTP 검증에서 제공 JS/CSS 2개 해시가 설치 파일과 일치하고 비인증 로컬 세션은 401이었다. 기존 로그인이 유효하며 이관 보고서·협업 조회가 실제 hosted API를 통해 200을 반환했다. 브라우저 열기 성공.
+- 이 설치본은 Mail MCP와 개인 Agent가 아직 미설정이다. 설정 연결 후 각 메일함의 공유 보고서 표시·실제 Agent·두 PC 동시 편집 수용을 진행한다. 이번 인증 조회 확인은 이 쓰기/실분석 시나리오의 완료 증거가 아니다. 검증 산출물은 Git 제외 `.runtime/install-034-result.json`, `.runtime/installed-034-verification.json`, `.runtime/shared-import-verification.json`에 보관했다.

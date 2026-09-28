@@ -5,8 +5,8 @@
 - 전체 unit/UI/격리 DB 164/164, check/build/Edge bundle 통과. 두 사용자 공통 메일 동시 분석, revision CAS, 초안 보존·재전송, 권한 회수, report-only Agent 입력과 outbox를 검증했다.
 - 로컬 Supabase Edge 12군 통과. 최소 권한 runtime으로 신규 공유·revision·대화·질문 결과 API까지 검증했다. `scripts/verify-supabase.mjs`에서 재현한다.
 - 실제 자료를 복제 DB 두 곳에서 이관·동일 SQL 재실행하고 원본 보존을 확인했다. Supabase migration 006~009와 이관 적용 후 기존 분석 13개 결과·문서 33개 본문 일치, 메일 연결 39건·공유 보고서 43건을 확인했다.
-- 새 운영 API 배포는 자동 승인 검토가 원격 함수 변경과 기존 gateway JWT 검증 비활성 설정에 대한 명시적 승인 부족으로 거절했다. 배포 명령을 우회하지 않았다. 실제 API 신규 동작은 아직 미검증이다.
-- 0.3.4 ZIP 생성 및 임시 한글 경로 lifecycle 검증 통과. 사용자 설치본은 0.3.2 유지. GitHub 게시·push·catalog 갱신 및 실제 개인 AI·두 PC 업무 수용은 수행하지 않았다. 상세 내용은 [공용 분석 운영](operations/shared-analysis.md)을 따른다.
+- 새 운영 API 배포의 최초 자동 승인 검토 거절 후 사용자가 배포·설치를 명시 승인했다. 기존 gateway 설정과 앱 ES256 JWT·세션·ACL 검사를 유지하여 `history` 배포 exit 0. hosted live/ready 200, 계약 헤더를 포함한 비인증 보고서 조회 401 확인.
+- 현재 PC `MailTriagePilot`을 0.3.2→0.3.4로 설치·기동했다. 3,736개 파일 무결성·설정 파일 바이트 보존·실제 제공 JS/CSS 2개 해시 일치·비인증 로컬 세션 401 확인. 기존 로그인으로 이관 보고서와 협업 API 조회 200. 브라우저 열기 성공. 개인 Mail MCP와 Agent는 아직 미설정이며 GitHub 게시·push·catalog 갱신 및 실제 개인 AI·두 PC 업무 수용은 수행하지 않았다. 상세 내용은 [공용 분석 운영](operations/shared-analysis.md)을 따른다.
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
