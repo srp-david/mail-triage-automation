@@ -4,6 +4,8 @@
 
 ## 1. 설치·시작·로그인
 
+아래는 첫 로그인 흐름이다. 저장된 세션을 복원하는 재실행 흐름과 유효기간·재로그인 조건은 [로그인 유지와 자동 로그인](operations/login.md)에 정리했다.
+
 ```mermaid
 sequenceDiagram
   actor User as 사용자
@@ -30,7 +32,7 @@ sequenceDiagram
 
 ## 2. 원본·장치 등록
 
-1. `settings.json`에서 Mail MCP·개인 Agent·읽기 자료를 준비한다.
+1. 0.3.0 이후 로컬 설치본은 웹 설정의 연결 환경에서 Mail MCP·개인 Agent·읽기 자료를 저장한다. 0.3.2부터는 별도의 연결 환경 탭을 사용한다. 기존 candidate.10은 `settings.json` 수동 설정 방식이다.
 2. 앱 계정으로 로그인하고 현재 MCP에 대응하는 source를 등록한다. 로컬 `instanceId`와 공용 `sourceId`를 연결한다.
 3. 자신이 접근할 수 있는 source와 지원 Agent를 지정해 Runner를 등록한다. 장치 credential은 브라우저에 반환하지 않고 DPAPI에 저장한다.
 4. source·Runner·Agent를 선택한다. 다른 사용자로 바꾸거나 출처를 바꾸면 실행 loop를 중지하고 현재 권한을 재확인한다.

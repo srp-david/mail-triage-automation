@@ -2,6 +2,63 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-28 누적 변경 검토·작업별 커밋·문서 정리
+
+- 기준 커밋 `83a4b61` 이후 변경 50개 파일을 검토하고 다음 기능 커밋과 별도 문서 커밋으로 정리했다. 원격 push·태그 변경·GitHub Release 게시·hosted catalog 갱신은 수행하지 않았다.
+
+| 커밋 | 범위 |
+|---|---|
+| `11af049` | 개인 연결 설정, Codex/Claude MCP 탐색, DB 구조 조회, 로컬 실행 제어 및 관련 테스트 14파일 |
+| `5053b3f` | Windows 트레이·바탕화면 바로가기, 숫자 버전 패키징·배포 규칙과 검증 스크립트 15파일 |
+| `d427380` | 웹 연결 설정·관리자 계정 화면·내 계정 메뉴, UI 테스트와 브라우저 검증 스크립트 10파일 |
+| 문서 후속 커밋 | 최신 상태·구현 계획·설치/로그인 운영 안내·버전별 패치노트·검증 기록 11파일. 문서 자체의 SHA는 자기참조하지 않는다. |
+
+- `npm.cmd run check` 통과. Vitest의 `connections`, `tray`, `local-cli`, `runner`, `installer`, `ConnectionEditor`, `Settings`, `Forms` **8파일 / 36테스트** 통과. 기존 합성 브라우저·설치 업그레이드 증거는 아래 버전별 기록을 따른다. 이번 커밋 정리에서는 실계정 로그인·실메일 분석·hosted 검증을 재실행하지 않았다.
+- `git diff --check` 통과. 변경 50파일의 자격 증명 패턴·민감 경로 검사 결과 0건, 문서 상대 링크 98개 대상 존재 확인. 이는 이번 변경 범위의 간이 검사이며 Gitleaks 전체 이력 검사는 아니다. 검토 기록 `.runtime/commit-prep/current-review.json`은 Git에서 제외했다.
+- [자동 로그인 안내](operations/login.md)에 토큰 갱신, 세션 만료, Windows DPAPI 저장, 종료/재실행·로그아웃·비밀번호 변경 동작을 문서화했다. 실제 개인 토큰을 조회하거나 계정을 변경하지 않았다.
+- 최신 로컬 설치본은 `0.3.3-setup.exe`다. 아래 설치본은 모두 이번 커밋 정리 전에 만들어졌으므로 새 커밋을 가리키는 패키지·서명 metadata로 재발행한 상태가 아니다. 새 빌드·서명·배포 및 사용자 수용 검증은 별도 작업이다.
+
+## 2026-09-28 관리자 계정 UI·내 계정 메뉴와 v0.3.3
+
+- 관리자 계정 정보를 카드·역할/상태 배지·검색으로 정리하고 생성/수정 입력을 접을 수 있게 했다. 임시 비밀번호는 대상 계정과 함께 대화상자로 표시한다. 일반 설정의 비밀번호 변경은 독립된 `#account` / 내 계정 메뉴로 옮겼다.
+- `npm run check`, `npm run build:ui`, `Forms.test.tsx` 6개 테스트 통과. 기존 비밀번호 검증과 비밀 입력 초기화, 계정 수정 값 전달, IME 폼 처리를 유지했다.
+- `node --import tsx scripts/verify-account-ui.mjs`: 합성 계정으로 목록 자동 조회·검색·표시 이름 수정·계정 생성·비밀번호 초기화·임시 비밀번호 창 닫기, 설정에서 비밀번호 폼 제거, 내 계정 직접 이동/새로고침, 비밀번호 변경 후 로그인 화면, 최초 필수 변경, 비관리자 메뉴 숨김을 확인했다.
+- 390px 화면 가로 넘침 없음. `.runtime/account-ui/run-wMBSMw/result.json`, 같은 폴더 `admin-desktop.png`, `admin-mobile.png`, `account-desktop.png` 확인. 검증 API는 합성 계정 저장소이며 실제 계정·비밀번호·권한은 변경하지 않았다. 메뉴 숨김 검증은 서버 권한 검증을 대체하지 않으며 서버 권한 코드는 이번에 변경하지 않았다.
+- 별도 합성 홈에서 setup.exe로 0.3.2→0.3.3 업그레이드하여 설정·작업 파일 보존을 확인했다. 설치 앱이 제공한 JavaScript SHA-256 `77932e7465775aba42a5e542c731a56053ed41af4c820f597e7e673f771a1ea8`이 manifest와 로컬 빌드 모두에 일치했다. 기록 `.runtime/tray-validation/upgrade-Ye5u1P/account-ui-verification.json`.
+- `0.3.3-setup.exe` 생성. EXE SHA-256 `e77bab9916ac32cb9f818ed4cf32ffec90e257f195de9c105e521f3bce0c2bba`, ZIP `f0b925b2b2b5e32e537f8738c7a5cc897288b3dd51d9e651df2173515b27b12e`. 미커밋 로컬 소스 산출물로 GitHub 게시·metadata 서명·hosted catalog 갱신은 수행하지 않았다.
+
+## 2026-09-28 설정 화면 구성·가독성 개선과 v0.3.2
+
+- 설정 화면을 연결 환경·분석 준비·공유/장치·복구 탭으로 분리했다. Mail/DB·AI 도구를 카드로 배치하고 입력 여부·실제 검사 결과·저장하지 않은 변경을 구분했다. 기존 입력 컨트롤과 이벤트를 유지했다.
+- `npm run check`, `npm run build:ui`, Settings·ConnectionEditor UI 테스트 7개 통과.
+- `node --import tsx scripts/verify-connections.mjs`: 자동 찾기·수동 수정·저장·설정 파일 보존·새로고침 통과. 탭 이동 시 작성 중인 값 유지, 저장 완료 후 변경 없는 저장 버튼 비활성화, 390px에서 가로 넘침 없음, 브라우저 오류 없음. 합성 자료이며 실제 사용자 인증·업무 분석은 수행하지 않았다.
+- 검증 기록 `.runtime/connection-ui/run-ax6dQh/result.json`; 같은 폴더의 `desktop.png`, `desktop-save.png`, `desktop-preparation.png`, `mobile.png`로 화면을 확인했다.
+- 합성 홈에서 실제 setup.exe로 0.3.1→0.3.2 업그레이드한 뒤 서버 주소·연결 설정·작업 파일 보존을 확인했다. 설치된 앱을 기동해 제공된 UI JavaScript SHA-256 `5c06b8fc8422a43d335ca0f29990f90811805513b7105338614cad40967059b6`이 설치 manifest와 로컬 UI 빌드 모두에 일치함을 확인하고 종료했다. 기록 `.runtime/tray-validation/upgrade-Ye5u1P/settings-ui-verification.json`. 실제 개인 설치본은 변경하지 않았다.
+- `0.3.2-setup.exe` 생성. EXE SHA-256 `e3f1c050fe7fd513e1f741fe15861f65ff142c65fc12039b3b19b05a22de80b6`, ZIP `5c0600a0c73f7161ecc2651c32f3dfdfd2d090e7c20a8fa493e6a87d5b5e1394`. 소스 커밋·GitHub 게시·hosted catalog 갱신은 수행하지 않았다.
+
+## 2026-09-28 바탕화면 바로가기·트레이와 v0.3.1 로컬 설치본
+
+- `npm run check`, `npm run build` 통과. `installer`, `tray`, `local-cli`, `runner`, `connections` 5개 파일의 단위 테스트 23개 통과. 중지 대상만 재개, 반복 중지, 로그인/출처 재확인, 설정 변경 시 재개 기록 초기화, 업데이트 중 재개 차단, 로컬 capability 보호와 고정 설정 화면 ticket을 검증했다.
+- `scripts/verify-windows-tray.ps1`: 실제 WinForms 메뉴의 다섯 명령과 busy 처리, 아이콘 정리, 부모 stdin 연결 종료 시 트레이 종료 통과. 초기 WinExe의 콘솔 코드페이지 설정 실패는 명시적인 UTF-8 입출력 스트림으로 수정한 뒤 재검증했다.
+- `scripts/verify-windows-lifecycle.mjs .runtime/packages/0.3.1`: 한글 합성 홈 `.runtime/lifecycle/한글 설치-l60pYs`에서 앱 실행·bootstrap 보호·작업 중지·바로가기·정상 종료·설정 보존 통과. 브라우저 없이 앱과 트레이가 유지되고, 재실행 시 같은 앱과 트레이 1개를 유지하며 종료 후 트레이 PID가 사라짐을 확인했다. Windows 자식 프로세스 조회는 읽기 권한으로 검증했다.
+- Node v24.16.0 포함 ZIP 3,734개 파일과 `0.3.1-setup.exe` 생성. EXE SHA-256 `ab3e87627791bc002ca7c7a69fee07a661188c9bf0a8e4d668e9397d0d753361`, ZIP `742e270d71e082d687cfb987e305f529b3ebf1f355300bd3a42104fa621b2148`.
+- 두 setup.exe로 별도 합성 홈에서 0.3.0→0.3.1 업그레이드, 설정·작업 파일 보존, 이전 버전 기록을 검증했다. setup의 실제 shortcut 생성 메서드를 격리 폴더에 적용하여 한국어 이름·숨김 실행·control.ps1 대상·아이콘을 확인했다. `.runtime/tray-validation/upgrade-Ye5u1P/verification.json`, 실제 바탕화면과 개인 설치본은 변경하지 않았다.
+- `orca skills get computer-use`가 명령을 찾지 못해 실제 데스크톱 메뉴 클릭은 확인하지 못했다. 위 메뉴 검증은 프로그램에서 WinForms 메뉴를 호출한 결과이며 사람의 마우스 클릭 검증과 구분한다. 실계정 인증·실메일 분석도 미수행이다.
+- 소스 커밋·GitHub 게시·metadata 서명·hosted catalog 갱신은 하지 않았다. 현재 로컬 설치본이며 Windows Authenticode 서명도 없다.
+
+## 2026-09-28 웹 연결 환경과 v0.3.0 로컬 설치본
+
+- `npm run check`, `npm run build` 통과. 연결 설정·기존 profile/executor/UI API·설치 및 React 설정 화면을 대상으로 8개 파일, 21개 테스트 통과.
+- 설정 저장 시 기존 서버/auth/port/추가 필드 보존, 오래된 revision 거절, 적용 실패 시 원본 보존, 잘못된 자료 경로 거절을 확인했다. 출처 변경 시 기존 원본 바인딩을 유지하지 않으며 로컬 세션·Origin·CSRF 보호를 유지한다.
+- 합성 MCP 서버에서 연결 확인은 도구 목록만 읽고 도구를 호출하지 않음을 확인했다. DB provider는 고정 구조 조회 4종만 허용하며 SQL 파라미터를 거절한다.
+- 실제 PC 자동 탐색 결과 Mail MCP 1개·DB MCP 1개·Claude 실행 경로를 찾았다. 실서버 확인은 도구 목록까지만이며 메일 원문·ERP 데이터를 읽지 않았다.
+- `scripts/verify-connections.mjs`: 합성 브라우저 자동 입력→수동 수정→실제 설정 파일 저장→새로고침, 서버 주소 보존, 모바일 가로 넘침 없음, 브라우저 오류 없음. 최종 기록 `.runtime/connection-ui/run-6qfqvE/result.json`, `realAuthentication=false`.
+- Node v24.16.0 포함 ZIP 3,731개 파일과 `0.3.0-setup.exe` 생성. EXE SHA-256 `789fde6ce154ef2cc6e1375ff863bb314bd135f216de6025cb13c611d2d0c605`, ZIP `64fade66aa5b7a86198d5bd377c735d6508f4d60a4da35cd55215232965798fe`.
+- 패키지 lifecycle: 한글 테스트 홈에서 기동·bootstrap 보호·작업 중지·바로가기·정상 종료·개인 설정 보존 통과. `.runtime/lifecycle/한글 설치-fWuQpg`, 실계정 인증은 하지 않았다.
+- 두 setup.exe를 사용한 합성 candidate.10→0.3.0 업그레이드 통과. historyUrl·port·메일 주소·작업 폴더 표식 보존, 이전 활성 버전 기록 확인. `.runtime/connection-ui/upgrade-3eQD4q/verification.json`.
+- 업그레이드한 설치본을 직접 기동해 제공된 UI JavaScript의 SHA-256이 설치 manifest와 일치하고 연결 설정 코드가 포함됐음을 확인한 뒤 정상 종료했다. `.runtime/connection-ui/upgrade-3eQD4q/served-ui.json`.
+- GitHub 게시·metadata 서명·hosted catalog 갱신은 수행하지 않았다. 현재 설치 파일은 미커밋 로컬 소스 산출물이다. 실계정 로그인·제공자 인증·지정 메일 분석은 사용자 수용 단계에 남아 있다.
+
 ## 2026-09-28 로컬 이력·원격 main·Release·catalog 전환 완료
 
 - 기존 41개 SHA를 보존한 코드 47개 커밋과 준비 문서 포함 48개 이력을 원격 main으로 atomic force-with-lease push했다. 두 태그도 같은 작업에서 candidate.9 `83be2a941f6125db58c70ac05a5efc63f45fe566`, candidate.10 `6fe6de9a93c1df3313541ad4d78a085483edbe17`로 전환했다. main은 문서 후속 커밋 포함 같은 로컬 이력으로 관리하며 문서의 자기 SHA는 기록하지 않는다.

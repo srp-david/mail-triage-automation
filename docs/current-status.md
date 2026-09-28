@@ -1,6 +1,31 @@
 # 현재 구현·배포 상태
 
-갱신일: 2026-09-28. 기존 로컬 41개 SHA를 보존한 이력에 코드 변경 21파일의 한글 커밋 6개와 문서 후속 커밋을 이어 원격 main으로 통합했다. Release 태그·서명 metadata·hosted catalog 대조도 완료했다. 기존 candidate.10 설치/Agent probe 증거는 2026-09-23 기록이며, 인증 실계정의 업데이트 제공·설치와 실업무 수용은 아직 검증하지 않았다.
+갱신일: 2026-09-28. 개인 연결·Windows 트레이·설정/계정 UI·자동 로그인 안내 작업을 작업별 로컬 커밋으로 정리했다. 이번 정리에서는 원격 push, GitHub Release 게시, hosted catalog 변경을 수행하지 않았다. 커밋별 범위와 재검증 결과는 [검증 일지](validation.md)에 기록했다. 이전 원격 이력 통합과 candidate.10 게시 증거는 아래 역사 기록으로 보존한다.
+
+## 최신 로컬 전달물
+
+**`.runtime/packages/0.3.3-setup.exe`**가 최신 로컬 설치본이다. 기존 candidate.10 이후 다음 변경을 포함한다.
+
+| 작업 | 구현·로컬 검증 | 남은 확인 |
+|---|---|---|
+| 개인 연결 | 웹에서 Mail/DB MCP·AI 실행 경로·자료 폴더 저장, Codex/Claude HTTP MCP 자동 찾기, DB 구조 조회 4종 | 개인 계정·실메일·실제 업무 자료 분석 |
+| Windows 실행 | 바탕화면 바로가기, 트레이 화면/설정/중지/재개/종료, 중복 실행 방지 | 사용자 PC 실제 메뉴 클릭·2PC 수용 |
+| 설정 화면 | 연결 환경·분석 준비 탭, 카드 배치, 변경/저장 상태, 작성 중 값 유지 | 개인 연결로 사용자 수용 |
+| 계정 화면 | 관리자 목록·검색·권한/상태 카드·임시 비밀번호 창, 독립된 내 계정 메뉴 | 실제 사용자 계정 운영 수용 |
+| 문서 | [자동 로그인 안내](operations/login.md), 설치·실행 절차, 숫자 버전 패치노트 규칙 | 팀 문서 사이트 게시 |
+
+EXE SHA-256 `e77bab9916ac32cb9f818ed4cf32ffec90e257f195de9c105e521f3bce0c2bba`, ZIP `f0b925b2b2b5e32e537f8738c7a5cc897288b3dd51d9e651df2173515b27b12e`. 설치 파일은 소스 커밋 정리 전에 생성한 로컬 산출물이며, 이번 커밋으로 새 패키징이나 서명·게시를 수행한 것은 아니다. Authenticode 및 공개 업데이트 metadata 서명은 없다. 실제 계정은 변경하지 않았다.
+
+### 로컬 버전별 기록
+
+| 버전 | 변경 | 패치노트 |
+|---|---|---|
+| 0.3.0 | 웹 연결 설정·자동 탐색·DB 구조 조회 | [초안](releases/v0.3.0.md) |
+| 0.3.1 | 트레이·바탕화면 바로가기 | [초안](releases/v0.3.1.md) |
+| 0.3.2 | 설정 화면 구성·가독성 | [초안](releases/v0.3.2.md) |
+| 0.3.3 | 관리자 계정 화면·내 계정 메뉴 | [초안](releases/v0.3.3.md) |
+
+네 버전은 로컬 설치본이며 GitHub에는 미게시다. 버전별 파일 해시·브라우저·업그레이드·제공 UI 대조 결과는 [검증 일지](validation.md)에 보존한다. 마지막으로 확인한 공개 배포는 candidate.10이며 이번 작업에서 원격 상태를 재조회하지 않았다.
 
 ## 제품 경계
 
@@ -12,14 +37,14 @@
 | 공용 DB | PostgreSQL 17.6, `triage_private`, migration 6개, runtime DDL 차단 | 외부 백업·복원과 운영 담당 확정 |
 | Data API | 사용자 비활성화 확인, publishable key 접근 401 확인 | 모든 관리 키까지 차단했다는 의미는 아님 |
 | 로그인 | 최초 관리자 생성, hosted 로그인·첫 변경 제한 확인 | 팀원 계정 발급·각 사용자 최초 변경 |
-| Windows 앱 | candidate.10 setup.exe의 합성 stale lock 복구→설치·기존 historyUrl/port 보존, 한글 경로 lifecycle start/pause/stop 통과. candidate.9 UI E2E 1 passed, .10 UI 동일 | candidate.10의 별도 UI E2E·깨끗한 팀 PC/2PC 수용·실업무 분석 |
-| GitHub 저장소 | 기존 41개 SHA 보존·공개 검사 통과, 원격 main은 문서 후속 커밋 포함 같은 로컬 이력. 원격 candidate.9 태그 `83be2a941f6125db58c70ac05a5efc63f45fe566`·candidate.10 태그 `6fe6de9a93c1df3313541ad4d78a085483edbe17` 및 Release metadata/catalog 대조 완료 | 자동 게시 CI·private 전환·실계정 수용은 별도 |
+| Windows 앱 | 0.3.3 로컬 설치본 생성, 합성 업그레이드·설정 보존·제공 UI hash 대조 통과. 이전 candidate.10 게시 기록 보존 | 새 소스 게시·숫자 버전 배포·깨끗한 팀 PC/2PC 수용·실업무 분석 |
+| GitHub 저장소 | 기존 41개 SHA 보존·공개 검사 통과, 이전 통합 시 원격 main·태그 확인. 이번 후속 커밋은 로컬만 진행. 원격 candidate.9 태그 `83be2a941f6125db58c70ac05a5efc63f45fe566`·candidate.10 태그 `6fe6de9a93c1df3313541ad4d78a085483edbe17` 및 Release metadata/catalog 대조 완료 | 자동 게시 CI·private 전환·실계정 수용은 별도 |
 | Release 업데이트 | candidate.10 prerelease 게시·서버 asset digest 일치. hosted `history` 함수는 .9 배포 코드 유지, `UPDATE_CATALOG_JSON`을 .10으로 갱신. health 200·비인증 update check 401 확인 | 실계정의 버전별 `current`/`offered`·앱 updater 다운로드/설치 미검증 |
 | 보고서 협업 | 추가 답변→새 분석 구현 | 지속 대화·보고서 반영/revision·낙관적 락 미구현. M3 확장 배치안 |
 | 작업 시작·업무 등록부 | 분석용 requestId·메일당 활성 분석 제한 존재 | 선택한 Agent/repo로 구현 시작·brief 고정·업무 단위 중복 방지 미구현, M5 |
-| 개인 연결 UI | 메일 → AI·장치 → ERP 자료 → 저장·실행의 4단계, 공유·복구 분리 | 주소·실행 경로는 설정 파일로 지정. 실제 MCP·AI 통신 검증 별도 |
+| 개인 연결 UI | 0.3.0에서 추가, 0.3.2에서 연결 환경/분석 준비 탭과 카드로 정리. 0.3.3에도 포함 | 기존 candidate.10에는 없음. 실계정 수용 필요 |
 | 로컬 실행 환경 | Runner·Agent adapter·읽기 전용 근거 도구 구현 | 설치본의 개인 Mail MCP·Agent·ERP 경로와 지정 사례 검증 |
-| DB MCP | 사전 정의 조회 provider 인터페이스 존재 | local-app 진입점에 실제 DB provider 미연결 |
+| DB MCP | 0.3.0부터 주소 설정과 고정 메타데이터 조회 4종 provider 연결 | 임의 SQL 미지원, 실제 업무 데이터 근거 조회는 후속 범위 |
 | 백업 | 로컬 합성 DB dump/restore 검증 이력 존재 | hosted dump 실패 후 사용자 요청으로 설정 보류 |
 | 실제 팀 파일럿 | 절차 준비 | 2명/2PC 지정 업무·공유·복구·피드백 미완료 |
 | 기존 v0 | Docker API/DB/Worker 보존 | 새 Supabase DB와 자동 이관·자동 동기화하지 않음 |
