@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSession, errorText } from '../api/client';
 import { Action } from '../components/Common';
 import { Registration, SetupStep } from './SetupControls';
+import { ConnectionEditor } from './ConnectionEditor';
 interface SourceOption {
   id: string;
   display_name: string;
@@ -38,6 +39,7 @@ interface MemberOption {
   email?: string;
 }
 interface LocalEnvironment {
+  connectionsEditable?: boolean;
   mailConfigured: boolean;
   agents: ('codex' | 'claude')[];
   evidenceRootCount: number;
@@ -158,6 +160,7 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
     (r) => r.id === value.runnerId && r.active && r.agents.includes(value.agent),
   );
   const canStart = savedSelection && mailBound && runnerSelected;
+  const preparationTab = environment?.connectionsEditable ? 3 : 0;
   const next = !value.sourceId
     ? '메일 출처를 선택하거나 이 PC의 메일을 새로 등록하세요.'
     : !runnerSelected
@@ -167,11 +170,11 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
         : !originalAvailable
           ? '이 출처의 원본이 이 PC에 없습니다. 공유 보고서를 보거나 기존 원본을 다시 연결하세요.'
           : agentConfigured === false
-            ? '선택한 AI 도구의 실행 경로를 설정한 뒤 앱을 다시 시작하세요.'
+            ? '연결 환경에서 선택한 AI 도구의 실행 경로를 설정하고 저장하세요.'
             : !runtime
               ? '실행 상태를 확인한 다음 분석 실행을 켜세요.'
               : !runtime.analysisAvailable
-                ? '개인 AI 도구의 실행 경로를 설정한 뒤 앱을 다시 시작하세요.'
+                ? '연결 환경에서 개인 AI 도구의 실행 경로를 설정하고 저장하세요.'
                 : loopActive(runtime.analysis)
                   ? '메일함에서 분석할 메일을 선택하세요.'
                   : '분석 실행을 켠 다음 메일함에서 분석을 시작하세요.';
@@ -191,10 +194,10 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
       <Box className="setup-header">
         <Box>
           <Typography variant="overline" color="primary">
-            MY WORKSPACE
+            내 작업 환경
           </Typography>
           <Typography component="h2" variant="h2">
-            출처와 실행 설정
+            환경설정
           </Typography>
           <Typography color="text.secondary">
             내 PC의 메일과 AI 도구를 연결하고 분석을 준비하세요.
@@ -210,9 +213,19 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
         scrollButtons="auto"
         className="setup-tabs"
       >
-        {['개인 연결', '공유·장치 관리', '중단 작업 복구'].map((label, i) => (
+        {[
+          ...(environment?.connectionsEditable
+            ? [
+                { label: '연결 환경', value: 0 },
+                { label: '분석 준비', value: 3 },
+              ]
+            : [{ label: '개인 연결', value: 0 }]),
+          { label: '공유·장치 관리', value: 1 },
+          { label: '중단 작업 복구', value: 2 },
+        ].map(({ label, value: i }) => (
           <Tab
             key={label}
+            value={i}
             label={label}
             id={`settings-tab-${i}`}
             aria-controls={`settings-panel-${i}`}
@@ -240,12 +253,41 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
         className="setup-fieldset"
         disabled={loading || !!loadError || form.formState.isSubmitting}
       >
+        {environment?.connectionsEditable && (
+          <Box
+            role="tabpanel"
+            id="settings-panel-0"
+            aria-labelledby="settings-tab-0"
+            hidden={tab !== 0}
+          >
+            <ConnectionEditor
+              onSaved={async () => {
+                invalidate();
+                await load();
+                await changed();
+              }}
+            />
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+              <Button variant="outlined" onClick={() => setTab(3)}>
+                다음: 분석 준비
+              </Button>
+            </Box>
+          </Box>
+        )}
         <Box
           role="tabpanel"
-          id="settings-panel-0"
-          aria-labelledby="settings-tab-0"
-          hidden={tab !== 0}
+          id={`settings-panel-${preparationTab}`}
+          aria-labelledby={`settings-tab-${preparationTab}`}
+          hidden={tab !== preparationTab}
         >
+          {environment?.connectionsEditable && (
+            <Box className="connection-preparation">
+              <Typography variant="h3">분석 준비</Typography>
+              <Typography variant="body2" color="text.secondary">
+                저장한 연결을 사용할 메일 출처와 장치를 선택하고 실행을 켜세요.
+              </Typography>
+            </Box>
+          )}
           <Box className="setup-next" role="status">
             <Typography variant="body2" sx={{ fontWeight: 700 }} color="primary">
               다음 할 일
@@ -296,9 +338,7 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
                   다시 연결을 사용하세요.
                 </Typography>
                 {environment?.mailConfigured === false && (
-                  <Alert severity="info">
-                    아래 연결 설정 안내에 따라 Mail MCP 주소를 먼저 설정하세요.
-                  </Alert>
+                  <Alert severity="info">연결 환경에서 Mail MCP 주소를 먼저 설정하세요.</Alert>
                 )}
                 <Registration
                   label="메일 출처 이름"
@@ -470,8 +510,8 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {environment?.dbConfigured
-                    ? '조회 연결이 설정되어 있습니다. 실제 조회는 별도로 확인하세요.'
-                    : '현재 앱의 실제 ERP DB 조회 연결은 별도 준비가 필요합니다.'}
+                    ? 'DB 구조 조회 연결이 설정되어 있습니다. 실제 업무 데이터 조회는 별도로 확인하세요.'
+                    : '연결 환경에서 DB MCP 주소를 설정할 수 있습니다.'}
                 </Typography>
               </Box>
             </SetupStep>
@@ -523,7 +563,7 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
               )}
               {runtime && !runtime.analysisAvailable && (
                 <Alert severity="info">
-                  로컬 설정에 개인 분석 도구가 등록되지 않았습니다. 연결 설정 안내를 확인하세요.
+                  개인 분석 도구가 등록되지 않았습니다. 연결 환경에서 실행 경로를 설정하세요.
                 </Alert>
               )}
               <Box className="setup-actions">
@@ -575,33 +615,35 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
               </Action>
             </SetupStep>
           </Box>
-          <Disclosure className="setup-guide">
-            <DisclosureTitle>연결 설정 안내 · MCP 주소와 AI 실행 경로</DisclosureTitle>
-            <Typography variant="body2">
-              현재 연결 주소와 실행 경로는 설치 폴더의 config/settings.json에서 설정합니다. 기존
-              값을 유지하면서 필요한 항목을 수정하고 앱을 다시 시작하세요.
-            </Typography>
-            <ol className="setup-guide-list">
-              <li>
-                <strong>메일</strong> — Mail MCP를 켜고 mailMcpUrl에 해당 연결 주소를 설정합니다.
-              </li>
-              <li>
-                <strong>AI 도구</strong> — Codex 또는 Claude Code의 설치·로그인을 마치고 agents의
-                해당 도구에 executable을 설정합니다.
-              </li>
-              <li>
-                <strong>ERP 자료</strong> — evidenceRoots에 읽기를 허용할 코드·자료 폴더를
-                설정합니다.
-              </li>
-              <li>
-                <strong>다시 확인</strong> — 앱을 다시 시작하고 메일 출처·장치를 선택한 뒤
-                저장합니다.
-              </li>
-            </ol>
-            <Typography variant="body2" color="text.secondary">
-              연결 상태가 표시되어도 실제 메일 통신·AI 응답·업무 자료 확인은 별도로 필요합니다.
-            </Typography>
-          </Disclosure>
+          {!environment?.connectionsEditable && (
+            <Disclosure className="setup-guide">
+              <DisclosureTitle>연결 설정 안내 · MCP 주소와 AI 실행 경로</DisclosureTitle>
+              <Typography variant="body2">
+                현재 연결 주소와 실행 경로는 설치 폴더의 config/settings.json에서 설정합니다. 기존
+                값을 유지하면서 필요한 항목을 수정하고 앱을 다시 시작하세요.
+              </Typography>
+              <ol className="setup-guide-list">
+                <li>
+                  <strong>메일</strong> — Mail MCP를 켜고 mailMcpUrl에 해당 연결 주소를 설정합니다.
+                </li>
+                <li>
+                  <strong>AI 도구</strong> — Codex 또는 Claude Code의 설치·로그인을 마치고 agents의
+                  해당 도구에 executable을 설정합니다.
+                </li>
+                <li>
+                  <strong>ERP 자료</strong> — evidenceRoots에 읽기를 허용할 코드·자료 폴더를
+                  설정합니다.
+                </li>
+                <li>
+                  <strong>다시 확인</strong> — 앱을 다시 시작하고 메일 출처·장치를 선택한 뒤
+                  저장합니다.
+                </li>
+              </ol>
+              <Typography variant="body2" color="text.secondary">
+                연결 상태가 표시되어도 실제 메일 통신·AI 응답·업무 자료 확인은 별도로 필요합니다.
+              </Typography>
+            </Disclosure>
+          )}
         </Box>
         <Box
           role="tabpanel"

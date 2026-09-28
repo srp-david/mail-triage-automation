@@ -1,4 +1,4 @@
-import { Field, Panel, Disclosure, DisclosureTitle } from '../components/Controls';
+import { Field, Panel } from '../components/Controls';
 import { Alert, AppBar, Box, Button, Chip, Snackbar, Toolbar, Typography } from '@mui/material';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createApi, errorText, SessionContext } from '../api/client';
@@ -18,7 +18,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { clearDrafts } from '../../../../../public/answer-drafts.js';
 import { closeOfficePreview } from '../components/PreviewDialog';
 const viewFromHash = () =>
-  ['mailbox', 'history', 'legacy', 'settings', 'admin'].includes(location.hash.slice(1))
+  ['mailbox', 'history', 'legacy', 'settings', 'admin', 'account'].includes(location.hash.slice(1))
     ? location.hash.slice(1)
     : 'mailbox';
 const revision = (sync: Sync | null) =>
@@ -196,7 +196,7 @@ export function App() {
       setStatus(value);
       setAuthenticated(true);
       setNotice('');
-      if (native && !value.storeId) location.hash = 'settings';
+      if (native && !value.storeId && viewFromHash() === 'mailbox') location.hash = 'settings';
     } catch (e) {
       setNotice(errorText(e));
     }
@@ -327,6 +327,7 @@ export function App() {
         {native && mustChange && (
           <>
             <PasswordForm
+              required
               changed={async () => {
                 clearDrafts();
                 unauthorized();
@@ -430,6 +431,7 @@ export function App() {
               ['legacy', '이전 이력'],
               ...(native && role === 'admin' ? [['admin', '관리자']] : []),
               ...(native ? [['settings', '설정']] : []),
+              ...(native && authMode === 'username' ? [['account', '내 계정']] : []),
             ].map(([key, label]) => (
               <Button
                 component="a"
@@ -466,18 +468,17 @@ export function App() {
                   await boot();
                 }}
               />
-              {authMode === 'username' && (
-                <Disclosure className="settings-account">
-                  <DisclosureTitle>계정 · 비밀번호 변경</DisclosureTitle>
-                  <PasswordForm
-                    changed={async () => {
-                      clearDrafts();
-                      unauthorized();
-                      await boot();
-                    }}
-                  />
-                </Disclosure>
-              )}
+            </div>
+          )}
+          {native && authenticated && authMode === 'username' && view === 'account' && (
+            <div id="view-account">
+              <PasswordForm
+                changed={async () => {
+                  clearDrafts();
+                  unauthorized();
+                  await boot();
+                }}
+              />
             </div>
           )}
           {native && authenticated && view === 'mailbox' && status?.originalAvailable === false && (

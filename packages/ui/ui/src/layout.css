@@ -3,9 +3,204 @@
   max-width: 1180px;
   margin-inline: auto;
 }
-.settings-account {
+.connection-editor {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 32px;
+  min-width: 0;
+}
+.connection-heading,
+.connection-discovery,
+.connection-card-title,
+.connection-save {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.connection-heading h3,
+.connection-heading h4,
+.connection-section-title h4,
+.connection-preparation h3 {
+  margin: 0 0 6px;
+}
+.connection-discovery {
+  padding: 18px;
+  background: var(--mui-palette-background-default);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+.connection-section-title {
+  padding-top: 8px;
+}
+.connection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.connection-card {
+  border: 1px solid var(--mui-palette-divider);
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.connection-card-title h5 {
+  margin: 0;
+}
+.connection-card > .MuiButton-root {
+  align-self: flex-start;
+}
+.connection-card .MuiTextField-root,
+.connection-root-fields > * {
+  width: 100%;
+  min-width: 0;
+}
+.connection-card details {
+  margin: 0;
+}
+.connection-card details[open] > .MuiTextField-root {
+  margin-block: 10px;
+}
+.connection-empty {
+  padding: 18px 0;
+}
+.connection-root {
+  padding-block: 20px;
+  border-top: 1px solid var(--mui-palette-divider);
+  margin-top: 18px;
+}
+.connection-root-fields {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(0, 2fr);
+  gap: 16px;
+}
+.connection-save {
+  border: 1px solid var(--mui-palette-divider);
+  border-radius: 10px;
+  background: #eef6f3;
+  padding: 18px 20px;
+}
+.connection-save > .MuiButton-root {
+  flex-shrink: 0;
+}
+.connection-preparation {
+  margin-bottom: 18px;
+}
+@media (max-width: 750px) {
+  .connection-grid,
+  .connection-root-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .connection-heading,
+  .connection-save {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .connection-card,
+  .connection-discovery,
+  .connection-save {
+    padding: 16px;
+  }
+}
+.admin-users {
   max-width: 1180px;
+  width: 100%;
   margin-inline: auto;
+}
+.admin-header,
+.admin-list-tools,
+.admin-user-summary,
+.admin-reset {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.admin-header {
+  margin-bottom: 24px;
+}
+.admin-header h2,
+.admin-list-tools h3,
+.admin-user-summary h4 {
+  margin: 0;
+}
+.admin-create {
+  background: var(--mui-palette-background-default);
+  padding: 12px;
+  margin-bottom: 28px;
+}
+.admin-user-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  align-items: end;
+  padding: 8px;
+}
+.admin-user-fields > .MuiButton-root {
+  justify-self: start;
+  margin-bottom: 10px;
+}
+.admin-user-card {
+  border: 1px solid var(--mui-palette-divider);
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.admin-user-summary {
+  padding: 20px;
+  background: var(--mui-palette-background-default);
+  border-radius: 12px 12px 0 0;
+}
+.admin-user-edit {
+  margin: 10px;
+}
+.admin-reset {
+  border-top: 1px solid var(--mui-palette-divider);
+  padding: 12px 20px;
+}
+.admin-reset > .MuiButton-root {
+  flex-shrink: 0;
+}
+.admin-empty {
+  padding: 32px 16px;
+  text-align: center;
+  border: 1px dashed var(--mui-palette-divider);
+  border-radius: 10px;
+  margin-top: 18px;
+}
+.account-panel {
+  max-width: 780px;
+  margin-inline: auto;
+}
+.account-password-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  max-width: 480px;
+}
+.account-password-form > .MuiButton-root {
+  align-self: flex-start;
+}
+@media (max-width: 650px) {
+  .admin-header,
+  .admin-list-tools,
+  .admin-user-summary,
+  .admin-reset {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .admin-list-tools > .MuiTextField-root {
+    width: 100%;
+  }
+  .admin-user-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-user-summary,
+  .admin-reset {
+    padding: 16px;
+  }
 }
 .setup-header {
   display: flex;
@@ -267,6 +462,7 @@ pre {
 #view-history,
 #view-legacy,
 #view-settings,
+#view-account,
 #view-admin {
   grid-column: 2;
   grid-row: 1;
@@ -274,6 +470,7 @@ pre {
   min-height: 0;
 }
 #view-settings,
+#view-account,
 #view-admin {
   overflow: auto;
 }

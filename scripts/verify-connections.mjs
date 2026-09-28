@@ -1,0 +1,51 @@
+import assert from 'node:assert/strict';
+import {createServer} from 'node:net';
+import {mkdir,mkdtemp,readFile,writeFile} from 'node:fs/promises';
+import {resolve,join} from 'node:path';
+import {chromium} from 'playwright-core';
+import {createBrowserApp} from '../apps/local-app/src/browser-app.ts';
+import {localUiRoutes} from '../apps/local-app/src/ui-routes.ts';
+import {ConnectionStore} from '../apps/local-app/src/connections.ts';
+import {connectionRoutes} from '../apps/local-app/src/connection-routes.ts';
+
+await mkdir('.runtime/connection-ui',{recursive:true});
+const home=await mkdtemp(resolve('.runtime/connection-ui/run-'));await mkdir(join(home,'config'));
+await writeFile(join(home,'config/settings.json'),JSON.stringify({historyUrl:'https://fixture.invalid',auth:{mode:'username',issuer:'https://fixture.invalid',audience:'fixture'},evidenceRoots:{}}));
+const store=new ConnectionStore(home);let connections=(await store.read()).connections;
+const probe=createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));
+const origin='http://127.0.0.1:'+port,control='synthetic-control-'.repeat(3);
+const session={usernameMode:true,token:async()=> 'synthetic',identity:async()=>({userId:'fixture',role:'user'}),status:async()=>({userId:'fixture',role:'user',displayName:'합성 사용자'})};
+const context={selection:async()=>({sourceId:'',agent:'claude'}),configure:async()=>({ok:true}),status:async()=>({storeId:'',originalAvailable:false,sync:null}),environment:()=>({connectionsEditable:true,mailConfigured:!!connections.mailMcpUrl,dbConfigured:!!connections.dbMcpUrl,agents:Object.keys(connections.agents),evidenceRootCount:0})};
+const server=createBrowserApp(session,{port,controlToken:control,staticRoot:resolve('public'),features:app=>{
+  localUiRoutes(app,{request:async()=>[]},context);
+  connectionRoutes(app,store,async(value,persist)=>{await persist();connections=value;});
+  app.get('/api/updates',(_req,res)=>res.json({status:'current'}));
+  app.get('/api/runtime',(_req,res)=>res.json({analysis:'stopped',sync:'stopped',analysisAvailable:!!connections.agents.claude}));
+}}).listen(port,'127.0.0.1');await new Promise(r=>server.once('listening',r));
+const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
+const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(15000);
+try{
+  await page.route('**/api/connections/discover',route=>route.fulfill({json:{mail:[{url:'http://127.0.0.1:17082/mcp',source:'Codex'}],db:[{url:'http://127.0.0.1:17080/mcp',source:'Claude Code'}],agents:{claude:{executable:'C:\\synthetic\\claude.exe'}},note:'합성 자동 탐색 응답'}}));
+  const ticket=await (await fetch(origin+'/api/browser-ticket',{method:'POST',headers:{authorization:'Bearer '+control,'x-local-client':'1'}})).json();
+  await page.goto(ticket.url);await page.getByRole('heading',{name:'연결 환경',exact:true}).waitFor();
+  const save=page.getByRole('button',{name:'연결 환경 저장',exact:true});await save.waitFor();
+  await page.waitForFunction(()=>document.querySelector('input[aria-label="DB MCP 주소"]')?.value==='http://127.0.0.1:17080/mcp');
+  assert.equal(await page.getByLabel('Mail MCP 주소',{exact:true}).inputValue(),'http://127.0.0.1:17082/mcp');
+  await page.getByLabel('Mail MCP 주소',{exact:true}).fill('http://127.0.0.1:17083/mcp');
+  await page.getByRole('tab',{name:'분석 준비',exact:true}).click();assert.equal(await page.getByLabel('Mail MCP 주소',{exact:true}).isVisible(),false);
+  await page.getByRole('tab',{name:'연결 환경',exact:true}).click();assert.equal(await page.getByLabel('Mail MCP 주소',{exact:true}).inputValue(),'http://127.0.0.1:17083/mcp');
+  await save.click();
+  await page.getByText('연결 환경을 저장했습니다. 메일 출처와 장치를 확인한 뒤 실행을 켜세요.',{exact:true}).waitFor();
+  const disk=JSON.parse(await readFile(join(home,'config/settings.json'),'utf8'));assert.equal(disk.mailMcpUrl,'http://127.0.0.1:17083/mcp');assert.equal(disk.historyUrl,'https://fixture.invalid');
+  await page.reload();await page.getByRole('heading',{name:'연결 환경',exact:true}).waitFor();await page.waitForFunction(()=>document.querySelector('input[aria-label="Mail MCP 주소"]')?.value==='http://127.0.0.1:17083/mcp');
+  await page.screenshot({path:join(home,'desktop.png'),fullPage:true});
+  assert.equal(await save.isEnabled(),false);
+  await save.scrollIntoViewIfNeeded();await page.screenshot({path:join(home,'desktop-save.png')});
+  await page.getByRole('tab',{name:'분석 준비',exact:true}).click();await page.getByRole('heading',{name:'분석 준비',exact:true}).scrollIntoViewIfNeeded();
+  await page.screenshot({path:join(home,'desktop-preparation.png')});
+  await page.getByRole('tab',{name:'연결 환경',exact:true}).click();
+  await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await page.screenshot({path:join(home,'mobile.png'),fullPage:true});assert.deepEqual(errors,[]);
+  const receipt={browserSave:true,discoveryAutofill:true,manualOverride:true,settingsPreserved:true,reload:true,tabDraftPreserved:true,savedButtonDisabled:true,mobileNoOverflow:true,realAuthentication:false,home};
+  await writeFile(join(home,'result.json'),JSON.stringify(receipt,null,2));console.log(JSON.stringify(receipt));
+}finally{await browser.close();await new Promise(r=>server.close(r));}

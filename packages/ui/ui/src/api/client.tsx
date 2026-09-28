@@ -25,13 +25,14 @@ export function createApi(unauthorized: () => void, csrf: () => string = () => '
     if (!response.ok) {
       const messages: Record<string, string> = {
         LOCAL_MCP_NOT_CONFIGURED:
-          'Mail MCP 주소가 설정되지 않았습니다. 개인 연결의 연결 설정 안내를 확인하세요.',
+          'Mail MCP 주소가 설정되지 않았습니다. 개인 연결의 연결 환경에서 입력하세요.',
         RUNNER_REQUIRED: '이 PC의 실행 장치를 선택하고 저장하세요.',
         RUNNER_DENIED:
           '이 PC에서 사용할 수 없는 실행 장치입니다. 이 PC를 새 장치로 등록하고 선택하세요.',
         ORIGINAL_UNAVAILABLE:
           '이 PC에 선택한 출처의 원본이 없습니다. 메일 출처와 원본 연결을 확인하세요.',
-        ADAPTER_NOT_RELEASE_APPROVED: '개인 AI 도구의 실행 설정을 확인하고 앱을 다시 시작하세요.',
+        ADAPTER_NOT_RELEASE_APPROVED:
+          '연결 환경에서 개인 AI 도구의 실행 경로를 확인하고 저장하세요.',
         RECONNECT_EVIDENCE_REQUIRED:
           '대조할 분석 이력이 없습니다. 기존 출처와 동일한 저장소인지 담당자에게 확인하세요.',
         RECONNECT_IDENTITY_MISMATCH:

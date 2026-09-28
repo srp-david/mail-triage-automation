@@ -1,6 +1,18 @@
-import { Field, SelectField, Panel } from '../components/Controls';
-import { Button, Typography } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { Field, SelectField, Panel, Disclosure, DisclosureTitle } from '../components/Controls';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  LinearProgress,
+  Stack,
+  Typography,
+} from '@mui/material';
+import { useCallback, useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -77,7 +89,13 @@ export function UsernameForm({
   );
 }
 
-export function PasswordForm({ changed }: { changed: () => Promise<void> }) {
+export function PasswordForm({
+  changed,
+  required = false,
+}: {
+  changed: () => Promise<void>;
+  required?: boolean;
+}) {
   const { api, notice } = useSession();
   const {
     register,
@@ -89,12 +107,29 @@ export function PasswordForm({ changed }: { changed: () => Promise<void> }) {
     defaultValues: { currentPassword: '', newPassword: '' },
   });
   return (
-    <Panel className="username-panel">
-      <Typography component="h2" variant="h2">
-        비밀번호 변경
+    <Panel className="username-panel account-panel">
+      <Typography variant="overline" color="primary">
+        계정 보안
       </Typography>
-      <p>12자 이상으로 설정하세요. 변경 후 다시 로그인합니다.</p>
+      <Typography component="h2" variant="h2">
+        {required ? '비밀번호 변경' : '내 계정'}
+      </Typography>
+      {required && (
+        <Alert severity="info" sx={{ my: 2 }}>
+          계속 사용하려면 임시 비밀번호를 새 비밀번호로 변경하세요.
+        </Alert>
+      )}
+      {!required && (
+        <Typography component="h3" variant="h3" sx={{ mt: 3 }}>
+          비밀번호 변경
+        </Typography>
+      )}
+      <Typography color="text.secondary" sx={{ mt: 1, mb: 3 }}>
+        새 비밀번호는 12자 이상으로 설정하세요. 변경하면 로그아웃되며 새 비밀번호로 다시
+        로그인합니다.
+      </Typography>
       <Form
+        className="account-password-form"
         onSubmit={handleSubmit(async (values) => {
           try {
             await api('/password', values);
@@ -144,7 +179,10 @@ type User = {
 export function AdminUsers() {
   const { api, notice } = useSession();
   const [users, setUsers] = useState<User[]>([]),
-    [temporary, setTemporary] = useState('');
+    [temporary, setTemporary] = useState<{ password: string; name: string } | null>(null);
+  const [loading, setLoading] = useState(true),
+    [loadError, setLoadError] = useState(''),
+    [query, setQuery] = useState('');
   const {
     register,
     handleSubmit,
@@ -154,63 +192,160 @@ export function AdminUsers() {
     resolver: zodResolver(createUserSchema),
     defaultValues: { username: '', displayName: '', role: 'analyst' },
   });
-  const load = async () => setUsers(await api<User[]>('/admin/users'));
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError('');
+    try {
+      setUsers(await api<User[]>('/admin/users'));
+    } catch (error) {
+      setLoadError(errorText(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [api]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  const needle = query.trim().toLocaleLowerCase();
+  const visible = users.filter(
+    (user) =>
+      !needle ||
+      [user.username, user.display_name].some((value) =>
+        value?.toLocaleLowerCase().includes(needle),
+      ),
+  );
   return (
-    <Panel id="view-admin" className="username-panel">
-      <Typography component="h2" variant="h2">
-        사용자 관리
-      </Typography>
-      <Action onAction={load}>사용자 목록 조회</Action>
-      <p>임시 비밀번호는 발급 직후 한 번만 확인할 수 있습니다. 안전한 사내 경로로 전달하세요.</p>
-      {temporary && (
-        <div role="status">
+    <Panel id="view-admin" className="username-panel admin-users">
+      <Box className="admin-header">
+        <Box>
+          <Typography variant="overline" color="primary">
+            관리자
+          </Typography>
+          <Typography component="h2" variant="h2">
+            계정 관리
+          </Typography>
+          <Typography color="text.secondary" sx={{ mt: 1 }}>
+            사용자 계정과 권한, 이용 상태를 관리합니다.
+          </Typography>
+        </Box>
+        <Action variant="outlined" disabled={loading} onAction={load}>
+          목록 새로고침
+        </Action>
+      </Box>
+      <Dialog
+        open={!!temporary}
+        onClose={() => setTemporary(null)}
+        fullWidth
+        maxWidth="sm"
+        aria-labelledby="temporary-password-title"
+      >
+        <DialogTitle id="temporary-password-title">임시 비밀번호 발급 완료</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>
+            {temporary?.name} 계정의 임시 비밀번호입니다. 닫으면 다시 확인할 수 없으므로 안전한 사내
+            경로로 전달하세요.
+          </Typography>
           <label>
             발급된 임시 비밀번호
-            <Field readOnly value={temporary} autoComplete="off" />
+            <Field
+              aria-label="발급된 임시 비밀번호"
+              readOnly
+              value={temporary?.password ?? ''}
+              autoComplete="off"
+            />
           </label>
-          <Action onAction={() => setTemporary('')}>닫기</Action>
-        </div>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTemporary(null)}>확인 후 닫기</Button>
+        </DialogActions>
+      </Dialog>
+      <Disclosure className="admin-create">
+        <DisclosureTitle>새 계정 만들기</DisclosureTitle>
+        <Typography variant="body2" color="text.secondary" sx={{ px: 1, my: 1 }}>
+          계정을 만들면 임시 비밀번호가 발급됩니다. 사용자는 첫 로그인 후 비밀번호를 변경합니다.
+        </Typography>
+        <Form
+          className="admin-user-fields"
+          onSubmit={handleSubmit(async (values) => {
+            try {
+              setTemporary(null);
+              const result = await api<{ temporaryPassword: string }>('/admin/users', values);
+              setTemporary({ password: result.temporaryPassword, name: values.username });
+              reset({ ...values, username: '', displayName: '' });
+              await load();
+            } catch (error) {
+              notice(errorText(error));
+            }
+          })}
+        >
+          <label>
+            새 사용자명
+            <Field
+              {...register('username')}
+              autoComplete="off"
+              errorMessage={errors.username?.message}
+            />
+          </label>
+          <label>
+            표시 이름
+            <Field {...register('displayName')} errorMessage={errors.displayName?.message} />
+          </label>
+          <label>
+            역할
+            <SelectField aria-label="역할" {...register('role')}>
+              <option value="analyst">분석 사용자</option>
+              <option value="viewer">조회 사용자</option>
+              <option value="admin">관리자</option>
+            </SelectField>
+          </label>
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
+            계정 생성
+          </Button>
+        </Form>
+      </Disclosure>
+      <Box className="admin-list-tools">
+        <Box>
+          <Typography variant="h3">계정 목록</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {loading
+              ? '목록 확인 중'
+              : loadError
+                ? '목록 확인 필요'
+                : `전체 ${users.length}명 · 사용 중 ${users.filter((user) => user.active).length}명 · 사용 중지 ${users.filter((user) => !user.active).length}명`}
+          </Typography>
+        </Box>
+        <Field
+          aria-label="계정 검색"
+          placeholder="사용자명 또는 표시 이름"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      </Box>
+      {loading && <LinearProgress aria-label="계정 목록 불러오는 중" />}
+      {loadError && <Alert severity="error">목록을 불러오지 못했습니다. {loadError}</Alert>}
+      {!loading && !loadError && !visible.length && (
+        <Box className="admin-empty">
+          <Typography>
+            {query ? '검색 조건에 맞는 계정이 없습니다.' : '등록된 계정이 없습니다.'}
+          </Typography>
+        </Box>
       )}
-      <Form
-        onSubmit={handleSubmit(async (values) => {
-          try {
-            setTemporary('');
-            const result = await api<{ temporaryPassword: string }>('/admin/users', values);
-            setTemporary(result.temporaryPassword);
-            reset({ ...values, username: '', displayName: '' });
-            await load();
-          } catch (error) {
-            notice(errorText(error));
-          }
-        })}
-      >
-        <label>
-          새 사용자명
-          <Field
-            {...register('username')}
-            autoComplete="off"
-            errorMessage={errors.username?.message}
+      <Stack spacing={2} sx={{ mt: 2 }}>
+        {visible.map((user) => (
+          <UserRow
+            key={user.id}
+            user={user}
+            changed={load}
+            secret={(password) =>
+              setTemporary(
+                password
+                  ? { password, name: user.username ?? user.display_name ?? '이관 대기' }
+                  : null,
+              )
+            }
           />
-        </label>
-        <label>
-          표시 이름
-          <Field {...register('displayName')} errorMessage={errors.displayName?.message} />
-        </label>
-        <label>
-          역할
-          <SelectField aria-label="역할" {...register('role')}>
-            <option value="analyst">분석 사용자</option>
-            <option value="viewer">조회 사용자</option>
-            <option value="admin">관리자</option>
-          </SelectField>
-        </label>
-        <Button type="submit" variant="contained" disabled={isSubmitting}>
-          계정 생성
-        </Button>
-      </Form>
-      {users.map((user) => (
-        <UserRow key={user.id} user={user} changed={load} secret={setTemporary} />
-      ))}
+        ))}
+      </Stack>
     </Panel>
   );
 }
@@ -239,67 +374,105 @@ function UserRow({
     reset({ displayName: user.display_name ?? '', role: user.role, active: user.active });
   }, [user.display_name, user.role, user.active, reset]);
   return (
-    <fieldset>
-      <legend>
-        {user.username ?? '이관 대기'} {user.must_change ? '(비밀번호 변경 필요)' : ''}
-      </legend>
-      <Form
-        onSubmit={handleSubmit(async (values) => {
-          try {
-            await api('/admin/users/' + user.id, values);
-            await changed();
-          } catch (error) {
-            notice(errorText(error));
-          }
-        })}
-      >
-        <label>
-          표시 이름
-          <Field {...register('displayName')} errorMessage={errors.displayName?.message} />
-        </label>
-        <label>
-          역할
-          <SelectField aria-label="역할" {...register('role')}>
-            <option value="viewer">조회 사용자</option>
-            <option value="analyst">분석 사용자</option>
-            <option value="admin">관리자</option>
-          </SelectField>
-        </label>
-        <label>
-          <Controller
-            name="active"
-            control={control}
-            render={({ field }) => (
-              <Field
-                type="checkbox"
-                name={field.name}
-                ref={field.ref}
-                onBlur={field.onBlur}
-                checked={field.value}
-                onChange={(event) => field.onChange(event.target.checked)}
-              />
-            )}
+    <Box
+      component="article"
+      className="admin-user-card"
+      aria-label={`${user.username ?? '이관 대기'} 계정`}
+    >
+      <Box className="admin-user-summary">
+        <Box sx={{ minWidth: 0 }}>
+          <Typography component="h4" variant="h3">
+            {user.display_name || user.username || '표시 이름 없음'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            사용자명 · {user.username ?? '이관 대기'}
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+          <Chip
+            size="small"
+            variant="outlined"
+            label={{ viewer: '조회 사용자', analyst: '분석 사용자', admin: '관리자' }[user.role]}
           />
-          활성
-        </label>
-        <Button type="submit" variant="contained" disabled={isSubmitting}>
-          계정 저장
-        </Button>
-      </Form>
-      <Action
-        disabled={isSubmitting}
-        onAction={async () => {
-          secret('');
-          const result = await api<{ temporaryPassword: string }>(
-            '/admin/users/' + user.id + '/reset',
-            {},
-          );
-          secret(result.temporaryPassword);
-          await changed();
-        }}
-      >
-        비밀번호 초기화
-      </Action>
-    </fieldset>
+          <Chip
+            size="small"
+            color={user.active ? 'success' : 'default'}
+            label={user.active ? '사용 중' : '사용 중지'}
+          />
+          {user.must_change && (
+            <Chip size="small" color="warning" variant="outlined" label="비밀번호 변경 필요" />
+          )}
+        </Stack>
+      </Box>
+      <Disclosure className="admin-user-edit">
+        <DisclosureTitle>계정 정보 수정</DisclosureTitle>
+        <Form
+          className="admin-user-fields"
+          onSubmit={handleSubmit(async (values) => {
+            try {
+              await api('/admin/users/' + user.id, values);
+              await changed();
+              notice('계정 정보를 저장했습니다.');
+            } catch (error) {
+              notice(errorText(error));
+            }
+          })}
+        >
+          <label>
+            표시 이름
+            <Field {...register('displayName')} errorMessage={errors.displayName?.message} />
+          </label>
+          <label>
+            역할
+            <SelectField aria-label="역할" {...register('role')}>
+              <option value="viewer">조회 사용자</option>
+              <option value="analyst">분석 사용자</option>
+              <option value="admin">관리자</option>
+            </SelectField>
+          </label>
+          <label>
+            <Controller
+              name="active"
+              control={control}
+              render={({ field }) => (
+                <Field
+                  type="checkbox"
+                  name={field.name}
+                  ref={field.ref}
+                  onBlur={field.onBlur}
+                  checked={field.value}
+                  onChange={(event) => field.onChange(event.target.checked)}
+                />
+              )}
+            />
+            계정 사용 허용
+          </label>
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
+            계정 저장
+          </Button>
+        </Form>
+      </Disclosure>
+      <Box className="admin-reset">
+        <Typography variant="body2" color="text.secondary">
+          비밀번호를 잊은 사용자에게 새 임시 비밀번호를 발급합니다.
+        </Typography>
+        <Action
+          variant="text"
+          color="warning"
+          disabled={isSubmitting}
+          onAction={async () => {
+            secret('');
+            const result = await api<{ temporaryPassword: string }>(
+              '/admin/users/' + user.id + '/reset',
+              {},
+            );
+            secret(result.temporaryPassword);
+            await changed();
+          }}
+        >
+          비밀번호 초기화
+        </Action>
+      </Box>
+    </Box>
   );
 }

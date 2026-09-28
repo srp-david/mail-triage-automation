@@ -114,8 +114,8 @@ test('admin row loads checkbox state and sends edited name, role and active flag
       <AdminUsers />
     </SessionContext.Provider>,
   );
-  await userEvent.click(screen.getByRole('button', { name: '사용자 목록 조회' }));
-  const group = within(await screen.findByRole('group', { name: 'test.user' }));
+  const group = within(await screen.findByRole('article', { name: 'test.user 계정' }));
+  await userEvent.click(group.getByText('계정 정보 수정'));
   expect(group.getByRole('checkbox')).toBeChecked();
   await userEvent.click(group.getByRole('checkbox'));
   await userEvent.selectOptions(group.getByRole('combobox'), 'analyst');
