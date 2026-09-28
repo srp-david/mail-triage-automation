@@ -117,9 +117,18 @@ lease는 `{runnerId,leaseToken,generation}`이다. 토큰을 로그나 URL에 �
 
 근거: [공용 앱](../../apps/history-api/src/username-app.ts), [기본 API](../../apps/history-api/src/app.ts), [run](../../apps/history-api/src/run-routes.ts), [sync](../../apps/history-api/src/sync-routes.ts), [로컬 route](../../apps/local-app/src/ui-routes.ts), [공유 이력](../../apps/history-api/src/shared-history-routes.ts), [기존 문서](../../apps/history-api/src/shared-archive-routes.ts).
 
-## 9. 아직 제공하지 않는 계약
+## 9. 업데이트·공용 협업 계약
 
-인증된 업데이트 조회·설치 전 정책 재확인·로컬 다운로드/updater API는 미구현이다. 경로/필드 제안은 [Release 업데이트 계획](../operations/releases.md)에 있으며 위 현재 API 목록에 포함하지 않는다. 구버전 앱의 인증/업데이트 탈출 경로와 새 API 호환 정책을 함께 구현해야 한다.
+인증된 공용 `GET /api/v1/updates/check`와 로컬 다운로드/updater를 구현했다. v0.3.6부터 조회 주기는 Node 앱이 담당하며 브라우저는 저장된 상태를 읽는다. 서버 catalog는 버전·채널 정책을 적용하고 클라이언트는 서명과 파일 해시를 확인한다. 실제 계정의 게시 asset 설치 수용은 남아 있다. [Release 업데이트](../operations/releases.md)를 참고한다.
+
+| 로컬 경로 | 동작 |
+|---|---|
+| `GET /api/updates` | 현재 상태 조회. 원격 서버 조회를 새로 시작하지 않음 |
+| `POST /api/updates/check` | 수동 확인. 동시에 들어온 확인 요청은 같은 조회를 공유 |
+| `POST /api/updates/defer` | 현재 버전 알림을 앱 재실행 또는 수동 확인까지 미룸 |
+| `POST /api/updates/install` | `{releaseId, assetSha256}`를 검사해 비동기 설치 준비 시작, HTTP 202. 진행 상태는 GET으로 조회 |
+
+모든 로컬 경로는 기존 브라우저 세션 또는 CLI capability와 회사 로그인이 필요하고 브라우저 POST에는 Origin·CSRF 검사를 적용한다. 응답은 `currentVersion`, `status`, `phase`, 선택적 `lastCheckedAt`, `update`, `deferred`, `downloadedBytes`, `totalBytes`, `errorCode`를 포함한다. `status`는 최신/제공/정보 없음/채널 제한/로그인 필요/실패를 구분하고 `phase`는 확인·다운로드·검증·작업 대기·설치/실패를 나타낸다. 설치 중 추가 설치는 409 `UPDATE_IN_PROGRESS`다.
 
 공용 협업 API를 추가했다. 모든 경로는 기존 자체 JWT 및 현재 권한을 검사한다. `POST /sources/:id/mail-identity`는 로컬 MCP에서 확인한 헤더로 동일 메일을 연결한다. `GET /sources/:id/mails/:mailId/shared-reports`는 명시적 팀 공유 보고서만 반환한다. `/reports/:id/share`는 소유자만 변경한다.
 

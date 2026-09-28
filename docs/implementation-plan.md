@@ -374,7 +374,7 @@ v3.2는 2026-09-22 사용자 제공 인수인계 `brief-bccc96dc-801e-4b3d-a492-
 | SET2 | 개인 Mail MCP·Agent·ERP 읽기 경로 연결/진단: 새 설치본 실업무 대기. Agent Profile 고정 버전 문자열 제거·실제 Claude Code 2.1.280 probe `supported=true` | M1~M2, 검증된 Release 설치본·지정 자료/개인 환경 | 실제 CLI 실행·MCP·결과 계약을 합성 자료로 검증하고, 실통신·지정 사례 분석/저장·공용 보고서 재조회 |
 | SET3 | DB MCP의 고정 구조 조회 4종을 로컬 소스에 연결. 실제 업무 데이터 조회·개인 계정 수용 대기 | M1~M3, 허용 조회/읽기 계정·접속 경로 | 실제 읽기 성공·권한 밖 조회/쓰기 거절 |
 | U1 | 서명 메타데이터·인증 update API 소스 추가. 사용자 명시 승인 후 hosted `history` function·catalog secret 갱신, health 200·비인증 조회 401 확인 | M1~M2, D13 | 실계정 사용자/채널·버전·호환·중단·서명 검증 |
-| U2 | 로컬 다운로드/updater·업데이트 버튼 소스 추가. 게시 asset·실사용 업데이트 검증 대기 | M2, U1/SET1 | 작업 대기·중단 다운로드·재시작·롤백·개인 상태 보존 |
+| U2 | v0.3.6 Node 주기적 확인·설정/트레이 수동 확인·진행률/오류·나중에 구현, 합성 브라우저·설치 검증. 게시 asset·실사용 업데이트 검증 대기 | M2, U1/SET1 | 실제 계정의 다운로드·설치·재시작·롤백·개인 상태 보존 |
 | U3 | 9/28 기존 41개 SHA 보존·공개 검사 후 원격 main·태그·Release metadata·hosted catalog 통합 완료. 공개 서명/sourceCommit/hash·exe/ZIP/checksum digest 대조 통과 | M1~M3, D6/D13 | 자동 게시 CI·private 전환·실계정 업데이트 수용 남음 |
 | T1 | 팀원 계정·2명/2PC 파일럿·현행 수용 양식/검사기: 대기 | M2, SET1/SET2·D1~D7 | 권한·공유·원본 부재·PC 종료·복구·업데이트 기록 |
 | T2 | 품질/오류 개선·부하/비용·pause/resume·운영 담당: 대기 | M3, T1 | 피드백 조치·실측·회귀·안정화 판단 |

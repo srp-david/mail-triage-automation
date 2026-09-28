@@ -1,5 +1,17 @@
 # 검증 기록
 
+## 2026-09-28 Node 업데이트 확인·설정/트레이 UI와 v0.3.6
+
+- 업데이트 확인을 브라우저에서 Node로 옮겼다. 시작·로그인 직후·1시간 주기, 수동 확인, 확인 요청 공유, 로그아웃 시 오래된 결과 폐기, 설치 중복 방지와 다운로드·검증·대기·설치/실패 상태를 추가했다. 설정 탭·트레이 메뉴·새 버전 안내·나중에를 연결했다.
+- `npm.cmd run check`, 전체 build 및 마지막 변경 후 backend/UI build 통과. 관련 unit/UI **6파일 / 28테스트** 통과. 브라우저 없이 주기 확인, 동시 확인 공유, 로그인 변경, 나중에, 서명/해시 실패, 설치 전 배포 철회, 실행 실패와 drain 해제 등을 검증했다. 테스트의 installer spawn은 대체해 실제 설치 프로그램을 실행하지 않았다.
+- `node --import tsx scripts/verify-update-ui.mjs`: 수동 확인·나중에/새로고침·진행률·작업 대기·실패/재시도·브라우저 종료 후 Node 확인 지속·비인증 401/CSRF 403·390px 가로 넘침 없음 통과. `.runtime/update-ui/run-p2eZR0/result.json`과 desktop/mobile 이미지. 설치 진행은 합성 상태이며 실제 계정이나 GitHub 다운로드를 사용하지 않았다.
+- Windows 트레이 새 메뉴·상태 문구·busy 차단·아이콘 정리·부모 pipe 종료 검증 통과. 메뉴를 프로그램으로 호출했으며 사람의 실제 데스크톱 클릭 검증은 아니다. 패키지 lifecycle은 `.runtime/lifecycle/한글 설치-cgs5C5`에서 중복 실행 방지·트레이 1개·종료·설정 보존 통과.
+- `0.3.6-setup.exe` SHA-256 `f7d1731b6fd7188486dcfe608b308305b508b3984f19c8d3b0ff6582e8def457`, ZIP `e84a215d250a7f0fc957a59c3d84b4cedc156079f2a9981c6da4dca3292e82d1`, 3,738파일, Node v24.16.0, `releaseApproved=false`.
+- 실제 setup.exe로 별도 합성 홈의 0.3.5→0.3.6 업그레이드, 설정·작업 파일 보존, 비인증 updates 401 확인. 설치 앱의 제공 JS SHA-256 `78bcb6a834e479de2e6ecbf704e2aefd0719d8d2fa2c9bbdd4a4e2925b1882fb`가 설치 manifest·로컬 빌드와 일치했다. `.runtime/update-setup/upgrade-8EkpYS/verification.json`. 검증 후 앱 종료.
+- 구현·검증 후 변경을 Node/트레이, 웹 UI, 문서의 세 작업으로 나누어 로컬 커밋으로 정리했다. 테스트와 검증 스크립트는 해당 기능 커밋에 포함했다. 설치 파일은 커밋 정리 전에 생성한 로컬 산출물이다.
+- 기능 커밋은 `dd682df`(Node/트레이 10파일), `ace3de7`(웹 UI 6파일)이며 문서 8파일은 별도 `docs:` 커밋으로 이어간다. 변경 24파일의 자격 증명 패턴 검사 0건, 상대 문서 링크 대상 존재와 staged diff 공백 검사를 확인했다. 이번 커밋 정리에서는 기능 소스를 추가 변경하지 않았으며 위 테스트·설치 검증 결과를 따른다.
+- 현재 개인 설치본 교체, push, GitHub Release·catalog 변경, 공개 metadata/Authenticode 서명은 하지 않았다. 실제 계정의 새 버전 제안→게시 asset 다운로드→설치·재시작은 별도 수용 단계다.
+
 ## 2026-09-28 Codex exe 자동 찾기와 0.3.5 설치
 
 - Windows 자동 찾기는 독립된 Codex exe를 우선하고 npm의 현재 아키텍처 플랫폼 패키지(중첩/상위 설치)·기존 vendor 구조를 조회한다. 앱 Node + codex.js fallback은 Codex에서 제거했다. 기존 사용자 지정 명령은 덮어쓰지 않는다.

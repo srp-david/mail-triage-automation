@@ -4,7 +4,9 @@
 
 ## 최신 로컬 전달물
 
-최신 로컬 설치본은 **`.runtime/packages/0.3.5.zip`**이다. 현재 PC에 설치·기동하고 Codex를 앱 버전 폴더 밖의 실제 `codex.exe`로 설정했다. 자동 찾기·실행 옵션·제공 UI hash 대조를 확인했으며 GitHub/catalog에는 미게시다. ZIP SHA-256은 `e36a0d8be5396a73f8ecb3b1e253c3316222570a3e6665c5bfc1ed3670dac906`이다.
+최신 로컬 설치 파일은 **`.runtime/packages/0.3.6-setup.exe`**다. Node의 주기적 업데이트 확인, 설정·트레이 수동 확인, 버전·진행률·실패 표시와 나중에 선택을 추가했다. GitHub/catalog에는 미게시이며 현재 PC의 개인 설치본은 이번 작업에서 교체하지 않았다. [패치노트](releases/v0.3.6.md), [사용 절차](operations/windows.md#업데이트-확인과-설치-v036)를 따른다.
+
+현재 PC에 마지막으로 설치·기동 검증한 버전은 **0.3.5**다. Codex를 앱 버전 폴더 밖의 실제 `codex.exe`로 설정했고 자동 찾기·실행 옵션·제공 UI hash 대조를 확인했다. 당시 ZIP SHA-256은 `e36a0d8be5396a73f8ecb3b1e253c3316222570a3e6665c5bfc1ed3670dac906`이다.
 
 아래는 이전 **`.runtime/packages/0.3.3-setup.exe`**까지의 EXE 생성 기록이다. 0.3.4·0.3.5는 ZIP으로 설치했다. 기존 candidate.10 이후 다음 변경을 포함한다.
 
@@ -28,6 +30,7 @@ EXE SHA-256 `e77bab9916ac32cb9f818ed4cf32ffec90e257f195de9c105e521f3bce0c2bba`, 
 | 0.3.3 | 관리자 계정 화면·내 계정 메뉴 | [초안](releases/v0.3.3.md) |
 | 0.3.4 | 공통 메일 공유·보고서 협업·기존 자료 이관 | [운영 기록](operations/shared-analysis.md) |
 | 0.3.5 | Codex 실제 exe 자동 찾기·현재 PC 설정 전환 | [Windows 안내](operations/windows.md#codex-실행-파일-자동-찾기-v035) |
+| 0.3.6 | Node 업데이트 확인·설정/트레이 메뉴·진행 상태·나중에 | [초안](releases/v0.3.6.md) |
 
 위 숫자 버전은 로컬 설치본이며 GitHub에는 미게시다. 버전별 파일 해시·브라우저·업그레이드·제공 UI 대조 결과는 [검증 일지](validation.md)에 보존한다. 마지막으로 확인한 공개 배포는 candidate.10이며 이번 작업에서 원격 상태를 재조회하지 않았다.
 

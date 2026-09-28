@@ -45,7 +45,7 @@ public Release asset은 인증 없이 직접 다운로드할 수 있다. 앱의 
 | [CI 예시](../../deploy/windows-release.workflow.example.yml) | draft, 명시적 버전 입력·Vitest 명령·패치노트 규칙 참조, publish/upload 없음 | 고정 action·빌드/검증·서명·게시 단계 준비, GitHub Actions 실실행 검증 |
 | [history-api](../../apps/history-api/src/username-app.ts) | candidate.9 배포 API 코드 유지, `UPDATE_CATALOG_JSON` candidate.10으로 갱신. health 200·비인증 조회 401 확인 | 실계정 `offered`·채널/중단 정책·설치 전 재확인 검증 |
 | [local-app](../../apps/local-app/src/ui-routes.ts) | 로컬 인증·설정·실행 제어와 조회 façade·다운로드/updater 소스 추가 | 게시 asset 다운로드·진행 상태·drain/updater·CSRF/Host/Origin 실검증 |
-| [UI](../../packages/ui/ui/src/app/App.tsx) | 앱 shell·설정/상태 화면과 업데이트 버튼 소스 추가. candidate.9에서 업데이트 안내 배너·상단 로그아웃 겹침 조정 | 실제 제안·진행·대기·실패/복구와 로그아웃 노출 브라우저 수용 |
+| [UI](../../packages/ui/ui/src/features/Updates.tsx) | v0.3.6 설정의 업데이트 탭·현재 버전·진행률·실패/재시도·나중에. Node가 확인을 담당하고 UI는 로컬 상태만 조회. 트레이 수동 확인·알림 포함 | 합성 검증 완료, 실제 게시 asset 제안·설치·재시작 수용 대기 |
 
 2026-09-22 소스 확인 시 활성 `.github/workflows`는 없고 위 CI는 예시다. 예시를 복사한 것만으로 게시 파이프라인 완료로 표시하지 않는다. 앱 updater는 동일 Windows 사용자 권한의 별도 프로세스로 설계하고 GitHub 자격·관리자 DB 자격을 전달하지 않는다.
 
