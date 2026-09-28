@@ -65,3 +65,57 @@ test('editing an endpoint clears old connection evidence and a save conflict pre
   expect(screen.getByLabelText('Mail MCP 주소')).toHaveValue('http://127.0.0.1:17082/mcp/changed');
   expect(saved).not.toHaveBeenCalled();
 });
+
+test('both agents can independently use WSL and keep the selection through discovery and save', async () => {
+  const { api, saved, found } = fixture();
+  await waitFor(() =>
+    expect(screen.getByLabelText('Claude Code 실행 경로')).toHaveValue('C:\\tools\\claude.exe'),
+  );
+  api.mockImplementation(async (path, body) => {
+    if (path === '/connections/wsl')
+      return { available: true, distributions: ['Ubuntu', 'Debian'] };
+    if (path === '/connections/discover') return found;
+    if (path === '/connections/agent-check')
+      return { installed: false, supported: false, code: 'WSL_NETWORK_UNAVAILABLE' };
+    if (path === '/connections' && body)
+      return { revision: 'c'.repeat(64), connections: body.connections };
+    throw new Error('Unexpected request');
+  });
+  await userEvent.selectOptions(screen.getByLabelText('Claude Code 실행 환경'), 'wsl');
+  expect(screen.getByLabelText('Claude Code 실행 경로')).toHaveValue('claude');
+  await userEvent.click(screen.getByRole('button', { name: 'Claude Code WSL 배포판 찾기' }));
+  await userEvent.selectOptions(
+    await screen.findByLabelText('Claude Code 발견한 WSL 배포판'),
+    'Ubuntu',
+  );
+  await userEvent.type(screen.getByLabelText('Claude Code WSL 사용자'), 'analyst');
+  await userEvent.selectOptions(screen.getByLabelText('Codex 실행 환경'), 'wsl');
+  await userEvent.type(screen.getByLabelText('Codex WSL 배포판'), 'Debian');
+  await userEvent.click(screen.getByRole('button', { name: '이 PC에서 자동 찾기' }));
+  expect(screen.getByLabelText('Claude Code 실행 환경')).toHaveValue('wsl');
+  await userEvent.click(screen.getByRole('button', { name: 'Claude Code 실행 확인' }));
+  expect(await screen.findByText(/WSL에서 앱에 연결하지 못했습니다/)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: '연결 환경 저장' }));
+  await waitFor(() => expect(saved).toHaveBeenCalledOnce());
+  const body = api.mock.calls.find(([path, input]) => path === '/connections' && input)![1];
+  expect(body.connections.agents.claude).toMatchObject({
+    executable: 'claude',
+    wsl: { distribution: 'Ubuntu', user: 'analyst' },
+  });
+  expect(body.connections.agents.codex).toMatchObject({
+    executable: 'codex',
+    wsl: { distribution: 'Debian' },
+  });
+});
+
+test('switching back to Windows restores the previous native executable and prefix', async () => {
+  fixture();
+  await waitFor(() =>
+    expect(screen.getByLabelText('Claude Code 실행 경로')).toHaveValue('C:\\tools\\claude.exe'),
+  );
+  await userEvent.selectOptions(screen.getByLabelText('Claude Code 실행 환경'), 'wsl');
+  await userEvent.type(screen.getByLabelText('Claude Code WSL 배포판'), 'Ubuntu');
+  await userEvent.selectOptions(screen.getByLabelText('Claude Code 실행 환경'), 'windows');
+  expect(screen.getByLabelText('Claude Code 실행 경로')).toHaveValue('C:\\tools\\claude.exe');
+  expect(screen.queryByLabelText('Claude Code WSL 배포판')).not.toBeInTheDocument();
+});

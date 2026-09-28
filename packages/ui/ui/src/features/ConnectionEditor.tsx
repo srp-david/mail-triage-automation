@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Box, Button, Chip, LinearProgress, Stack, Typography } from '@mui/material';
 import { Field, TextArea, SelectField, Disclosure, DisclosureTitle } from '../components/Controls';
 import { useSession, errorText } from '../api/client';
+import { AgentEnvironment, wslError, type AgentCommand } from './AgentEnvironment';
 
-type Command = { executable: string; prefix?: string[] };
+type Command = AgentCommand;
 type Connections = {
   mailMcpUrl?: string;
   dbMcpUrl?: string;
@@ -57,7 +58,9 @@ export function ConnectionEditor({ onSaved }: { onSaved: () => Promise<void> }) 
       agents: {
         ...result.agents,
         ...Object.fromEntries(
-          Object.entries(previous.agents).filter(([, command]) => command?.executable),
+          Object.entries(previous.agents).filter(
+            ([, command]) => command?.executable || command?.wsl,
+          ),
         ),
       },
     }));
@@ -285,8 +288,14 @@ export function ConnectionEditor({ onSaved }: { onSaved: () => Promise<void> }) 
                       label={command.executable ? '경로 입력됨' : '미설정'}
                     />
                   </Box>
+                  <AgentEnvironment
+                    agent={agent}
+                    command={command}
+                    onChange={(next) => setCommand(agent, next)}
+                  />
                   <Field
                     aria-label={`${label} 실행 경로`}
+                    placeholder={command.wsl ? `/home/user/.local/bin/${agent}` : undefined}
                     value={command.executable}
                     onChange={(e) => setCommand(agent, { ...command, executable: e.target.value })}
                   />
@@ -305,23 +314,27 @@ export function ConnectionEditor({ onSaved }: { onSaved: () => Promise<void> }) 
                   </Disclosure>
                   <Button
                     variant="outlined"
-                    disabled={!command.executable}
+                    disabled={
+                      !command.executable || (!!command.wsl && !command.wsl.distribution.trim())
+                    }
                     onClick={() =>
                       void run(async () => {
-                        const result = await api<{ installed: boolean; supported: boolean }>(
-                          '/connections/agent-check',
-                          {
-                            agent,
-                            command: { ...command, prefix: command.prefix?.filter(Boolean) },
-                          },
-                        );
+                        const result = await api<{
+                          installed: boolean;
+                          supported: boolean;
+                          code?: string;
+                        }>('/connections/agent-check', {
+                          agent,
+                          command: { ...command, prefix: command.prefix?.filter(Boolean) },
+                        });
                         setChecks((previous) => ({
                           ...previous,
                           [agent]: result.installed
                             ? result.supported
                               ? '실행 및 호환성 확인 완료. 도구 로그인은 별도로 필요합니다.'
                               : '실행됐지만 필요한 기능을 지원하지 않습니다.'
-                            : '실행하지 못했습니다. 설치와 경로를 확인하세요.',
+                            : (wslError(result.code) ??
+                              '실행하지 못했습니다. 설치와 경로를 확인하세요.'),
                         }));
                       })
                     }
@@ -433,7 +446,13 @@ export function ConnectionEditor({ onSaved }: { onSaved: () => Promise<void> }) 
             </Box>
             <Button
               variant="contained"
-              disabled={!revision || !dirty}
+              disabled={
+                !revision ||
+                !dirty ||
+                Object.values(value.agents).some(
+                  (command) => command?.wsl && !command.wsl.distribution.trim(),
+                )
+              }
               onClick={() =>
                 void run(async () => {
                   if (new Set(roots.map((root) => root.name)).size !== roots.length)
@@ -449,6 +468,16 @@ export function ConnectionEditor({ onSaved }: { onSaved: () => Promise<void> }) 
                           {
                             executable: command!.executable.trim(),
                             ...(command!.prefix ? { prefix: command!.prefix.filter(Boolean) } : {}),
+                            ...(command!.wsl
+                              ? {
+                                  wsl: {
+                                    distribution: command!.wsl.distribution.trim(),
+                                    ...(command!.wsl.user?.trim()
+                                      ? { user: command!.wsl.user.trim() }
+                                      : {}),
+                                  },
+                                }
+                              : {}),
                           },
                         ]),
                     ),

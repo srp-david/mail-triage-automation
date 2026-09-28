@@ -4,6 +4,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import {z} from 'zod';
 import {ApiError} from '../../../packages/contracts/src/v1.js';
 import {validateEvidenceRoots} from '../../../packages/agent-adapters/src/evidence.js';
+import {agentCommandSchema} from '../../../packages/agent-adapters/src/command.js';
 
 export const endpointSchema=z.string().trim().max(2000).transform(value=>{
   try{const url=new URL(value);if(url.hostname==='localhost')url.hostname='127.0.0.1';
@@ -11,7 +12,7 @@ export const endpointSchema=z.string().trim().max(2000).transform(value=>{
     return url.href;
   }catch{throw new ApiError(400,'INVALID_MCP_ENDPOINT');}
 });
-const command=z.object({executable:z.string().trim().min(1).max(2000),prefix:z.array(z.string().max(2000)).max(5).optional()}).strict();
+const command=agentCommandSchema;
 export const connectionSchema=z.object({
   mailMcpUrl:endpointSchema.optional(),dbMcpUrl:endpointSchema.optional(),
   agents:z.object({codex:command.optional(),claude:command.optional()}).strict().default({}),

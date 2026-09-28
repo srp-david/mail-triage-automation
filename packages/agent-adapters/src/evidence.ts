@@ -37,6 +37,7 @@ export async function evidenceServer(providers:EvidenceProviders,onRead?:(kind:s
     const provided=Buffer.from(req.get('authorization')??''),expected=Buffer.from('Bearer '+token);
     if(req.get('host')!==`127.0.0.1:${port}`||req.get('origin')||provided.length!==expected.length||!timingSafeEqual(provided,expected))return res.sendStatus(403);next();
   });app.use(express.json({limit:'256kb'}));
+  app.get('/wsl-check',(_req,res)=>res.json({ok:true}));
   app.post('/mcp',async(req,res)=>{
     const server=new McpServer({name:'triage-readonly',version:'1.0.0'});
     const result=async(kind:string,reference:string,read:()=>Promise<unknown>)=>{try{const value=JSON.stringify(await read());if(value.length>1000000)throw new Error();await onRead?.(kind);events.push({kind,reference});return {content:[{type:'text' as const,text:value}]};}catch{return {isError:true,content:[{type:'text' as const,text:'READ_ONLY_EVIDENCE_UNAVAILABLE'}]};}};

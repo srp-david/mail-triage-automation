@@ -73,6 +73,43 @@ Codex에는 앱의 `releases/버전/node.exe`와 `codex.js` 조합을 새로 추
 - 탭을 이동해도 아직 저장하지 않은 입력은 유지한다. 페이지 새로고침 전에는 저장해야 한다.
 - 저장 후 `다음: 분석 준비`로 이동해 출처·장치를 선택·저장한 뒤 메일함에서 동기화·분석을 요청한다.
 
+## WSL에서 Codex·Claude Code 실행
+
+현재 개발 소스에 구현되어 있으며 기존 0.3.11·0.3.12 설치본에는 포함되지 않는다. 새 설치본 배포 전까지 실제 팀 PC의 WSL 분석 성공을 보장한 상태가 아니다.
+
+앱은 Windows에서 실행하고 Codex·Claude Code만 선택한 WSL 배포판의 Linux 사용자로 실행한다. 두 도구별로 Windows/WSL, 배포판, 사용자를 따로 저장할 수 있다. 기존 Windows 실행 파일 설정도 사용할 수 있다. 앱 계정·장치 인증키와 Windows DPAPI 저장 방식은 유지한다.
+
+1. 팀원이 쓰던 WSL 배포판에서 `python3 --version`과 `codex --version` 또는 `claude --version`이 성공하는지 확인하고, 같은 Linux 사용자로 제공자 로그인을 마친다. 설치 파일이 WSL·Python·AI 도구를 대신 설치하지 않는다.
+2. Windows 앱에서 **설정 → 개인 연결 → 연결 환경**을 연다. 각 도구의 **실행 환경 → WSL**을 선택하고 **WSL 배포판 찾기**로 배포판을 고른다. Docker 내부 배포판은 제외한다. Linux 사용자 입력을 비우면 해당 배포판의 기본 사용자를 사용한다.
+3. 실행 파일에 `codex`, `claude` 또는 Linux 절대 경로를 입력한다. 예: `/home/analyst/.local/bin/claude`. nvm 등으로 설치해 명령을 찾지 못하면 WSL 터미널의 `command -v codex` 결과를 입력한다. Windows의 `codex.exe`, `wsl.exe`, `C:\...` 경로는 이 칸에 넣지 않는다.
+4. 각 도구의 **실행 확인**을 수행한다. WSL 시작·Windows 작업 폴더 접근·CLI 버전과 필수 옵션·Windows 앱의 인증된 localhost 연결을 검사한다. 제공자 로그인 유효성·AI 분석 품질은 실제 분석으로 확인해야 한다.
+5. **연결 환경 저장** 후 분석 준비에서 해당 Agent와 PC 장치를 선택한다. 기존 Mail MCP·DB MCP와 ERP 자료 경로는 Windows 앱이 읽는다. WSL의 개인 MCP 설정을 자동 가져오지는 않는다.
+
+### 네트워크 조건
+
+현재 연결 방식은 WSL에서 Windows 앱의 `127.0.0.1`로 접근할 수 있어야 한다. WSL2 기본 NAT 모드에서 Windows host IP로 우회하는 기능은 포함하지 않는다. [Microsoft 네트워크 안내](https://learn.microsoft.com/en-us/windows/wsl/networking)에 따르면 Windows 11 22H2 이상에서 mirrored 모드가 Linux→Windows localhost 접근을 지원한다. 해당 조건과 사내 네트워크 정책을 먼저 확인한다.
+
+필요하면 `%USERPROFILE%\.wslconfig`의 기존 내용을 보존하면서 다음 값을 설정하고 WSL을 다시 시작한다. `wsl --shutdown`은 Docker를 포함한 모든 WSL 배포판을 종료하므로 진행 중인 작업을 마친 뒤 사용한다. 앱은 이 파일이나 방화벽을 자동 변경하지 않는다.
+
+```ini
+[wsl2]
+networkingMode=mirrored
+```
+
+연결 실패 시 mirrored 적용 여부·방화벽·배포판 상태를 확인한 뒤 실행 확인을 다시 수행한다. 앱의 읽기 자료 서버는 localhost 바인딩과 작업별 인증을 유지한다. 프롬프트와 임시 인증 토큰은 실행 명령줄이나 설정 파일에 기록하지 않고 실행 중 표준입력으로 전달한다.
+
+### 진단 범위와 제한
+
+| 안내 | 확인할 사항 |
+|---|---|
+| WSL 시작 실패 | 배포판·Linux 사용자·`python3` 설치 여부 |
+| AI 도구를 찾지 못함 | Linux 절대 경로, 실행 권한, 해당 사용자 설치 여부 |
+| 작업 폴더 접근 실패 | Windows 드라이브 마운트와 `wslpath` |
+| 앱 연결 실패 | Windows 버전·WSL2 mirrored·방화벽 정책 |
+| CLI 기능 미지원 | 앱이 요구하는 옵션이 있는 CLI 버전인지 확인 |
+
+취소·시간 초과·Windows 실행 연결 종료 시 Linux 도우미가 AI 프로세스 그룹을 종료한다. 현재 검증은 설정·화면·인증된 자료 연결 테스트와 격리 Linux의 합성 실행까지다. 실제 WSL 배포판에서 두 제공자 로그인·분석·중지·앱 재실행은 팀 PC 수용 항목이다.
+
 ## 바탕화면 바로가기와 트레이 (v0.3.1 로컬 설치본)
 
 `0.3.1-setup.exe`를 기존 위치에 설치하면 바탕화면에 **메일 분석실** 바로가기를 만든다. 실행하면 브라우저 화면과 Windows 알림 영역의 봉투 아이콘이 열린다. 이미 실행 중이면 같은 앱의 화면을 연다. 브라우저를 닫아도 앱과 트레이는 유지된다. 아이콘은 Windows 설정에 따라 작업 표시줄의 **숨겨진 아이콘 표시(∧)** 안에 있을 수 있다.

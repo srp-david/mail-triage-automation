@@ -39,6 +39,14 @@ test('discovery imports plain Codex and Claude HTTP URLs, excludes credentials, 
   assert.equal(configEndpoints(json,'json','Claude').length,1);
   for(const url of ['http://remote.test/mcp','https://user:pass@example.test/mcp','https://example.test/mcp?key=x'])assert.throws(()=>endpointSchema.parse(url));
 });
+
+test('WSL command settings persist independently for both agents and retain deployment fields',async()=>{
+  const {store,value,path}=await fixture(),before=await store.read();
+  const agents={codex:{executable:'codex',wsl:{distribution:'Ubuntu',user:'analyst'}},claude:{executable:'/home/other/.local/bin/claude',wsl:{distribution:'Debian'}}};
+  await store.save({revision:before.revision,connections:{...before.connections,agents}},async(_value,persist)=>persist());
+  const after=JSON.parse(await readFile(path,'utf8'));
+  assert.deepEqual(after.agents,agents);assert.deepEqual(after.auth,value.auth);assert.equal(after.historyUrl,value.historyUrl);assert.equal(after.mailMcpUrl,value.mailMcpUrl);
+});
 test('MCP connection checks only list tools; DB evidence exposes fixed metadata readers without SQL',async()=>{
   const app=express();app.use(express.json());const calls:string[]=[];
   app.post('/mcp',async(req,res)=>{
@@ -62,6 +70,8 @@ test('connection routes retain local bootstrap, origin and CSRF protection',asyn
   const url=`http://127.0.0.1:${port}`,host={Host:`127.0.0.1:${port}`};
   try{
     assert.equal((await fetch(url+'/api/connections',{headers:host})).status,401);
+    assert.equal((await fetch(url+'/api/connections/wsl',{headers:host})).status,401);
+    assert.equal((await fetch(url+'/api/connections/wsl',{headers:{...host,Origin:'https://foreign.test'}})).status,403);
     assert.equal((await fetch(url+'/api/connections',{headers:{...host,Origin:'https://foreign.test'}})).status,403);
     const cli={...host,authorization:'Bearer '+control,'x-local-client':'1'};
     assert.equal((await fetch(url+'/api/connections',{headers:cli})).status,200);

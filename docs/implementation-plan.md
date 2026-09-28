@@ -56,6 +56,7 @@ M1은 Supabase PostgreSQL과 로컬 실행을 유지해 합성/복제본에서 �
 | Windows 배포·업데이트 | candidate.10 setup.exe에 기존 lifecycle의 stale lock 복구 연계. 합성 9→10 설치·historyUrl/port 보존, 살아 있는 PID 잠금 거절, 한글 경로 start/pause/stop, Claude Code 2.1.280 probe, unit 8/8 통과. GitHub prerelease 게시·hosted catalog .10 갱신 | 실계정 `offered`·게시 asset 실사용 업데이트, 팀 PC 수용·실분석 대기. UI E2E 1 passed는 candidate.9 증거 |
 | 보고서 협업·작업 시작 | 공통 메일 연결·공유·중복 방지, 지속 대화·revision·낙관적 락 구현 및 합성 검증. Supabase 이관·API 배포·현재 PC 0.3.4 설치 및 인증 조회 완료 | 개인 MCP/Agent 연결·두 PC 업무 수용 필요. 업무별 작업 등록부·구현 시작은 M5 미구현 |
 | 원격 SR 자동화 | 원격 자료·Agent·구현·PR 종단 미구현/미검증 | M3 안정화 판정 뒤 M4~M5 착수 |
+| WSL 로컬 Agent | Codex·Claude별 Windows/WSL 선택, 배포판·사용자 설정, 경로 변환·연결 진단·Linux 프로세스 취소 구현. WSL2 mirrored 전제 | 새 설치본 배포 및 팀 PC의 실제 WSL 로그인·분석·중지 수용 필요. 기본 NAT 우회와 WSL 설정 자동 변경 제외 |
 
 PoC 인계 `b8a5c5dd-8809-4031-8a4f-40ae6a16496d`의 완료 ID·10,263 bytes·SHA-256 `70fb2381fe6fc1a4d5f0a07994173d36b44d47894dc95f3e50905477fc206225`는 대조됐다. v3.0 문서 작업 당시에는 재실행하지 않았고, v3.1 통합 후 원본에서 backend 127/127·Edge/DB/Runner/Chrome/복원 12군을 다시 통과했다. 과거 PoC 검증 문서는 Git 객체 `8303d52:docs/validation.md`에 남아 있다. 현재 증거와 hosted/팀 파일럿의 미완료 경계는 [원본 검증 기록](validation.md)을 본다.
 

@@ -15,6 +15,10 @@ test('evidence MCP permits bounded reads and refuses writes, arbitrary SQL, trav
   const client=new Client({name:'test',version:'1'});
   try{
     assert.equal((await fetch(server.url,{method:'POST'})).status,403);
+    const checkUrl=server.url.replace('/mcp','/wsl-check');
+    assert.equal((await fetch(checkUrl)).status,403);
+    assert.equal((await fetch(checkUrl,{headers:{Authorization:'Bearer '+server.token,Origin:'https://other.invalid'}})).status,403);
+    assert.deepEqual(await (await fetch(checkUrl,{headers:{Authorization:'Bearer '+server.token}})).json(),{ok:true});
     assert.equal((await fetch(server.url,{method:'POST',headers:{Authorization:'Bearer '+server.token,Origin:'https://other.invalid'}})).status,403);
     await client.connect(new StreamableHTTPClientTransport(new URL(server.url),{requestInit:{headers:{Authorization:'Bearer '+server.token}}}));
     assert.deepEqual((await client.listTools()).tools.map(t=>t.name).sort(),['list_code','query_evidence','read_code','read_context','read_mail']);
