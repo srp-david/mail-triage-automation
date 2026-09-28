@@ -5,7 +5,9 @@
 - 설치본 0.3.11이 `stable`로 요청하고 서버 catalog는 `test`여서 `unavailable`을 반환했다. 실제 실행 중인 설치본의 로컬 제어 API로 수정 전 수동 확인 결과를 기록했다. 계정·토큰은 출력하지 않았고 설치·로그아웃은 수행하지 않았다.
 - 서버가 catalog의 `test` 제공 여부를 관리자·`UPDATE_TEST_USER_IDS`로 판단하도록 수정했다. 숫자 버전의 기존 `stable` 요청도 허용 계정이면 제공하고, 미허용 계정은 `channel_denied`로 응답한다. `test` 배포를 `stable`로 승격하지 않는다.
 - `update-channels`, `updates` **2파일 / 13개 테스트**와 TypeScript 검사 통과. 관리자·시험 사용자·일반 계정, candidate/숫자 버전, 현재·상위 버전, 권한 목록 제거, 서명 변조·만료, 기존 클라이언트의 수동 확인을 포함한다.
-- 현재 공용 함수 소스를 `.runtime/channel-fix/remote-before/`로 다운로드해 백업하고 새 bundle과 대조했다. 변경은 채널 허용 조건문 1개뿐이다. 배포 및 실제 설치본의 수정 후 결과는 후속 기록한다.
+- 현재 공용 함수 소스를 `.runtime/channel-fix/remote-before/`로 다운로드해 백업하고 새 bundle과 대조했다. 변경은 채널 허용 조건문 1개뿐이다. 소스 비밀 검사 탐지 0. 소스 커밋 `a37a272`(문서 포함 `59a02ce`)의 bundle을 프로젝트 `tborximfpwrzzwuazjrb`의 `history` 함수에 배포했다.
+- 실제 실행 중인 0.3.11의 수동 업데이트 조회는 수정 전 `unavailable`에서 배포 후 `offered`·0.3.12로 바뀌었다(2026-09-28T08:11:17Z). 응답의 EXE hash는 공개 metadata와 일치한다. `.runtime/channel-fix/installed-before.json`, `installed-after.json`에 민감정보 없이 보존했다. 앱 설치 버튼은 누르지 않았다.
+- catalog digest `5e16e20004fde2b2ae8b7a972d61bb0c0306c75b16a4099f59432c59f516942d` 유지, health 200·비인증 업데이트 401 확인. 기존 EXE·metadata·계정 권한 목록·DB·ERP는 변경하지 않았다. 앱 updater의 다운로드·설치 완료는 사용자 수용으로 남는다.
 
 ## 2026-09-28 v0.3.12 비밀번호 변경 실패 안내
 

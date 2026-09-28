@@ -1,5 +1,7 @@
 # Supabase 팀 배포 안내
 
+2026-09-28 업데이트 채널 수정: `history` 함수를 소스 `a37a272`(문서 포함 `59a02ce`)로 배포했다. 기존 숫자 버전의 `stable` 요청에도 관리자·지정 시험 계정이면 `test` catalog를 제공한다. 실제 0.3.11 설치본의 0.3.12 `offered`, health 200·비인증 401을 확인했다. 기존 bundle과 조건문 하나만 다르며 catalog·DB·계정 권한 목록은 그대로다.
+
 v0.3.12 catalog 갱신 (2026-09-28): `UPDATE_CATALOG_JSON`만 교체했다. digest `5e16e20004fde2b2ae8b7a972d61bb0c0306c75b16a4099f59432c59f516942d`, health 200·비인증 업데이트 401. 비밀번호 오류 처리는 설치 앱의 기존 API 호환 변경이며 함수·DB는 변경하지 않았다.
 
 v0.3.11 catalog 갱신 (2026-09-28): 공개 서명 metadata로 `UPDATE_CATALOG_JSON`만 교체했다. digest `ee6f063b14a46703b21d7629397273a27996dec7bbb372b0c9929a765e87a091`, health 200·비인증 업데이트 401. 신규 설치 기본값은 기존 공용 API·issuer와 동일하며 함수·DB는 변경하지 않았다.
