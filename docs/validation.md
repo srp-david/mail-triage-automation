@@ -1,5 +1,52 @@
 # 검증 기록
 
+## 2026-09-28 v0.3.7~v0.3.10 작업별 커밋 정리
+
+- 누적 변경을 로그인 복원, 설정 정리와 요청 시 자동 실행, 5초 알림, 팝업 UI, 설치본 기술 문서, 릴리스·운영 문서의 6개 커밋으로 분리했다. 여러 작업이 포함된 `App.tsx`는 변경 목적에 맞춰 나눠 스테이징했다.
+- 커밋 전 `npm.cmd run check` 통과. 자동 실행·로컬 UI·Runner·트레이·사용자명 인증·설정·세션 복원·알림의 Vitest 8개 파일, 28개 테스트가 모두 통과했다.
+- 아래 버전별 브라우저·설치 검증은 각 구현 시점의 기록이다. 이번 커밋 정리에서는 설치 파일을 다시 만들거나 개인 설치본을 교체하지 않았다. 설치 산출물·개인 설정·메일 원문은 커밋에서 제외했다.
+- 원격 push, GitHub Release 게시, hosted catalog 변경은 수행하지 않았다. 아래의 버전별 '커밋하지 않았다'는 문구는 해당 검증 시점의 상태이며, 누적 소스와 문서는 이번에 로컬 커밋으로 정리했다.
+
+## 2026-09-28 설치본 기술 문서 연결 수정 v0.3.10
+
+- 개인 설치본 0.3.9에서 기술 문서 기본 링크가 개발 서버 `127.0.0.1:3000`을 가리키는 원인을 확인했다. 설치형 UI는 `/docs/`로 고정하고 Docusaurus 정적 문서를 패키징 시 포함한다. 별도 문서 프로세스를 띄우지 않는다.
+- `npm.cmd run docs:bundle`의 문서/링크 검사를 통과했다. README 다운로드 링크는 `pathname://`로 정적 경로를 보존해 하위 경로에서 잘못된 끝 슬래시가 붙지 않도록 했다.
+- `scripts/verify-bundled-docs.mjs`: 합성 세션의 실제 Chrome에서 앱 버튼→새 탭, 같은 origin, README 다운로드, Mermaid, 하위 페이지 새로고침, 한국어 검색, 390px 모바일 메뉴를 확인했다. 외부 네트워크 요청 0·CSP 위반 0, 앱 API 비인증 401 유지. `.runtime/bundled-docs/run-OsNpeI/result.json`과 desktop/mobile 캡처.
+- 문서 HTML에만 빌드된 인라인 스크립트 해시를 허용하며 앱·메일·첨부 미리보기 정책을 유지한다. 서버형 UI의 기존 `VITE_DOCS_URL`과 개발 서버 기본값은 유지한다.
+- `npm.cmd run check`, backend/UI 빌드, `git diff --check` 통과. 문서 포함 0.3.10 패키지는 3,999파일, `releaseApproved=false`. EXE SHA-256 `787cb78f80af47af70f0479e4c4cf6db079dbed069a16f732bece5de52aa96cf`, ZIP `6051ad0c749dc3b073aae0e3fc5ea0b53d96f43df09fc8e39b3d27fb29f58c97`.
+- Git 커밋/push·Release/catalog 게시·서명·개인 설치본 교체는 하지 않았다.
+- 실제 setup.exe로 별도 홈 0.3.9→0.3.10 업그레이드, 설정·작업 파일 보존, 문서 첫 화면·아키텍처 하위 경로·README 200, 문서 CSP 적용을 확인했다. 제공 UI SHA-256 `f75e2fae9e1736a65d1cdf3f9dd35d8e0042d627056f09a183a5e08b19cb2457`이 빌드/manifest와 일치한다. 검증 후 정상 종료했으며 `.runtime/update-setup/upgrade-9YaWkH/verification.json`에 기록했다.
+
+## 2026-09-28 팝업 정렬·여백 개선 v0.3.9
+
+- 임시 비밀번호 창의 바깥 label과 MUI 입력 라벨 중복, portal 밖 폼 스타일 의존을 제거했다. 발급 계정·전체 비밀번호·안내·닫기를 분리하고 공통 Dialog 제목/본문/버튼 여백을 지정했다.
+- 이력 제목/시각 분리, 본문 패널 24px(모바일 16px), 보고서 버튼 12px 간격·줄바꿈, 편집/대화/질문 입력의 세로 배치, 공유 분석 닫기 분리, 미리보기 버튼 줄바꿈을 반영했다. 메일·Markdown 내용 스타일과 계정/분석 API 정책은 변경하지 않았다.
+- `npm.cmd run check`, `npm.cmd run build:ui`, `git diff --check` 통과. 단순 배치 테스트를 추가하지 않고 실제 Chrome으로 배치를 검증했다.
+- `scripts/verify-account-ui.mjs`: 합성 계정 목록/검색/수정/생성/초기화/비밀번호 변경 후 로그아웃·권한 메뉴를 확인했다. 임시 비밀번호 창은 1440px·390px에서 가로 넘침 없이 표시되며 실제 계정을 변경하지 않았다. `.runtime/account-ui/run-5Q00QW/result.json`과 `temporary-1440.png`, `temporary-390.png`.
+- `scripts/verify-dialog-ui.mjs`: 긴 제목의 이력 목록·보고서 편집·공유 분석을 1440px·390px에서 확인, 가로 넘침 없음·버튼 간격 12px·Escape 닫기 통과. 최종 `.runtime/dialog-ui/run-04rAA6/result.json`과 화면 캡처. 제공 JS SHA-256 `44753f99baa3a709df50a4af4f4fd2bf0d371ed74010ae8bbabbcd9646ebf189`, CSS `07000ae278017b26e58f6a93bed7f7b0fd34b59d4d51566b453855d1faf5539b`이 로컬 빌드와 일치한다.
+- EXE SHA-256 `384d1af02f6af93029ce616973020c39775753e868fe33ea4b7fbf6c93851d2d`, ZIP `5c53f1449212841b95187b64c32b43b6ac87439277b9dfb2d88307ddf43485f0`, 3,738파일, `releaseApproved=false`. 개인 설치본 교체·Git 커밋/push·Release/catalog 게시·서명은 수행하지 않았다.
+- 실제 setup.exe로 별도 홈 0.3.8→0.3.9 업그레이드, 설정·작업 파일 보존, 제공 JS와 빌드/manifest 일치, 비인증 updates 401을 확인하고 앱을 종료했다. `.runtime/update-setup/upgrade-9BtoGw/verification.json`.
+
+## 2026-09-28 동기화·분석 자동 실행과 일시 알림 v0.3.8
+
+- 원인: 로컬 동기화·분석 API가 요청만 등록하고 설정의 runtime start를 별도로 요구했다. `LocalRuntime.submit`에서 선택·원본·Agent·복구/중지 상태를 확인한 뒤 요청 등록과 실행기 시작/깨우기를 직렬 처리한다. 이미 실행 중인 루프는 중복 시작하지 않는다.
+- 설정의 수동 실행·중지 버튼 제거, 메일함 요청 안내로 변경. 공통 알림은 5초 뒤 해제하며 같은 문구가 다시 오면 시간을 갱신하고 화면 해제 시 타이머도 정리한다.
+- `npm.cmd run check`, 전체 `npm.cmd run build` 통과. 관련 unit/UI **8파일 / 28테스트** 통과: 실제 로컬 API → 합성 이력 → Runner/Mail collect까지 자동 처리, 대기 깨우기·중복 실행 방지, 미설정 Agent/복구/선택 변경/트레이 중지/업데이트/요청 실패, 설정 UI, 알림 갱신·수동 닫기·해제를 포함한다.
+- `scripts/verify-session-ui.mjs`: 실제 Chrome에서 수동 실행 버튼 제거·저장 알림 자동 닫힘 확인. 세션/상태 지연·새로고침 3회 로그인 깜빡임 없음·실패 후 재시도·390px 가로 넘침 없음도 통과했다. 합성 계정이며 `.runtime/session-ui/run-A1XgNF/result.json`에 보존했다. 제공 UI JS SHA-256 `53ab09f190c087dee4a410dc7a85abc09723c4686b094ebc8b90c612fe6aff1e`과 로컬 빌드 일치.
+- 0.3.8 EXE SHA-256 `c70ff6b6f756f7db79aa4eb0c38978c672d2cdc314f1820d3cf7b5abebbd2532`, ZIP `b22962365bc2244428e05503d38c490ba1bb99fe855e694b0746cdd447fc3308`, 3,738파일, `releaseApproved=false`.
+- 실제 setup.exe로 별도 홈의 0.3.7→0.3.8 업그레이드 통과. 기존 설정·작업 파일 보존, 제공 JS 해시와 위 빌드/설치 manifest 일치, 비인증 updates 401을 확인했다. `.runtime/update-setup/upgrade-MapoFC/verification.json`에 보존했다.
+- 개인 설치본은 조회 당시 0.3.7이며 이번 작업에서 교체하지 않았다. 실메일/개인 Agent 처리, Git 커밋/push·Release/catalog 게시·서명은 수행하지 않았다.
+
+## 2026-09-28 공유·장치 관리 제거·로그인 초기 표시 수정과 v0.3.7
+
+- 사용자 v0.3.6 설치 피드백을 반영했다. 일반 설정의 공유·장치 관리 탭과 팀 사용자/문서 모음 조회를 제거했다. 저장된 collectionId 보존과 분석 준비의 실행 연결을 유지했다.
+- 원인: App의 초기 `authenticated=false`를 세션 확인 전에도 로그아웃 상태로 렌더링했다. 확인 중·완료·실패를 분리하고 세션/초기 상태 응답 후에만 로그인 또는 작업 화면을 표시한다. 오래된 응답은 세대/요청 번호로 폐기하고 일시적인 세션 조회 실패는 재시도로 안내한다.
+- `npm.cmd run check`, `npm.cmd run build:ui` 통과. App/Settings/Forms/Updates **4파일 / 19테스트** 통과. 느린 세션/상태 응답, 조회 실패 후 복구, 로그아웃, 최초 비밀번호 변경, 인증 만료, 관리 탭/조회 제거와 기존 연결 값 보존을 확인했다.
+- `node --import tsx scripts/verify-session-ui.mjs`: 세션 600ms·초기 상태 400ms 지연 하에서 첫 접속 및 새로고침 3회에 로그인 폼 DOM 생성 없음, 페이지 유지, 503 후 재시도, 실제 signed-out 분기에서만 로그인 표시, 관리 탭 제거, 390px 가로 넘침 없음 확인. `.runtime/session-ui/run-oMA4Bc/result.json` 및 loading/settings desktop/mobile 이미지.
+- 제공 UI JavaScript SHA-256 `a53a7711eefad551833bc311889f6679aeac1a084a7e43c0fcdb0dfc2922a811`과 로컬 빌드 일치. 합성 계정 검증이며 개인 로그인·권한·연결은 변경하지 않았다.
+- 실제 setup.exe로 별도 홈에서 0.3.6→0.3.7 업그레이드, 설정·작업 파일 보존, 비인증 updates 401 확인. 설치 앱의 제공 JS 해시가 위 로컬 빌드·설치 manifest와 일치했고 검증 후 정상 종료했다. `.runtime/update-setup/upgrade-TGYcqW/verification.json`.
+- 0.3.7 EXE SHA-256 `e3a5b82e06b71b61d4acc629d91b932895fac4104fa98c67cf31ab4ecc06c1bf`, ZIP `f40479b2c92cd09d72a08ebcc9947ba00a2a70e2374cbe446fc0c0719924948e`, 3,738파일, `releaseApproved=false`. 현재 개인 설치본 교체·Git 커밋/push·Release/catalog 게시·서명은 하지 않았다.
+
 ## 2026-09-28 Node 업데이트 확인·설정/트레이 UI와 v0.3.6
 
 - 업데이트 확인을 브라우저에서 Node로 옮겼다. 시작·로그인 직후·1시간 주기, 수동 확인, 확인 요청 공유, 로그아웃 시 오래된 결과 폐기, 설치 중복 방지와 다운로드·검증·대기·설치/실패 상태를 추가했다. 설정 탭·트레이 메뉴·새 버전 안내·나중에를 연결했다.
