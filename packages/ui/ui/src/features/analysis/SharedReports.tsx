@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Dialog, DialogContent, DialogTitle } from '@mui/material';
+import { Box, Button, Dialog, DialogContent, DialogTitle } from '@mui/material';
 import { useSession } from '../../api/client';
 import { useResource } from '../../hooks/async';
 import { Action } from '../../components/Common';
@@ -54,7 +54,7 @@ export function ReportSharing({ id }: { id: string }) {
             : '팀 조회'}
       </p>
       {r.canShare && (
-        <>
+        <div className="dialog-button-row">
           {(['read', 'write', 'none'] as const).map((permission) => (
             <Action
               key={permission}
@@ -71,7 +71,7 @@ export function ReportSharing({ id }: { id: string }) {
                   : '공유 해제'}
             </Action>
           ))}
-        </>
+        </div>
       )}
     </div>
   );
@@ -113,11 +113,24 @@ export function MailSharedReports({ mailId }: { mailId: number }) {
         </>
       )}
       <Action onAction={resource.refresh}>공유 분석 새로고침</Action>
-      <Dialog open={!!selected} onClose={() => setSelected(null)} fullWidth maxWidth="lg">
-        <DialogTitle>
-          공유 분석<Button onClick={() => setSelected(null)}>닫기</Button>
+      <Dialog
+        open={!!selected}
+        onClose={() => setSelected(null)}
+        fullWidth
+        maxWidth="lg"
+        aria-labelledby="shared-report-title"
+      >
+        <DialogTitle
+          id="shared-report-header"
+          component="div"
+          sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}
+        >
+          <Box component="span" id="shared-report-title">
+            공유 분석
+          </Box>
+          <Button onClick={() => setSelected(null)}>닫기</Button>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent dividers>
           {selected && <SharedReportView key={selected} id={selected} />}
         </DialogContent>
       </Dialog>

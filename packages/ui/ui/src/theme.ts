@@ -61,7 +61,23 @@ export const theme = createTheme(
       MuiPaper: { defaultProps: { elevation: 0 } },
       MuiDialog: {
         defaultProps: { maxWidth: 'lg', fullWidth: true },
-        styleOverrides: { paper: { backgroundImage: 'none' } },
+        styleOverrides: { paper: { backgroundImage: 'none', borderRadius: 12 } },
+      },
+      MuiDialogTitle: {
+        styleOverrides: { root: { margin: 0, padding: '20px 24px', overflowWrap: 'anywhere' } },
+      },
+      MuiDialogContent: {
+        styleOverrides: { root: { padding: '24px', minWidth: 0 } },
+      },
+      MuiDialogActions: {
+        styleOverrides: {
+          root: {
+            padding: '16px 24px',
+            gap: 12,
+            flexWrap: 'wrap',
+            '& > :not(style) ~ :not(style)': { marginLeft: 0 },
+          },
+        },
       },
       MuiAlert: {
         styleOverrides: {

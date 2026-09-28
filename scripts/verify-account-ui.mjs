@@ -33,7 +33,15 @@ try{
   await page.screenshot({path:join(home,'admin-desktop.png')});
   await page.getByLabel('계정 검색').fill('demo.viewer');assert.equal(await page.getByRole('article').count(),1);await page.getByLabel('계정 검색').fill('');
   const user=page.getByRole('article',{name:'demo.viewer 계정'});await user.getByText('계정 정보 수정',{exact:true}).click();await user.getByLabel('표시 이름',{exact:true}).fill('조회 담당자 수정');await user.getByRole('button',{name:'계정 저장'}).click();await page.getByText('계정 정보를 저장했습니다.',{exact:true}).waitFor();assert.equal(updated,1);
-  await user.getByRole('button',{name:'비밀번호 초기화'}).click();const dialog=page.getByRole('dialog');await dialog.waitFor();assert.equal(await dialog.getByLabel('발급된 임시 비밀번호',{exact:true}).inputValue(),secret);assert.equal(reset,1);await dialog.getByRole('button',{name:'확인 후 닫기'}).click();
+  await user.getByRole('button',{name:'비밀번호 초기화'}).click();const dialog=page.getByRole('dialog');await dialog.waitFor();assert.equal(await dialog.getByLabel('발급된 임시 비밀번호',{exact:true}).inputValue(),secret);assert.equal(reset,1);
+  for(const width of [1440,390]){
+    await page.setViewportSize({width,height:900});
+    await page.waitForTimeout(300);
+    assert.equal(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth),true);
+    assert.equal(await dialog.locator('.MuiDialogContent-root').evaluate(el=>el.scrollWidth<=el.clientWidth),true);
+    await page.screenshot({path:join(home,'temporary-'+width+'.png')});
+  }
+  await page.setViewportSize({width:1440,height:1000});await dialog.getByRole('button',{name:'확인 후 닫기'}).click();
   await page.getByText('새 계정 만들기',{exact:true}).click();const form=page.locator('.admin-create');await form.getByLabel('새 사용자명',{exact:true}).fill('demo.new');await form.getByLabel('표시 이름',{exact:true}).fill('새 테스트 사용자');await form.getByRole('button',{name:'계정 생성'}).click();await dialog.waitFor();assert.equal(created,1);await dialog.getByRole('button',{name:'확인 후 닫기'}).click();
   await page.getByText('새 계정 만들기',{exact:true}).click();await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:join(home,'admin-mobile.png'),fullPage:true});
   await page.setViewportSize({width:1440,height:1000});await page.getByRole('link',{name:'설정',exact:true}).click();await page.getByRole('heading',{name:'환경설정'}).waitFor();assert.equal(await page.getByRole('button',{name:'비밀번호 변경',exact:true}).count(),0);

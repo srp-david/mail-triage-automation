@@ -99,9 +99,15 @@ export const HistoryList = forwardRef<
                       : (labels[(item as Run).status] ?? (item as Run).status)
                   }
                 />
-                <Button onClick={() => open({ kind: 'run', id: item.id })}>
-                  {(item as Run).subject} · {(item as Run).source === 'direct' ? '직접 실행' : '웹'}{' '}
-                  · {date((item as Run).created_at)}
+                <Button
+                  className="history-entry"
+                  onClick={() => open({ kind: 'run', id: item.id })}
+                >
+                  <span className="history-entry-title">{(item as Run).subject}</span>
+                  <span className="history-entry-meta">
+                    {(item as Run).source === 'direct' ? '직접 실행' : '웹'} ·{' '}
+                    {date((item as Run).created_at)}
+                  </span>
                 </Button>
               </div>
             ) : (
@@ -244,7 +250,9 @@ export function HistoryDialog({
           <Typography component="h2" variant="h2" id="history-title">
             {title}
           </Typography>
-          <p id="history-subtitle">{state?.subject}</p>
+          <p id="history-subtitle" title={state?.subject}>
+            {state?.subject}
+          </p>
         </div>
         <Button id="history-close" autoFocus onClick={() => setState(null)}>
           닫기
@@ -274,7 +282,7 @@ export function HistoryDialog({
         >
           새로고침
         </Action>
-        <p id="history-notice" role="status">
+        <p id="history-notice" role="status" hidden={!state || !notice}>
           {state ? notice : ''}
         </p>
       </div>

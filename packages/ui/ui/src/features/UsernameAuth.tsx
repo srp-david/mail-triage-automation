@@ -10,6 +10,7 @@ import {
   DialogTitle,
   LinearProgress,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
@@ -238,25 +239,41 @@ export function AdminUsers() {
         fullWidth
         maxWidth="sm"
         aria-labelledby="temporary-password-title"
+        aria-describedby="temporary-password-description"
       >
         <DialogTitle id="temporary-password-title">임시 비밀번호 발급 완료</DialogTitle>
-        <DialogContent>
-          <Typography sx={{ mb: 2 }}>
-            {temporary?.name} 계정의 임시 비밀번호입니다. 닫으면 다시 확인할 수 없으므로 안전한 사내
-            경로로 전달하세요.
-          </Typography>
-          <label>
-            발급된 임시 비밀번호
-            <Field
-              aria-label="발급된 임시 비밀번호"
-              readOnly
+        <DialogContent dividers>
+          <Stack spacing={3}>
+            <Box sx={{ overflowWrap: 'anywhere' }}>
+              <Typography variant="body2" color="text.secondary">
+                발급 계정
+              </Typography>
+              <Typography sx={{ fontWeight: 700, mt: 0.5 }}>{temporary?.name}</Typography>
+            </Box>
+            <TextField
+              fullWidth
+              multiline
+              minRows={2}
+              label="발급된 임시 비밀번호"
               value={temporary?.password ?? ''}
               autoComplete="off"
+              slotProps={{
+                input: { readOnly: true },
+                htmlInput: {
+                  spellCheck: false,
+                  style: { fontFamily: 'Consolas, monospace', fontSize: 16 },
+                },
+              }}
             />
-          </label>
+            <Alert id="temporary-password-description" severity="info">
+              닫으면 다시 확인할 수 없습니다. 비밀번호를 복사해 안전한 사내 경로로 전달하세요.
+            </Alert>
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setTemporary(null)}>확인 후 닫기</Button>
+          <Button variant="contained" onClick={() => setTemporary(null)}>
+            확인 후 닫기
+          </Button>
         </DialogActions>
       </Dialog>
       <Disclosure className="admin-create">

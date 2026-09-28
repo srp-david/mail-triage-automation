@@ -45,7 +45,7 @@ export function ReportQuestion({
     setVolatile(!saveDraft(scope, id, JSON.stringify(next)));
   }
   return (
-    <fieldset disabled={busy}>
+    <fieldset className="report-form" disabled={busy}>
       <h4>개인 AI에게 질문</h4>
       <p>
         저장 보고서와 최근 대화 30건을 사용합니다. 원본 메일은 조회하지 않으며, 선택한 개인 AI의

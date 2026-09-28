@@ -78,7 +78,7 @@ function Editor({
   };
   const stale = draft.expectedVersion !== snapshot.version;
   return (
-    <fieldset aria-label="보고서 편집" disabled={busy}>
+    <fieldset className="report-form" aria-label="보고서 편집" disabled={busy}>
       <h4>보고서 편집 · 기준 v{draft.expectedVersion}</h4>
       {stale && (
         <p role="alert">
@@ -163,7 +163,7 @@ function MessageForm({ id, reload }: { id: string; reload: () => Promise<unknown
     setVolatile(!saveDraft(scope, id, JSON.stringify(next)));
   }
   return (
-    <fieldset disabled={busy}>
+    <fieldset className="report-form" disabled={busy}>
       <TextField
         select
         label="대화 종류"
@@ -235,12 +235,19 @@ export function ReportCollaboration({ id }: { id: string }) {
     return <p role="alert">{resource.error || '보고서를 불러오는 중입니다…'}</p>;
   const snapshot = resource.data;
   return (
-    <section aria-label="보고서 협업">
+    <section className="report-collaboration" aria-label="보고서 협업">
       <h3>보고서 v{snapshot.version}</h3>
-      <Button component="a" href={'/api/reports/' + id + '/export'} target="_blank" rel="noopener">
-        최신 보고서 Markdown 열기
-      </Button>
-      <Action onAction={resource.refresh}>최신 내용 확인</Action>
+      <div className="dialog-button-row">
+        <Button
+          component="a"
+          href={'/api/reports/' + id + '/export'}
+          target="_blank"
+          rel="noopener"
+        >
+          최신 보고서 Markdown 열기
+        </Button>
+        <Action onAction={resource.refresh}>최신 내용 확인</Action>
+      </div>
       <MarkdownView value={snapshot.report} label="최신 보고서" />
       <TextField
         select

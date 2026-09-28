@@ -62,41 +62,44 @@ function AnswerForm({ run, onAnalysis }: { run: Run; onAnalysis: (run: Run) => v
           ? '임시 저장소를 사용할 수 없습니다. 화면 이동 시에는 유지되지만 브라우저 새로고침 전 답변을 복사해 주세요.'
           : '작성 중인 답변은 이 탭에서 임시 보관됩니다. 새로고침 후에도 같은 분석을 열면 복원됩니다.'}
       </p>
-      <Button
-        className="secondary-button"
-        disabled={busy}
-        onClick={() => {
-          update('');
-          input.current?.focus();
-        }}
-      >
-        초안 지우기
-      </Button>
-      <Action
-        disabled={busy}
-        onAction={async () => {
-          if (!answer.trim()) throw Error('답변을 입력하세요.');
-          const submitted = answer;
-          setBusy(true);
-          try {
-            const next = await api<Run>('/runs', {
-              storeId: run.store_id,
-              mailId: Number(run.mail_id),
-              messageId: run.message_id,
-              source: 'web',
-              requestId: crypto.randomUUID(),
-              parentId: run.id,
-              answer: submitted,
-            });
-            if (readDraft(draftStore, run.id) === submitted) saveDraft(draftStore, run.id, '');
-            if (alive.current) onAnalysis({ ...next, mail_id: run.mail_id, subject: run.subject });
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        답변하고 다시 분석
-      </Action>
+      <div className="dialog-button-row">
+        <Button
+          className="secondary-button"
+          disabled={busy}
+          onClick={() => {
+            update('');
+            input.current?.focus();
+          }}
+        >
+          초안 지우기
+        </Button>
+        <Action
+          disabled={busy}
+          onAction={async () => {
+            if (!answer.trim()) throw Error('답변을 입력하세요.');
+            const submitted = answer;
+            setBusy(true);
+            try {
+              const next = await api<Run>('/runs', {
+                storeId: run.store_id,
+                mailId: Number(run.mail_id),
+                messageId: run.message_id,
+                source: 'web',
+                requestId: crypto.randomUUID(),
+                parentId: run.id,
+                answer: submitted,
+              });
+              if (readDraft(draftStore, run.id) === submitted) saveDraft(draftStore, run.id, '');
+              if (alive.current)
+                onAnalysis({ ...next, mail_id: run.mail_id, subject: run.subject });
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          답변하고 다시 분석
+        </Action>
+      </div>
     </>
   );
 }
