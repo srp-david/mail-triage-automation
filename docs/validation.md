@@ -6,7 +6,10 @@
 - 오류를 변경 폼 안에 유지하고 최초 변경의 임시 비밀번호 입력 안내를 보강했다. 실패 시 완료 콜백을 호출하지 않으며 비밀번호 두 입력값은 비운다.
 - `npm.cmd run check`, `npm.cmd run build` 통과. `password-errors`, `username-local`, `Forms` 단위·화면 테스트 **3파일 / 13개** 통과. 잘못된 현재 비밀번호, 세션 무효, 확인 API 503, 횟수 제한, 실패 시 로컬 세션 보존, 성공 후 폐기, 화면 유지·재시도·만료 안내를 포함한다.
 - `playwright test test/e2e/auth-database.spec.ts` **1 passed**. 실제 로컬 API·Chrome·격리 PostgreSQL에서 임시 로그인→현재 비밀번호 오입력→변경 화면 유지 및 서버 세션 유효→올바른 임시 비밀번호로 변경→새 비밀번호 로그인→로그아웃을 확인했다. 개인 계정·실제 비밀번호는 사용하지 않았다.
-- 설치 EXE·공개 배포 검증은 후속 기록으로 추가한다.
+- 배포 소스 `579f0553bc5cdaebdad8f8261383dd5af7bc1923`, [v0.3.12 Release](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.12). 패키지 4003파일·metadata 서명·manifest 검증 통과. 소스 Gitleaks 탐지 0, 패키지 탐지 99개는 전부 실파일 SHA-256과 대조한 manifest 해시로 미해결 0. `releaseApproved=false`.
+- `node scripts/verify-windows-setup.mjs 0.3.12 0.3.11`: 빈 한글 경로의 무입력 EXE 설치·공용 기본값·Chrome 로그인 화면·브라우저 외부 요청 0·정상 종료 확인. 실제 EXE 업그레이드에서 개인 설정 전체의 byte 일치, 합성 DPAPI 저장소와 작업 파일 보존 확인. 증거 `setup-defaults/run-anmtPh` (`.runtime/` 아래). 개인 설치본은 교체하지 않았다.
+- 게시 자산 5개를 다시 다운로드해 GitHub/로컬 digest·metadata 서명·태그를 대조했다. EXE `769c01fbd552f08fc97c7fb72e386d419a47e28580ce56881e8aa673d87d2095`, ZIP `8b4ebdb5b81d6b1abda4e7e8cf74a6f737940f979e379db630789f2f153ca1c8`. Authenticode `NotSigned`.
+- 승인된 Supabase 프로젝트의 catalog만 갱신했다. digest `5e16e20004fde2b2ae8b7a972d61bb0c0306c75b16a4099f59432c59f516942d`, health 200·비인증 업데이트 401. `test` 채널 유지, 함수 재배포·DB migration 없음. 실제 계정 offered/current·앱 updater 설치는 별도다. 설치본 내장 문서는 배포 소스 시점이며 게시 완료 결과는 후속 문서 커밋이다.
 
 ## 2026-09-28 v0.3.11 신규 설치 자동 설정·배포
 

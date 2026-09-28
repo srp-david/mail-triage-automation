@@ -1,8 +1,10 @@
 # Supabase 팀 배포 안내
 
+v0.3.12 catalog 갱신 (2026-09-28): `UPDATE_CATALOG_JSON`만 교체했다. digest `5e16e20004fde2b2ae8b7a972d61bb0c0306c75b16a4099f59432c59f516942d`, health 200·비인증 업데이트 401. 비밀번호 오류 처리는 설치 앱의 기존 API 호환 변경이며 함수·DB는 변경하지 않았다.
+
 v0.3.11 catalog 갱신 (2026-09-28): 공개 서명 metadata로 `UPDATE_CATALOG_JSON`만 교체했다. digest `ee6f063b14a46703b21d7629397273a27996dec7bbb372b0c9929a765e87a091`, health 200·비인증 업데이트 401. 신규 설치 기본값은 기존 공용 API·issuer와 동일하며 함수·DB는 변경하지 않았다.
 
-최신 catalog 갱신 (2026-09-28): 프로젝트 `tborximfpwrzzwuazjrb`의 `UPDATE_CATALOG_JSON`을 공개 v0.3.10 metadata로 갱신했다. digest `82fffde99c9b36c191d5ec23d914432d2b91f8ccced59d1b9ee085a9aa8da4b4`, health 200·비인증 업데이트 401 확인. 기존 API/DB는 유지하며 실계정 업데이트 제공·설치는 별도 검증이다. 아래 candidate.10은 이전 갱신 기록이다.
+v0.3.10 catalog 갱신 (2026-09-28): 프로젝트 `tborximfpwrzzwuazjrb`의 `UPDATE_CATALOG_JSON`을 공개 v0.3.10 metadata로 갱신했다. digest `82fffde99c9b36c191d5ec23d914432d2b91f8ccced59d1b9ee085a9aa8da4b4`, health 200·비인증 업데이트 401 확인. 기존 API/DB는 유지하며 실계정 업데이트 제공·설치는 별도 검증이다. 아래 candidate.10은 이전 갱신 기록이다.
 
 갱신: 2026-09-28. [통합 계획 v3.3](../implementation-plan.md)의 M1~M3 실행 안내다. **첫 hosted API·DB 배포 및 합성 검증 완료**. `history` function의 기존 API 코드를 유지하고 candidate.10 catalog를 새 통합 태그의 서명 metadata로 갱신·digest 대조했다. health 200/비인증 update check 401까지 확인했지만 실계정 업데이트 제공/설치와 두 PC 업무 파일럿은 미완료다. 각 팀원 PC의 local-app/MCP/AI Agent 구성이며 백업 설정은 사용자 요청으로 보류했다.
 

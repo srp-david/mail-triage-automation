@@ -1,10 +1,10 @@
 # 현재 구현·배포 상태
 
-갱신일: 2026-09-28. 신규 설치의 공용 서버 주소 자동 설정을 반영한 [v0.3.11](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.11) 배포와 테스트 채널 catalog 갱신을 완료했다. 배포 소스는 `87be9a0aff916c0e35cba7a5f42e7e276e6eb6c3`이며 이후 문서 커밋은 게시 기록이다. 실제 EXE의 무입력 설치·로그인 화면과 0.3.10→0.3.11 설정 보존, 공개 자산 5개 다운로드 대조를 확인했다. 실계정 로그인·업무 분석과 앱 updater 수용은 별도다.
+갱신일: 2026-09-28. 비밀번호 변경 실패 안내를 개선한 [v0.3.12](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.12) 배포와 테스트 채널 catalog 갱신을 완료했다. 배포 소스는 `579f0553bc5cdaebdad8f8261383dd5af7bc1923`이며 이후 문서 커밋은 게시 기록이다. 현재 비밀번호 오류 후 화면 유지·재시도·변경·재로그인을 실제 브라우저와 격리 DB로 검증했다. 실제 EXE 신규 설치와 0.3.11→0.3.12 설정 보존, 공개 자산 5개 다운로드 대조도 완료했다. 실계정 앱 updater 수용·업무 분석은 별도다.
 
 ## 최신 공개 배포
 
-최신 설치 파일은 **[0.3.11-setup.exe](https://github.com/srp-david/mail-triage-automation/releases/download/v0.3.11/0.3.11-setup.exe)**다. 신규 설치는 공용 API·issuer·audience를 자동 설정한다. 기존 사용자 설정 전체는 유지하며 v0.3.10의 누적 기능을 포함한다. EXE SHA-256 `6dd4fb6c183fbbae396701bdc5ec154ff3520855d068f2d1e04376ea5fd830e5`. GitHub 일반 Release와 테스트 채널 catalog에 게시했으며 개인 설치본은 교체하지 않았다. [패치노트](releases/v0.3.11.md), [Windows 안내](operations/windows.md)를 따른다.
+최신 설치 파일은 **[0.3.12-setup.exe](https://github.com/srp-david/mail-triage-automation/releases/download/v0.3.12/0.3.12-setup.exe)**다. 현재 비밀번호 오류는 변경 화면에서 재입력할 수 있고 세션 만료는 재로그인으로 안내한다. 기존 개인 설정과 저장소는 유지한다. EXE SHA-256 `769c01fbd552f08fc97c7fb72e386d419a47e28580ce56881e8aa673d87d2095`. GitHub 일반 Release와 테스트 채널 catalog에 게시했으며 개인 설치본은 교체하지 않았다. [패치노트](releases/v0.3.12.md), [로그인 안내](operations/login.md)를 따른다.
 
 사용자가 **0.3.6 설치 후** 설정·새로고침 피드백을 제공했다. 이전 자동 검증에서는 개인 PC에 0.3.5를 설치하고 Codex를 앱 버전 폴더 밖의 실제 `codex.exe`로 설정했으며 자동 찾기·실행 옵션·제공 UI hash 대조를 확인했다. 당시 ZIP SHA-256은 `e36a0d8be5396a73f8ecb3b1e253c3316222570a3e6665c5bfc1ed3670dac906`이다.
 
@@ -36,6 +36,7 @@ EXE SHA-256 `e77bab9916ac32cb9f818ed4cf32ffec90e257f195de9c105e521f3bce0c2bba`, 
 | 0.3.9 | 임시 비밀번호·분석 이력·공유 분석 팝업 정렬과 여백 | [초안](releases/v0.3.9.md) |
 | 0.3.10 | 누적 변경·내장 기술 문서 공개 배포 | [패치노트](releases/v0.3.10.md) |
 | 0.3.11 | 신규 설치 공용 서버 자동 설정 | [패치노트](releases/v0.3.11.md) |
+| 0.3.12 | 비밀번호 변경 오류·세션 만료 구분과 재시도 안내 | [패치노트](releases/v0.3.12.md) |
 
 0.3.0~0.3.9는 로컬 검증 기록이며, 변경 사항을 모은 0.3.10을 최초 숫자 버전으로 공개했다. 기존 candidate 태그와 자산은 보존했다. 이전 로컬 0.3.10 산출물은 보관하고 확정 커밋에서 다시 빌드한 파일을 게시했다. 버전별 검증과 최종 공개 파일 해시는 [검증 일지](validation.md)에 보존한다.
 
