@@ -1,5 +1,16 @@
 import { Field, Panel } from '../components/Controls';
-import { Alert, AppBar, Box, Button, Chip, Snackbar, Toolbar, Typography } from '@mui/material';
+import {
+  Alert,
+  AppBar,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Snackbar,
+  Stack,
+  Toolbar,
+  Typography,
+} from '@mui/material';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createApi, errorText, SessionContext } from '../api/client';
 import { activeSync, type Status, type Sync } from '../api/types';
@@ -50,6 +61,9 @@ export function App() {
     [view, setView] = useState(viewFromHash),
     [menu, setMenu] = useState(false),
     [history, setHistory] = useState<HistoryState | null>(null);
+  const [bootState, setBootState] = useState<'checking' | 'ready' | 'error'>('checking'),
+    [bootError, setBootError] = useState('');
+  const bootRequest = useRef(0);
   const mailbox = useRef<MailboxHandle>(null),
     runs = useRef<ListHandle>(null),
     legacy = useRef<ListHandle>(null),
@@ -58,10 +72,16 @@ export function App() {
     authEpoch = useRef(0);
   const unauthorized = useCallback(() => {
     authEpoch.current += 1;
+    bootRequest.current += 1;
     queryClient.clear();
     setAuthenticated(false);
+    setMustChange(false);
+    setStatus(null);
+    setUserId('');
     setRole('');
     setHistory(null);
+    setBootState('ready');
+    setBootError('');
     closeOfficePreview();
   }, [queryClient]);
   const api = useMemo(() => createApi(unauthorized, () => csrf.current), [unauthorized]);
@@ -119,14 +139,17 @@ export function App() {
   usePolling(
     async () => {
       if (native && document.visibilityState !== 'visible') return;
+      const version = authEpoch.current;
       try {
         if (native) {
           const r = await fetch('/api/session');
           const info = await r.json();
-          if (!r.ok || !info.authenticated) {
+          if (version !== authEpoch.current) return;
+          if (r.status === 401 || (r.ok && !info.authenticated)) {
             unauthorized();
             return;
           }
+          if (!r.ok) throw Error('로그인 상태를 확인하지 못했습니다. 잠시 후 다시 확인합니다.');
           setRole(info.role ?? '');
         }
         await pollStatus();
@@ -138,11 +161,16 @@ export function App() {
     authenticated,
   );
   async function boot() {
-    const version = authEpoch.current;
+    const version = authEpoch.current,
+      request = ++bootRequest.current;
+    const cancelled = () => version !== authEpoch.current || request !== bootRequest.current;
+    setBootState('checking');
+    setBootError('');
     try {
       if (native) {
         const response = await fetch('/api/session', { credentials: 'same-origin' });
         const info = await response.json();
+        if (cancelled()) return;
         if (!response.ok) throw Error(info.message ?? '로그인 상태를 확인하지 못했습니다.');
         setUserId(info.userId ?? '');
         csrf.current = info.csrf;
@@ -152,22 +180,28 @@ export function App() {
         if (info.authenticated && info.mustChangePassword) {
           setAuthenticated(false);
           setStatus(null);
+          setBootState('ready');
           return;
         }
         if (!info.authenticated) {
           setAuthenticated(false);
+          setStatus(null);
+          setBootState('ready');
           return;
         }
       }
       const value = await api<Status>('/status');
-      if (version !== authEpoch.current) return;
+      if (cancelled()) return;
       lastSync.current = revision(value.sync);
       setStatus(value);
       setAuthenticated(true);
       setNotice('');
+      setBootState('ready');
       if (native && !value.storeId && viewFromHash() === 'mailbox') location.hash = 'settings';
     } catch (e) {
-      setNotice(errorText(e));
+      if (cancelled()) return;
+      setBootError(errorText(e));
+      setBootState('error');
     }
   }
   const bootRef = useLatest(boot);
@@ -243,7 +277,7 @@ export function App() {
                   : '연결 확인 중'
               }
             />
-            {native && (authenticated || mustChange) && (
+            {native && bootState === 'ready' && (authenticated || mustChange) && (
               <Action
                 variant="text"
                 color="inherit"
@@ -264,7 +298,26 @@ export function App() {
         </Toolbar>
       </AppBar>
       <main>
-        {native && mustChange && (
+        {bootState === 'checking' && (
+          <Panel>
+            <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }} role="status">
+              <CircularProgress size={24} />
+              <Typography>로그인 상태와 화면을 불러오고 있습니다.</Typography>
+            </Stack>
+          </Panel>
+        )}
+        {bootState === 'error' && (
+          <Panel>
+            <Alert severity="error">화면을 불러오지 못했습니다. {bootError}</Alert>
+            <Button sx={{ mt: 2 }} variant="outlined" onClick={() => void boot()}>
+              다시 확인
+            </Button>
+            <Typography sx={{ mt: 1 }} variant="body2">
+              계속 연결되지 않으면 바탕화면 바로가기나 트레이의 화면 열기로 다시 접속하세요.
+            </Typography>
+          </Panel>
+        )}
+        {bootState === 'ready' && native && mustChange && (
           <>
             <PasswordForm
               required
@@ -276,76 +329,83 @@ export function App() {
             />
           </>
         )}
-        <Panel id="login" hidden={authenticated || mustChange}>
-          <Typography component="h2" variant="h2">
-            분석실 연결
-          </Typography>
-          {native && authMode === 'username' ? (
-            <UsernameForm
-              csrf={() => csrf.current}
-              notice={notify}
-              changed={async () => {
-                clearDrafts();
-                queryClient.clear();
-                setHistory(null);
-                await boot();
-              }}
-            />
-          ) : native ? (
-            <>
-              <p>회사 계정으로 로그인하면 접근 권한이 있는 이력을 조회할 수 있습니다.</p>
-              <Action
-                onAction={async () => {
+        {bootState === 'ready' && !authenticated && !mustChange && (
+          <Panel id="login">
+            <Typography component="h2" variant="h2">
+              분석실 연결
+            </Typography>
+            {native && authMode === 'username' ? (
+              <UsernameForm
+                csrf={() => csrf.current}
+                notice={notify}
+                changed={async () => {
+                  clearDrafts();
+                  queryClient.clear();
+                  setHistory(null);
                   await boot();
-                  const response = await fetch('/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf.current },
-                    body: '{}',
-                  });
-                  const result = await response.json();
-                  if (!response.ok) throw Error(result.message ?? '로그인을 시작하지 못했습니다.');
-                  location.assign(result.url);
                 }}
-              >
-                회사 계정으로 로그인
-              </Action>
-            </>
-          ) : (
-            <>
-              <p>프로젝트 .env의 TRIAGE_TOKEN을 입력하세요. 현재 브라우저에서만 로그인됩니다.</p>
-              <form
-                id="login-form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const button = e.currentTarget.querySelector('button')!;
-                  if (button.disabled) return;
-                  button.disabled = true;
-                  void api('/login', { token })
-                    .then(() => {
-                      setToken('');
-                      return boot();
-                    })
-                    .catch((e) => setNotice(errorText(e)))
-                    .finally(() => (button.disabled = false));
-                }}
-              >
-                <Field
-                  type="password"
-                  id="token"
-                  autoComplete="current-password"
-                  required
-                  aria-label="접속 토큰"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                />
-                <Button type="submit" variant="contained">
-                  연결
-                </Button>
-              </form>
-            </>
-          )}
-        </Panel>
-        <div id="workspace" hidden={!authenticated} className={menu ? 'menu-open' : ''}>
+              />
+            ) : native ? (
+              <>
+                <p>회사 계정으로 로그인하면 접근 권한이 있는 이력을 조회할 수 있습니다.</p>
+                <Action
+                  onAction={async () => {
+                    await boot();
+                    const response = await fetch('/auth/login', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf.current },
+                      body: '{}',
+                    });
+                    const result = await response.json();
+                    if (!response.ok)
+                      throw Error(result.message ?? '로그인을 시작하지 못했습니다.');
+                    location.assign(result.url);
+                  }}
+                >
+                  회사 계정으로 로그인
+                </Action>
+              </>
+            ) : (
+              <>
+                <p>프로젝트 .env의 TRIAGE_TOKEN을 입력하세요. 현재 브라우저에서만 로그인됩니다.</p>
+                <form
+                  id="login-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const button = e.currentTarget.querySelector('button')!;
+                    if (button.disabled) return;
+                    button.disabled = true;
+                    void api('/login', { token })
+                      .then(() => {
+                        setToken('');
+                        return boot();
+                      })
+                      .catch((e) => setNotice(errorText(e)))
+                      .finally(() => (button.disabled = false));
+                  }}
+                >
+                  <Field
+                    type="password"
+                    id="token"
+                    autoComplete="current-password"
+                    required
+                    aria-label="접속 토큰"
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                  />
+                  <Button type="submit" variant="contained">
+                    연결
+                  </Button>
+                </form>
+              </>
+            )}
+          </Panel>
+        )}
+        <div
+          id="workspace"
+          hidden={bootState !== 'ready' || !authenticated}
+          className={menu ? 'menu-open' : ''}
+        >
           <Button
             id="menu-toggle"
             type="button"
