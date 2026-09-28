@@ -1,6 +1,6 @@
 # mail-triage-web 통합 구현 계획
 
-문서 버전: 3.3 · 갱신일: 2026-09-28 · 상태: **Release 배포 기반 → 간편 설치·업데이트 → GitHub push·Release 게시 → 설치본 실분석 → 팀 파일럿 → 피드백·안정화 → AWS 이전 검토 → 원격 분석 → SR 구현·검증·PR 자동화**. candidate.10의 설치/lifecycle·Agent probe·prerelease/hosted catalog 증거는 2026-09-23 기록이다. 사용자 승인에 따라 기존 로컬 41개 SHA를 보존하고 공개 검사를 통과한 뒤 코드 6개 한글 커밋을 추가했다. 로컬 이력을 원격 main·Release 태그·metadata·catalog의 기준으로 통합하는 작업은 진행 중이다. 실계정 업데이트 제공·설치와 실 MCP/Agent 분석은 아직 검증하지 않았다. 백업 설정은 사용자 요청으로 보류하며, 실제 두 PC 업무 파일럿과 M1 운영 준비 완료는 별도로 판정한다.
+문서 버전: 3.3 · 갱신일: 2026-09-28 · 상태: **Release 배포 기반 → 간편 설치·업데이트 → GitHub push·Release 게시 → 설치본 실분석 → 팀 파일럿 → 피드백·안정화 → AWS 이전 검토 → 원격 분석 → SR 구현·검증·PR 자동화**. candidate.10의 설치/lifecycle·Agent probe 증거는 2026-09-23 기록이다. 기존 로컬 41개 SHA를 보존한 코드·문서 이력으로 원격 main과 두 Release 태그를 통합했고 공개 metadata·hosted catalog 대조를 완료했다. 다음 작업은 새 candidate.10의 실계정 로그인·개인 연결·실메일 분석과 이전 candidate.9의 candidate.10 업데이트 수용이다. 실계정 업데이트 제공·설치와 실 MCP/Agent 분석은 아직 검증하지 않았다. 백업 설정은 사용자 요청으로 보류하며, 실제 두 PC 업무 파일럿과 M1 운영 준비 완료는 별도로 판정한다.
 
 ## 1. 목표와 현재 우선순위
 
@@ -14,7 +14,7 @@
 | 인증 유지 | 사용자명 + 앱 비밀번호, 관리자 생성 계정, 공개 가입 없음, JWT + 현재 계정/세션/자료 권한 검사 |
 | 화면 구성 | 전체 React UI는 MUI 공통 테마로 통일. 기존 업무 동작·분할 화면·본문/Office 렌더러 유지. UI 전환으로 M4~M5 범위를 앞당기지 않음 |
 | 보고서 협업 | 대화·결정 저장, 명시적 보고서 반영·새 revision, 낙관적 락을 추가한다. 로컬 Agent를 사용하는 M3 기능 확장 배치안이며 첫 파일럿의 선행 조건으로 만들지 않음 |
-| 앱 배포 방향 | 사용자 승인에 따라 기존 로컬 41개 SHA를 보존·공개 검토한 이력에 작업별 한글 커밋과 문서 후속 커밋을 이어 [원격 main](https://github.com/srp-david/mail-triage-automation) 기준으로 통합한다. 소스 태그 기준은 candidate.9 `83be2a941f6125db58c70ac05a5efc63f45fe566`, candidate.10 `6fe6de9a93c1df3313541ad4d78a085483edbe17`; 원격 태그/metadata/catalog 통일은 진행 중. 이전 별도 스냅샷은 역사 기록 |
+| 앱 배포 방향 | 기존 로컬 41개 SHA를 보존·공개 검토한 이력에 작업별 한글 커밋과 문서 후속 커밋을 이어 [원격 main](https://github.com/srp-david/mail-triage-automation)으로 통합했다. main은 문서 후속 커밋 포함 같은 로컬 이력이다. 원격 candidate.9 `83be2a941f6125db58c70ac05a5efc63f45fe566`·candidate.10 `6fe6de9a93c1df3313541ad4d78a085483edbe17`와 Release metadata/catalog 대조 완료. 이전 별도 스냅샷은 역사 기록 |
 | 앱 업데이트 기본안 | 인증된 공용 API가 사용자별 버전·채널·호환성·배포 중단을 결정. public 파일은 직접 다운로드, 알림 후 사용자가 설치 선택. 완전 자동 설치는 후속 안정화 대상으로 분리 |
 | 첫 호스팅 | Supabase Edge 공용 API + Supabase PostgreSQL. Free로 소규모 파일럿을 준비하고 실제 사용량·한도를 측정. 유료 전환은 별도 결정 |
 | 첫 DB | PostgreSQL 유지, 비공개 앱 schema와 최소 권한 runtime 계정. M1에서 MariaDB 이식하지 않음 |
@@ -164,7 +164,7 @@ M1에서 계약·신뢰 메타데이터·간편 설치를 준비하고 M2에서 
 
 현재 `package-windows.mjs`는 candidate만 생성하고 승인 값은 false다. `release.mjs`의 검증·staging·활성 버전 전환·개인 상태 보존에 서명 메타데이터 검증·로컬 다운로드/updater 조정 소스를 추가했다. candidate.10 setup.exe는 설치 전 기존 설치본의 `lifecycle.mjs recover-lock`으로 종료된 PID의 stale lock만 복구한다. 합성 candidate.9 홈에서 복구→.10 설치·historyUrl/port 보존, 살아 있는 PID 잠금 거절, 한글 경로 lifecycle을 확인했다. Agent Profile의 미사용 고정 버전 문자열을 제거하고 실제 Claude Code 2.1.280 probe가 `supported=true`였으나 실분석은 아직이다. candidate.10 GitHub prerelease asset digest 일치를 확인했다. hosted `history` function은 candidate.9 코드 그대로 두고 `UPDATE_CATALOG_JSON`을 candidate.10으로 갱신했다. hosted health 200·비인증 update check 401을 확인했으며 실계정 `offered`·게시 asset을 통한 설치는 대기 중이다. 정식 버전 생성/승인, 게시 CI, 서명키 신뢰·교체, API 지원 기간과 private 전환은 D13에서 확정한다. 공용 API/DB 배포는 PC 앱 업데이트와 별도이며 GitHub Release 게시가 서버나 ERP 운영 배포를 실행하지 않는다.
 
-세부 계약·구현 위치·장애/전환 수용표는 [Release 업데이트 계획](operations/releases.md)에 둔다. 2026-09-28 기존 41개 이력의 Gitleaks/추가 공개 검사와 npm check/build·관련 unit 8/8을 통과했다. 기존 41개 SHA에 코드 변경 21파일의 한글 커밋 6개를 이어 코드까지 47개 커밋이다. 기존 Release asset 10개를 백업·digest 검증했고 exe/ZIP은 유지할 예정이지만 새 sourceCommit metadata 재서명·원격 태그/Release·catalog 통합은 아직 진행 중이다. 후속 게시 전에도 소스·Git 이력·ZIP·문서/변경 내역의 비밀·메일 원문·업무 자료 포함 여부를 검토한다.
+세부 계약·구현 위치·장애/전환 수용표는 [Release 업데이트 계획](operations/releases.md)에 둔다. 2026-09-28 기존 41개 이력의 공개 검사와 npm check/build·관련 unit 8/8을 통과했다. 기존 41개 SHA에 코드 6개 한글 커밋과 문서 후속 커밋을 이어 원격 main으로 통합했다. 두 태그·Release 설명/target_commitish/update.json을 갱신했고 공개 metadata를 다시 내려받아 서명·sourceCommit·hash를 검증했다. 모든 exe/ZIP/checksum asset digest는 그대로 유지됐다. hosted catalog digest도 로컬 metadata minified JSON SHA와 일치했다. 실계정 `offered`·설치·실분석은 별도 수용으로 남는다. 후속 게시 전에도 비밀·메일 원문·업무 자료 공개 검사를 반복한다.
 
 ## 6. M2 팀 배포와 M3 안정화
 
@@ -320,7 +320,7 @@ DB 복원 시 신규 claim/발행을 먼저 중지한다. DB에 남은 intent만
 | D10 | repo/base·checkout 읽기/발행 쓰기·허용/보호 경로·자동/사람 리뷰 정책·CI/PR 가시성·ERP 지침 조정 | M5 실제 수정/push 전 | brief·bundle·중복/발행 모의 검증 |
 | D11 | 원격 사용량·로그/첨부 보존·운영 장애/복구 담당·수용 기준 | M4~M5 운영 수용 전 | 비용/복원 시나리오 |
 | D12 | 원격 ERP 코드 mirror/commit·DB 읽기 계정·망 경로·갱신 담당 | M4 분석 전 | 자료 버전·쓰기 차단 명세 |
-| D13 | 기존 41개 이력 제외 방침을 사용자 승인에 따라 공개 검토 후 보존·통합으로 변경. 로컬 41개 SHA+작업별 코드 커밋과 문서 후속 커밋을 원격 기준으로 통합 중. stable/test 정책·정식 승인·서명키/교체·게시 담당·API 지원 기간·private 방식은 남음 | 이력/태그/metadata/catalog 대조 및 후속 정식/실사용 업데이트 제공 전 | 공개 검사·게시 대조·update API/서명·실계정 수용 |
+| D13 | 기존 41개 이력 제외 방침을 공개 검토 후 보존·통합으로 변경하고 원격 main·태그·Release metadata·catalog 대조 완료. stable/test 정책·정식 승인·서명키/교체·자동 CI·API 지원 기간·private 방식은 남음 | 후속 정식/실사용 업데이트 제공 전 | 공개 검사·게시 대조·update API/서명·실계정 수용 |
 | D14 | 보고서 대화 C1~C3의 M3 확장 출시 시점·지원 Agent·편집 권한·대화 보존/근거 범위 | 협업 schema/API 구현 전 | 대화/보고서 분리·충돌 UI·권한·동시 저장 수용 설계 |
 
 PoC 통합·후보 검증·Supabase 첫 배포와 hosted 합성 검증은 수행했다. M1~M3의 다음 작업은 간편 배포 묶음·개인 MCP/Agent/읽기 자료 연결 → 제한 팀 배포 → 피드백 안정화다. 실제 ERP DB provider와 운영/백업 수용은 별도이며 백업은 사용자 요청으로 보류한다. D8~D12 및 AWS 이전 시점 미확정을 이유로 첫 팀 배포 개발을 멈추지 않는다. 비밀번호·개인키·DB 자격을 채팅/Git으로 요구하지 않는다. 외부 자원 생성·실데이터 이관·실제 repo 쓰기는 구체적 대상과 실행 범위가 마련됐을 때 수행한다.
@@ -371,7 +371,7 @@ v3.2는 2026-09-22 사용자 제공 인수인계 `brief-bccc96dc-801e-4b3d-a492-
 | SET3 | 실제 ERP DB provider: local-app 미연결 | M1~M3, 허용 조회/읽기 계정·접속 경로 | 실제 읽기 성공·권한 밖 조회/쓰기 거절 |
 | U1 | 서명 메타데이터·인증 update API 소스 추가. 사용자 명시 승인 후 hosted `history` function·catalog secret 갱신, health 200·비인증 조회 401 확인 | M1~M2, D13 | 실계정 사용자/채널·버전·호환·중단·서명 검증 |
 | U2 | 로컬 다운로드/updater·업데이트 버튼 소스 추가. 게시 asset·실사용 업데이트 검증 대기 | M2, U1/SET1 | 작업 대기·중단 다운로드·재시작·롤백·개인 상태 보존 |
-| U3 | candidate.10의 9/23 게시 이력 존재. 9/28 기존 41개 SHA 공개 검사·코드 6개 한글 커밋·Release asset 백업/digest 통과. 원격 main·태그·metadata/catalog 통일 진행 중 | M1~M3, D6/D13·기존 이력 보존 및 게시 대조 | 게시 태그 sourceCommit·asset digest·catalog 일치. 자동 CI·private 전환은 별도 |
+| U3 | 9/28 기존 41개 SHA 보존·공개 검사 후 원격 main·태그·Release metadata·hosted catalog 통합 완료. 공개 서명/sourceCommit/hash·exe/ZIP/checksum digest 대조 통과 | M1~M3, D6/D13 | 자동 게시 CI·private 전환·실계정 업데이트 수용 남음 |
 | T1 | 팀원 계정·2명/2PC 파일럿·현행 수용 양식/검사기: 대기 | M2, SET1/SET2·D1~D7 | 권한·공유·원본 부재·PC 종료·복구·업데이트 기록 |
 | T2 | 품질/오류 개선·부하/비용·pause/resume·운영 담당: 대기 | M3, T1 | 피드백 조치·실측·회귀·안정화 판단 |
 | C1~C3 | 보고서 대화·명시적 반영/버전·낙관적 락: 미구현 | M3 확장 배치안, D14 | 6.1절 대화/ACL·동시 수정·초안/이력 보존 |

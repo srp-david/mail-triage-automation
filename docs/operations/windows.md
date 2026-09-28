@@ -2,7 +2,7 @@
 
 아래 수동 명령은 `0.3.0-candidate.5` 당시 설치 절차다. 최신 배포 후보 `0.3.0-candidate.10`은 [GitHub prerelease](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.0-candidate.10)의 self-extracting setup.exe다. 합성 candidate.9 홈의 stale lock 복구→.10 설치·기존 historyUrl/port 보존, 한글 경로 lifecycle start/pause/stop을 로컬 검증했다. candidate.9의 로그인·비밀번호 변경·업데이트 버튼·로그아웃 브라우저 E2E 1 passed는 이전 후보 기록이며 .10 UI 코드는 같다. 실계정 `offered`·실사용 업데이트와 팀 PC 수용은 아직 검증하지 않았다. 과거 `0.2.0-candidate.6`은 다른 인증 구성의 기록이다.
 
-2026-09-28 전환 준비: 기존 41개 로컬 이력을 공개 검토한 뒤 SHA를 보존하고 코드 6개 한글 커밋을 추가했다. tag9/10의 docs·README 제외 소스는 기존 공개 태그와 일치한다. 기존 설치 exe/ZIP hash를 유지하며 태그·서명 metadata·catalog를 통일할 준비를 마쳤지만 원격/Release/catalog는 아직 미반영이다. 한글 경로 lifecycle 재검증의 candidateBlocked/bootstrapProtected/controlledPause/shortcut/gracefulStop/settingsPreserved는 모두 true, `realAuthentication=false`다. 위 설치/게시 기록은 직전 배포 상태의 증거다.
+2026-09-28 전환 완료: 기존 41개 SHA를 보존한 코드·문서 이력으로 원격 main과 Release 태그를 통합했다. candidate.9 태그 `83be2a941f6125db58c70ac05a5efc63f45fe566`·candidate.10 태그 `6fe6de9a93c1df3313541ad4d78a085483edbe17`, main은 문서 후속 커밋 포함 같은 로컬 이력이다. exe/ZIP/checksum digest는 그대로이며 공개 metadata 서명·sourceCommit·hash와 hosted catalog digest를 확인했다. 한글 경로 lifecycle 재검증 항목은 모두 true, `realAuthentication=false`다. 다음은 새 candidate.10의 실계정 로그인·개인 연결·`current` 정책·실메일 분석과 이전 candidate.9의 candidate.10 `offered`·앱 updater 다운로드/설치 테스트다.
 
 ## 1. 포함 내용과 사전 조건
 

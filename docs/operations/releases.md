@@ -1,22 +1,22 @@
 # GitHub Release 배포·업데이트 계획
 
-2026-09-28 · **로컬 이력 통합·Release 재연결 준비 완료, 원격·Release·catalog 미반영**. [통합 계획 v3.3](../implementation-plan.md)의 5.5절과 U1~U3를 구체화한다. candidate.10의 9/23 로컬 검증·기존 prerelease·hosted catalog 확인은 이전 증거다. 사용자 승인에 따라 공개 검사한 기존 41개 SHA와 작업별 한글 커밋·문서 후속 커밋을 원격 main의 기준으로 통합하고 Release 태그의 sourceCommit·asset digest·catalog를 통일할 준비를 마쳤다. 실계정 `offered`·전체 다운로드/설치는 사용자 테스트 전이다.
+2026-09-28 · **로컬 이력·원격 main·Release·hosted catalog 통합 완료, 실계정 수용 미검증**. [통합 계획 v3.3](../implementation-plan.md)의 5.5절과 U1~U3를 구체화한다. 기존 41개 SHA를 보존한 코드·문서 이력으로 원격 main과 두 태그를 전환했다. 두 Release 설명/target_commitish/update.json 갱신 및 공개 metadata 서명/sourceCommit/hash·asset digest·catalog 대조를 완료했다. main은 문서 후속 커밋 포함 같은 로컬 이력이다. Release asset 10개 전체 백업 다운로드는 검증했다. 실계정 앱 updater를 통한 설치 파일 다운로드·설치와 실메일 분석은 사용자 테스트 전이다.
 
 ## 1. 결정·기본안·미정 사항
 
 | 구분 | 내용 |
 |---|---|
 | 사용자 방향 | GitHub 저장소는 public으로 시작하고 필요하면 private 전환. Release에 앱 파일과 변경 내역 보관 |
-| 확정 저장소 | [srp-david/mail-triage-automation](https://github.com/srp-david/mail-triage-automation), Git URL `https://github.com/srp-david/mail-triage-automation.git`. 로컬 통합 소스 candidate.9 `83be2a941f6125db58c70ac05a5efc63f45fe566`·candidate.10 `6fe6de9a93c1df3313541ad4d78a085483edbe17` 준비, 원격 main은 문서 후속 커밋 포함 이력으로 전환 예정 |
+| 확정 저장소 | [srp-david/mail-triage-automation](https://github.com/srp-david/mail-triage-automation), Git URL `https://github.com/srp-david/mail-triage-automation.git`. 원격 candidate.9 태그 `83be2a941f6125db58c70ac05a5efc63f45fe566`·candidate.10 태그 `6fe6de9a93c1df3313541ad4d78a085483edbe17`, main은 문서 후속 커밋 포함 같은 로컬 이력 |
 | 조회 경계 | public 단계에서도 앱은 공용 API에 인증해 업데이트 조회. API가 사용자별 버전·stable/test 채널·호환성·배포 중단을 결정 |
 | 첫 구현 기본안 | public asset 직접 다운로드, 알림/변경 내역 표시 후 사용자가 버튼으로 설치. 완전 자동 설치는 후속 안정화 |
 | 다운로드 추상화 | API 응답의 다운로드 방식을 사용. 클라이언트에 GitHub 토큰·소유자/저장소 URL 고정 금지 |
 | 독립 배포 | PC 앱, 공용 API/DB, 업무 대상 ERP는 별도 배포 단위. Release 게시로 서버 migration/ERP 운영 배포를 실행하지 않음 |
-| D13의 남은 결정 | 기존 41개 제외 스냅샷 방침을 사용자 승인에 따라 공개 검토 후 로컬 이력 보존·통합으로 변경. 원격/Release/catalog 전환 대조, 서명키/교체·게시 CI·채널/API 지원 기간·private 방식은 추적 |
+| D13의 남은 결정 | 기존 41개 제외 스냅샷 방침을 공개 검토 후 이력 보존·통합으로 변경하고 원격/Release/catalog 대조 완료. 서명키/교체·자동 게시 CI·채널/API 지원 기간·private 방식·실계정 수용은 추적 |
 
 9/23에는 기존 41개 이력을 제외한 별도 스냅샷을 게시했다. 9/28 사용자가 기존 로컬 이력을 공개 검토한 뒤 보존·통합하도록 승인했고 Gitleaks/추가 검사 findings 0을 확인했다. 기존 41개 SHA는 그대로 보존하고 코드 6개 한글 커밋을 이어 코드까지 47개다. 후속 게시에서도 소스·이력/태그·ZIP·문서/변경 내역의 비밀·메일 원문·업무 자료 검사를 반복한다.
 
-전환 준비 근거: tag9/10의 docs·README 제외 추적 소스가 기존 공개 태그와 같고, 기존 asset 10개 백업/digest를 검증했다. exe/ZIP은 내용과 hash를 유지한다. 준비된 metadata는 candidate.9 SHA-256 `0d2129a36f39b7caee8f4b905b6634cc2ad5264b1028985e9b9cd49833f95075`·만료 `2026-10-12T00:51:40.543Z`, candidate.10 SHA-256 `77693d6ee7c0e50faace8b1a12e166bb655512a45ad22b9895579cadfde8ad68`·만료 `2026-10-12T00:51:40.627Z`다. 새 tag sourceCommit을 담아 재서명했지만 아직 원격 Release/catalog에 반영하지 않았다.
+전환 준비 후 완료 확인: tag9/10의 docs·README 제외 추적 소스 parity와 기존 asset 10개 백업/digest를 검사했다. exe/ZIP/checksum asset digest는 전환 전후 유지됐다. 게시된 metadata 파일 SHA-256/만료는 candidate.9 `0d2129a36f39b7caee8f4b905b6634cc2ad5264b1028985e9b9cd49833f95075`/`2026-10-12T00:51:40.543Z`, candidate.10 `77693d6ee7c0e50faace8b1a12e166bb655512a45ad22b9895579cadfde8ad68`/`2026-10-12T00:51:40.627Z`다. 공개 파일을 다시 내려받아 서명·태그 sourceCommit·hash를 검증했다. hosted catalog secret의 minified JSON digest `c41d67651412bd4a9872400547a3ecc83304d1a3e26ad1401aa67d607c9ab57f`는 로컬 minified JSON SHA와 일치한다. 공개 metadata 파일은 들여쓰기가 있는 JSON이라 이 catalog digest와 파일 hash가 다르다.
 
 public Release asset은 인증 없이 직접 다운로드할 수 있다. 앱의 API 인증은 제공 정책과 서비스 사용을 통제하며 공개 파일을 비공개로 만들지 않는다. [GitHub asset API](https://docs.github.com/en/rest/releases/assets). private 전환 시 기존 public fork는 공개 상태로 분리되며 이미 내려받은 사본도 회수되지 않는다. [저장소 공개 범위 변경](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/setting-repository-visibility).
 
@@ -66,7 +66,7 @@ SHA-256과 파일 manifest는 내용 일치 검사다. 공격자가 ZIP과 hash�
 
 ## 5. Release 게시와 public→private 전환
 
-배포 순서는 공개 대상 검토 → 버전/commit 고정 → 깨끗한 빌드/시험 → ZIP/manifest·서명 생성 → Release asset 검증 → API catalog 제공 활성화다. stable/test 구분, 게시 자격의 최소 권한과 보호, Release/asset 식별자·hash·검증 기록을 남긴다. 같은 버전 파일을 조용히 교체하지 않고 새 버전으로 제공한다. 이번 사용자 승인 이력 통합에서는 exe/ZIP을 그대로 보존하고 태그 sourceCommit에 맞춘 metadata를 명시적으로 재발행하며 변경 전후 SHA·digest·catalog 대조를 기록한다. 현재 이 전환은 준비 단계다. 제공 중단은 우선 API catalog에서 처리하되 이미 공개된 사본까지 회수했다고 표현하지 않는다.
+배포 순서는 공개 대상 검토 → 버전/commit 고정 → 깨끗한 빌드/시험 → ZIP/manifest·서명 생성 → Release asset 검증 → API catalog 제공 활성화다. stable/test 구분, 게시 자격의 최소 권한과 보호, Release/asset 식별자·hash·검증 기록을 남긴다. 같은 버전 파일을 조용히 교체하지 않고 새 버전으로 제공한다. 이번 사용자 승인 이력 통합에서는 exe/ZIP을 보존하고 태그 sourceCommit에 맞춘 metadata를 명시적으로 재발행했으며 변경 전후 SHA·digest·catalog 대조를 완료했다. 제공 중단은 우선 API catalog에서 처리하되 이미 공개된 사본까지 회수했다고 표현하지 않는다.
 
 public에서는 API가 직접 다운로드 URL을 반환하는 기본안을 사용한다. Supabase Edge에 큰 ZIP 전체를 중계하는 설계를 기본으로 두지 않는다. private에서는 서버 GitHub 인증을 사용하는 broker나 별도 비공개 저장소로 변경한다. 실제 중계 위치는 크기/시간/메모리/egress를 검증해 정하며 Edge가 무조건 불가능하다고 단정하지 않는다. [Supabase Edge 제한](https://supabase.com/docs/guides/functions/limits).
 
@@ -92,4 +92,4 @@ GitHub 읽기 토큰은 서버에만 두고 다운로드 권한을 현재 앱 �
 
 U1은 metadata/API·서명/호환 계약과 모의 검증, U2는 UI·drain·다운로드/updater, U3는 현재 테스트 체계에 맞춘 CI·게시·private 전환 준비다. **① U3의 파일 형식·재현 패키징·게시 절차와 U1 계약을 먼저 마련한다. ② 같은 배포물을 사용하는 SET1 설치 파일·실행/분석 중지/앱 종료와 U1 API·U2 앱 업데이트를 구현·검증한다. ③ 검토된 소스를 GitHub에 push하고 검증된 설치 파일을 Release로 게시한다. ④ 새 설치본에서 SET2 개인 연결·지정 사례 실분석/저장/재조회를 수행한다.** 완전 자동 게시까지 먼저 완성할 필요는 없지만 검증된 후보를 같은 절차로 반복 배포할 수 있어야 한다.
 
-직전 확인된 공개 스냅샷의 소스 커밋 `bb797d83b742bc90d2395298585142e372077e44`에 대한 candidate.10 태그·`draft=false`·`prerelease=true` Release 게시와 서버 asset digest 일치를 기록했다. setup.exe SHA-256은 `a54825403f9f56ea2e84dc6b08100d955605212ab9e5ab63a7a906fc8cac5879`, ZIP은 `79d40fb700814aa85aa44f577cc40e81c6430024bcea1ba907dd920c6f3931fb`, 서명 metadata는 `c6a7c8523ebc410a95140ee45cc5f589280e8ef93f673c2bd712bfccc355b7ff`이며 metadata 만료는 `2026-10-07T03:24:06.802Z`다. setup.exe GitHub URL은 HTTP 302로 `release-assets.githubusercontent.com`에 이동하고 두 번째 GET은 HTTP 200·Content-Length 45,374,976 bytes로 asset size와 일치했다. 전체 본문 다운로드/설치는 실행하지 않았다. 이 값은 9/28 준비 metadata와 구분한다. 게시 기록과 hosted route의 health/비인증 거절은 실계정 `offered`·설치·팀 PC 수용 증거가 아니다. candidate.9 기록은 [검증 일지](../validation.md)에 보존한다. private 다운로드 호환과 실제 저장소 전환은 필요할 때 별도로 검증한다. 후속 게시 전에도 공개 소스·이력·asset·문서/변경 내역의 비밀·메일 원문·업무 자료 검토를 반복한다.
+현재 candidate.10 태그/sourceCommit은 `6fe6de9a93c1df3313541ad4d78a085483edbe17`이며 Release는 `draft=false`·`prerelease=true`다. setup.exe SHA-256 `a54825403f9f56ea2e84dc6b08100d955605212ab9e5ab63a7a906fc8cac5879`, ZIP `79d40fb700814aa85aa44f577cc40e81c6430024bcea1ba907dd920c6f3931fb`, 게시 metadata 파일 `77693d6ee7c0e50faace8b1a12e166bb655512a45ad22b9895579cadfde8ad68`·만료 `2026-10-12T00:51:40.627Z`를 확인했다. `2026-09-28T00:59:43.299Z`에 hosted health/live HTTP 200·`x-contract-version: 1` 포함 비인증 update check 401을 확인했으나 실계정 `offered`·설치·팀 PC 수용 증거는 아니다. 이전 SHA/metadata 값은 [검증 일지](../validation.md)에 보존한다. 다음 작업은 새 candidate.10의 로그인·개인 연결·`current` 정책·실메일 분석과 이전 candidate.9의 candidate.10 `offered`·앱 updater 다운로드/설치 테스트이며 private 전환·자동 CI는 별도다. 후속 게시 전 공개 소스·이력·asset·문서/변경 내역 검토를 반복한다.

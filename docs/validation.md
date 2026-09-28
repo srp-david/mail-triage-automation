@@ -2,13 +2,19 @@
 
 > 날짜별 실제 검증 일지다. 과거 미완료 항목은 후속 기록과 함께 읽는다. 최신 구현 계획은 [통합 구현 계획](implementation-plan.md), 문서별 역할은 [문서 안내](README.md)를 따른다.
 
+## 2026-09-28 로컬 이력·원격 main·Release·catalog 전환 완료
+
+- 기존 41개 SHA를 보존한 코드 47개 커밋과 준비 문서 포함 48개 이력을 원격 main으로 atomic force-with-lease push했다. 두 태그도 같은 작업에서 candidate.9 `83be2a941f6125db58c70ac05a5efc63f45fe566`, candidate.10 `6fe6de9a93c1df3313541ad4d78a085483edbe17`로 전환했다. main은 문서 후속 커밋 포함 같은 로컬 이력으로 관리하며 문서의 자기 SHA는 기록하지 않는다.
+- 두 Release 설명·`target_commitish`·`update.json`을 갱신했다. 공개 metadata를 다시 내려받아 서명·sourceCommit·hash를 검증했다. 모든 exe/ZIP/checksum asset digest는 전환 전후 같다. metadata SHA-256/만료는 candidate.9 `0d2129a36f39b7caee8f4b905b6634cc2ad5264b1028985e9b9cd49833f95075`/`2026-10-12T00:51:40.543Z`, candidate.10 `77693d6ee7c0e50faace8b1a12e166bb655512a45ad22b9895579cadfde8ad68`/`2026-10-12T00:51:40.627Z`다.
+- Supabase 프로젝트 `tborximfpwrzzwuazjrb`의 catalog secret set exit 0. secrets list digest `c41d67651412bd4a9872400547a3ecc83304d1a3e26ad1401aa67d607c9ab57f`가 로컬 metadata minified JSON SHA와 일치했다. UTC `2026-09-28T00:59:43.299Z`에 hosted health/live HTTP 200, `x-contract-version: 1`을 포함한 비인증 update check HTTP 401 확인. 실계정 `offered`와 설치·실메일 분석은 미검증이다.
+
 ## 2026-09-28 기존 로컬 이력 공개 검토·작업별 한글 커밋
 
 - 사용자가 현재 변경 파일 전체 검토와 작업별 한글 커밋, 기존 로컬 41개 이력을 기준으로 원격 main·Release 태그/자산·catalog 통합을 승인했다. 41개 기존 커밋의 SHA는 그대로 보존했다. 코드 변경 21파일을 6개 한글 커밋으로 정리해 코드까지 47개 커밋이다. 문서는 별도 후속 커밋으로 이어가며 해당 커밋의 SHA를 문서에 자기참조하지 않는다.
-- 기존 41개 이력 Gitleaks 검사 no leaks. 추가 검사 41 commits/899 blobs/390 paths에서 findings 0(비밀 token/private key/mail headers/sensitive path). 코드까지 47개 커밋 Gitleaks 재검사도 no leaks였다. npm check/build와 관련 unit **8/8** 통과. 이 결과는 기록된 공개 검사 범위의 증거이며 실메일/Agent 업무 수용 증거는 아니다. 원격 origin 연결/fetch와 로컬 브랜치 main 이름 변경을 수행했으며 기존 이력 SHA는 변하지 않았다. 원격 main/태그 전환은 아직이다.
+- 기존 41개 이력 Gitleaks 검사 no leaks. 추가 검사 41 commits/899 blobs/390 paths에서 findings 0(비밀 token/private key/mail headers/sensitive path). 코드까지 47개 커밋 Gitleaks 재검사도 no leaks였다. npm check/build와 관련 unit **8/8** 통과. 이 결과는 기록된 공개 검사 범위의 증거이며 실메일/Agent 업무 수용 증거는 아니다. 원격 origin 연결/fetch와 로컬 브랜치 main 이름 변경을 수행했으며 기존 이력 SHA는 변하지 않았다. 이후 위 완료 기록대로 원격 main/태그를 전환했다.
 - 통합 후보 소스는 candidate.9 `83be2a941f6125db58c70ac05a5efc63f45fe566`, candidate.10 `6fe6de9a93c1df3313541ad4d78a085483edbe17`이다. 이전 스냅샷 공개 및 한글화 기록은 아래 역사 기록으로 보존한다. 기존 Release asset 10개를 백업하고 digest를 검증했다.
 - tag9/10의 docs·README 제외 전체 추적 소스가 기존 공개 tag9/10과 정확히 일치했다(`releaseSourceParity=true`). 한글 경로 lifecycle 재검증의 candidateBlocked/bootstrapProtected/controlledPause/shortcut/gracefulStop/settingsPreserved가 모두 true, `realAuthentication=false`였다. 기존 setup.exe/ZIP 내용과 SHA-256을 보존하는 전환 준비 근거로 기록한다.
-- 새 sourceCommit metadata 재서명 준비 완료: candidate.9 metadata SHA-256 `0d2129a36f39b7caee8f4b905b6634cc2ad5264b1028985e9b9cd49833f95075`, 만료 `2026-10-12T00:51:40.543Z`; candidate.10 metadata SHA-256 `77693d6ee7c0e50faace8b1a12e166bb655512a45ad22b9895579cadfde8ad68`, 만료 `2026-10-12T00:51:40.627Z`. 사용자 요청에 따라 전체 변경을 작업별 커밋한 뒤 전환하므로 현재 원격 main·태그·Release·hosted catalog는 미반영이다. 실계정 `offered`·전체 다운로드/설치·실메일 분석도 사용자 테스트 전이다.
+- 새 sourceCommit metadata 재서명 준비를 마쳤다: candidate.9 metadata SHA-256 `0d2129a36f39b7caee8f4b905b6634cc2ad5264b1028985e9b9cd49833f95075`, 만료 `2026-10-12T00:51:40.543Z`; candidate.10 metadata SHA-256 `77693d6ee7c0e50faace8b1a12e166bb655512a45ad22b9895579cadfde8ad68`, 만료 `2026-10-12T00:51:40.627Z`. 전체 변경을 작업별 커밋한 뒤 위 완료 기록대로 원격 main·태그·Release·hosted catalog에 반영했다. Release asset 10개 전체 백업 다운로드는 검증했다. 새 candidate.10의 실계정 로그인·개인 연결·`current` 정책·실메일 분석과 이전 candidate.9의 candidate.10 `offered`·앱 updater 다운로드/설치는 사용자 테스트 전이다.
 
 ## 2026-09-23 공개 커밋 이력 한글화·Release 재발행
 

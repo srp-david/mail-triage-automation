@@ -1,8 +1,8 @@
 # Supabase 팀 배포 안내
 
-갱신: 2026-09-23. [통합 계획 v3.3](../implementation-plan.md)의 M1~M3 실행 안내다. **첫 hosted API·DB 배포 및 합성 검증 완료**. update route를 포함한 `history` function은 candidate.9 배포 코드를 유지하고 catalog secret을 candidate.10으로 갱신했으며 health 200/비인증 조회 401까지 확인했다. 실계정 업데이트 제공/설치와 실제 두 PC 업무 파일럿은 미완료다. Supabase Edge `history` + PostgreSQL, 각 팀원 PC의 local-app/MCP/AI Agent 구성이다. 백업 설정은 사용자 요청으로 보류했다. 기존 운영 서비스/DB는 유지한다.
+갱신: 2026-09-28. [통합 계획 v3.3](../implementation-plan.md)의 M1~M3 실행 안내다. **첫 hosted API·DB 배포 및 합성 검증 완료**. `history` function의 기존 API 코드를 유지하고 candidate.10 catalog를 새 통합 태그의 서명 metadata로 갱신·digest 대조했다. health 200/비인증 update check 401까지 확인했지만 실계정 업데이트 제공/설치와 두 PC 업무 파일럿은 미완료다. 각 팀원 PC의 local-app/MCP/AI Agent 구성이며 백업 설정은 사용자 요청으로 보류했다.
 
-2026-09-28 전환 준비: 사용자 승인에 따라 공개 검사한 기존 41개 SHA와 작업별 한글 커밋·문서 후속 커밋을 원격 main 기준으로 통합한다. tag9/10 소스 일치·기존 asset 백업/digest·metadata 재서명 준비를 마쳤다. 현재 hosted `history` 함수와 `UPDATE_CATALOG_JSON`은 직전 배포 상태이며 새 통합 sourceCommit metadata/catalog는 아직 반영하지 않았다. 원격 main·Release·catalog 전환 완료와 실계정 `offered`·다운로드/설치는 후속 증거로 판정한다.
+2026-09-28 전환 완료: 기존 41개 SHA 보존·원격 main/두 태그·Release metadata 통합 후 프로젝트 `tborximfpwrzzwuazjrb`의 `UPDATE_CATALOG_JSON` secret set exit 0을 확인했다. secrets list digest `c41d67651412bd4a9872400547a3ecc83304d1a3e26ad1401aa67d607c9ab57f`는 로컬 metadata minified JSON SHA와 일치한다. 이 값은 들여쓰기된 공개 metadata 파일 hash와 구분한다. UTC `2026-09-28T00:59:43.299Z`에 health/live 200·`x-contract-version: 1` 포함 비인증 update check 401 확인. 새 candidate.10의 실계정 로그인·개인 연결·`current` 정책·실메일 분석과 이전 candidate.9의 candidate.10 `offered`·앱 updater 다운로드/설치는 다음 테스트다.
 
 ## 1. 준비 상태와 배포 대상
 
@@ -99,6 +99,6 @@ API 주소를 설정으로 분리하고 팀/사용자/source/보고서 UUID·ACL
 
 ## 6. 앱 Release와 서버 배포의 구분
 
-[Release 업데이트](releases.md)의 최신 candidate.10 파일은 GitHub prerelease에 게시됐다. hosted `history` function 첫 배포 요청은 자동 승인 검토에서 대상 명시 부족으로 거절됐으나, 사용자가 프로젝트 `tborximfpwrzzwuazjrb`의 함수와 `UPDATE_CATALOG_JSON` 갱신을 명시 승인한 뒤 candidate.9 API 코드 배포를 완료했다. candidate.10은 API 코드가 같아 함수를 다시 배포하지 않고 승인된 catalog secret만 candidate.10으로 갱신했다(secret set exit 0). hosted `/health/live` HTTP 200, 비인증 `/api/v1/updates/check` HTTP 401을 확인했다. 인증 실계정의 `offered`·전체 다운로드/설치는 아직 검증하지 않았다. public 파일은 GitHub에서 직접 내려받는 방식이 기본안이다.
+[Release 업데이트](releases.md)의 최신 candidate.10 파일은 GitHub prerelease에 게시됐다. hosted `history` function 첫 배포 요청은 자동 승인 검토에서 대상 명시 부족으로 거절됐으나, 사용자가 프로젝트 `tborximfpwrzzwuazjrb`의 함수와 `UPDATE_CATALOG_JSON` 갱신을 명시 승인한 뒤 candidate.9 API 코드 배포를 완료했다. candidate.10은 API 코드가 같아 함수를 다시 배포하지 않고 승인된 catalog secret만 candidate.10으로 갱신했다(secret set exit 0). hosted `/health/live` HTTP 200, 비인증 `/api/v1/updates/check` HTTP 401을 확인했다. Release asset 10개 전체 백업 다운로드는 수행했으나 인증 실계정의 버전별 `current`/`offered`·앱 updater 다운로드/설치는 아직 검증하지 않았다. public 파일은 GitHub에서 직접 내려받는 방식이 기본안이다.
 
 API/DB 변경은 PC 앱과 별도 배포하며 구/신 앱의 지원 범위와 outbox 제출 호환성을 확인한다. 구버전이 업무 API에서 거절되더라도 인증/업데이트 또는 수동 복구로 이동할 경로가 필요하다. private 전환의 GitHub 인증은 서버에만 두고 중계 위치·대용량 전송 한도는 D13에서 정한다. Release 게시가 서버 migration이나 ERP 운영 배포를 실행하지 않는다.
