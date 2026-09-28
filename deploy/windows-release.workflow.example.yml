@@ -1,10 +1,16 @@
 # Draft only. Move to .github/workflows after D6 and release readiness approval.
-name: windows-candidate
-on: workflow_dispatch
+name: windows-release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Numeric release version, for example 0.3.0'
+        required: true
+        type: string
 permissions:
   contents: read
 jobs:
-  candidate:
+  package:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4 # Pin reviewed action commit before activation.
@@ -15,6 +21,9 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build
-      - run: node --import tsx --test test/installer.test.ts test/runner.test.ts test/v1-auth.test.ts
-      - run: node scripts/package-windows.mjs 0.2.0-candidate.1
+      - run: npx vitest run --project unit test/installer.test.ts test/runner.test.ts test/v1-auth.test.ts
+      - run: node scripts/package-windows.mjs $env:RELEASE_VERSION
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+      # Follow docs/operations/releases.md and docs/templates/release-notes.md.
       # No publish/upload step until repository access and signing policy are set.

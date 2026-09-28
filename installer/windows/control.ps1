@@ -1,4 +1,4 @@
-param([ValidateSet('start', 'pause', 'quit')][string]$Action = 'start')
+param([ValidateSet('start', 'pause', 'resume', 'quit')][string]$Action = 'start')
 
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
@@ -29,6 +29,7 @@ try {
       if ($LASTEXITCODE -ne 0) { throw 'APP_START_FAILED' }
     }
     'pause' { Invoke-Local -Arguments @($lifecycle, 'pause', $root) }
+    'resume' { Invoke-Local -Arguments @($lifecycle, 'resume', $root) }
     'quit' { Invoke-Local @($lifecycle, 'stop', $root) }
   }
 } catch {

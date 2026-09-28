@@ -65,7 +65,7 @@ internal static class Setup
                     throw new InvalidOperationException("UPDATE_RESTART_FAILED_ROLLED_BACK");
                 }
             }
-            Console.WriteLine("설치가 완료되었습니다. 시작 메뉴의 'Mail Triage 실행'을 사용하세요.");
+            Console.WriteLine("설치가 완료되었습니다. 바탕화면의 '메일 분석실' 또는 시작 메뉴의 'Mail Triage 실행'을 사용하세요.");
             return 0;
         }
         catch (Exception error)
@@ -178,6 +178,7 @@ internal static class Setup
         Shortcut(menu, "Mail Triage 실행", script, "start");
         Shortcut(menu, "Mail Triage 작업 중지", script, "pause");
         Shortcut(menu, "Mail Triage 앱 종료", script, "quit");
+        Shortcut(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "메일 분석실", script, "start");
     }
 
     private static void Shortcut(string menu, string title, string script, string action)
@@ -187,10 +188,12 @@ internal static class Setup
         dynamic shell = Activator.CreateInstance(kind);
         dynamic link = shell.CreateShortcut(Path.Combine(menu, title + ".lnk"));
         link.TargetPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
-        link.Arguments = "-NoProfile -ExecutionPolicy Bypass -File " + Quote(script) + " " + action;
+        link.Arguments = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File " + Quote(script) + " " + action;
         link.WorkingDirectory = Path.GetDirectoryName(script);
         link.WindowStyle = 7;
         link.Description = title;
+        string icon = Path.Combine(Path.GetDirectoryName(script), "mail-triage.ico");
+        if (File.Exists(icon)) link.IconLocation = icon;
         link.Save();
     }
 

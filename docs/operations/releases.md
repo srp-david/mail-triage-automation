@@ -20,14 +20,29 @@
 
 public Release asset은 인증 없이 직접 다운로드할 수 있다. 앱의 API 인증은 제공 정책과 서비스 사용을 통제하며 공개 파일을 비공개로 만들지 않는다. [GitHub asset API](https://docs.github.com/en/rest/releases/assets). private 전환 시 기존 public fork는 공개 상태로 분리되며 이미 내려받은 사본도 회수되지 않는다. [저장소 공개 범위 변경](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/setting-repository-visibility).
 
+### 1.1 버전 표기와 패치노트 작성 규칙 (2026-09-28 결정)
+
+다음 배포부터 제목과 태그는 `v0.3.0`처럼 버전만 사용한다. 기능 추가는 minor, 수정은 patch를 올리는 것을 기본으로 하며 `candidate`, `후보자` 등의 접미사나 설명을 제목에 붙이지 않는다. 기존 `v0.3.0-candidate.9`·`v0.3.0-candidate.10`의 제목·태그·asset·서명 metadata·catalog는 보존한다. 이번 변경은 다음 배포 준비이며 `v0.3.0` 게시 완료를 뜻하지 않는다.
+
+- 패키지/manifest 버전, 제목·태그·releaseId와 설치 파일 버전을 일치시킨다(예: `0.3.0`, `v0.3.0`, `0.3.0-setup.exe`). 0.3.0~0.3.3은 현재 로컬 검증 이력이며, 다음 실제 게시 버전은 배포 시 확정한다. ZIP과 `.update.json`에도 같은 버전을 사용한다. 기존 파일의 이름만 바꾸지 말고 새 버전으로 패키징·설치 파일 빌드·metadata 서명을 수행한다.
+- 다음 숫자 버전의 GitHub Release는 `prerelease=false`로 게시한다. 앱의 배포 대상은 별도 catalog의 `test`/`stable` 정책을 따른다. 숫자 버전으로 바꿨다는 이유로 실사용 검증 완료나 stable 승인을 표시하지 않는다. 현재 패키징의 `releaseApproved=false`, 서명 스크립트의 `channel=test`는 유지한다.
+- 패키징·설치 파일 빌드·서명 스크립트에는 버전을 명시적으로 전달한다. 이전 배포 재현을 위해 candidate 입력도 지원하지만 신규 공개 배포에는 숫자 버전을 사용한다.
+- 본문은 [패치노트 템플릿](../templates/release-notes.md)을 사용한다. `# vX.Y.Z 패치노트` → 비교 기준 → 핵심 요약 → 기능별 변경 사항 → 설치 및 업데이트 → 확인된 사항과 알려진 제한 순서로 작성한다.
+- 비교 기준은 직전 배포 태그와 이번 배포 소스다. `git diff <이전 태그> <배포 커밋>`을 확인하고 최종 코드에 남은 변경만 기록한다. 첫 숫자 버전의 기준은 `v0.3.0-candidate.10`이다. 새 배포 전 기준 이후의 변경을 다시 확인한다.
+- 한국어로 사용자에게 달라지는 동작과 필요한 조치를 설명한다. 커밋 목록을 그대로 붙이거나 내부 작업 ID·Git 이력 정리·일회성 작업 경로로 본문을 채우지 않는다. 확인하지 않은 설치·실계정 분석·업데이트 성공을 주장하지 않는다.
+- Windows Authenticode 서명 상태는 실제 설치 EXE 기준으로 적는다. 업데이트 metadata 서명을 Windows 코드 서명으로 표현하지 않는다. 다른 프로젝트의 SignPath 지원·인증서·라이선스 문구는 복사하지 않는다.
+- 공개 전 비밀·메일 원문·업무 자료, 템플릿 자리표시자 잔존, 버전/다운로드 링크/실제 asset 일치를 확인한다. 검토한 본문 파일을 `gh release create/edit --notes-file <파일>`로 전달한다. 이미 게시한 과거 본문은 이번 규칙 적용을 위해 소급 수정하지 않는다.
+
+형식 참고: [CarrotMangaTranslator 릴리스](https://github.com/ucx0204/CarrotMangaTranslator/releases?page=1). 이 프로젝트에 맞게 설치·검증·서명 상태 안내를 덧붙인다.
+
 ## 2. 현재 기반과 변경 위치
 
 | 현재 파일/영역 | 현재 동작 | 계획 변경 |
 |---|---|---|
-| [package-windows.mjs](../../scripts/package-windows.mjs) | candidate 버전만 허용, Node 포함 ZIP·파일 manifest·SHA-256, 승인 false. candidate.10 setup.exe·ZIP·서명 metadata 생성/검증·게시 완료 | 정식/시험 버전 생성·승인 근거 분리 |
+| [package-windows.mjs](../../scripts/package-windows.mjs) | 명시한 숫자 버전과 기존 candidate 버전 허용, Node 포함 ZIP·파일 manifest·SHA-256, 승인 false. candidate.10 setup.exe·ZIP·서명 metadata 생성/검증·게시 완료 | 새 숫자 버전으로 빌드·설치·게시 검증, 승인 근거 분리 |
 | [release.mjs](../../installer/windows/release.mjs) | 로컬 payload 검증, staging/진단·활성 전환·rollback. candidate.10 setup.exe가 기존 lifecycle `recover-lock`으로 종료된 PID 잠금을 복구하고 살아 있는 PID 잠금은 거절 | 게시 asset 실설치·전원 손실·설치 경합 검증 |
 | [lifecycle.mjs](../../installer/windows/lifecycle.mjs) / [manage.mjs](../../installer/windows/manage.mjs) | 정상 시작/종료·로컬 설치/rollback. 작업 중지와 setup.exe shortcut 소스 추가 | 별도 updater의 종료/재시작·기동 후 진단 실패 복구 실검증 |
-| [CI 예시](../../deploy/windows-release.workflow.example.yml) | draft, 이전 테스트 명령/후보 번호, publish/upload 없음 | 현재 Vitest 명령/지원 런타임 대조, 고정 action·빌드/검증·서명·게시 단계 준비 |
+| [CI 예시](../../deploy/windows-release.workflow.example.yml) | draft, 명시적 버전 입력·Vitest 명령·패치노트 규칙 참조, publish/upload 없음 | 고정 action·빌드/검증·서명·게시 단계 준비, GitHub Actions 실실행 검증 |
 | [history-api](../../apps/history-api/src/username-app.ts) | candidate.9 배포 API 코드 유지, `UPDATE_CATALOG_JSON` candidate.10으로 갱신. health 200·비인증 조회 401 확인 | 실계정 `offered`·채널/중단 정책·설치 전 재확인 검증 |
 | [local-app](../../apps/local-app/src/ui-routes.ts) | 로컬 인증·설정·실행 제어와 조회 façade·다운로드/updater 소스 추가 | 게시 asset 다운로드·진행 상태·drain/updater·CSRF/Host/Origin 실검증 |
 | [UI](../../packages/ui/ui/src/app/App.tsx) | 앱 shell·설정/상태 화면과 업데이트 버튼 소스 추가. candidate.9에서 업데이트 안내 배너·상단 로그아웃 겹침 조정 | 실제 제안·진행·대기·실패/복구와 로그아웃 노출 브라우저 수용 |

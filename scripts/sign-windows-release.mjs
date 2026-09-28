@@ -4,7 +4,7 @@ import {resolve} from 'node:path';
 import {updateSigningBytes,verifyUpdate} from '../packages/contracts/src/updates.ts';
 
 const [version,sourceCommit]=process.argv.slice(2);
-if(!/^\d+\.\d+\.\d+-candidate\.\d+$/.test(version??'')||!(/^[a-f0-9]{40}$/.test(sourceCommit??'')))
+if(!/^\d+\.\d+\.\d+(?:-candidate\.\d+)?$/.test(version??'')||!(/^[a-f0-9]{40}$/.test(sourceCommit??'')))
   throw new Error('Usage: version sourceCommit');
 const privatePath=process.env.TRIAGE_UPDATE_SIGNING_KEY_FILE;
 if(!privatePath)throw new Error('TRIAGE_UPDATE_SIGNING_KEY_FILE required');
