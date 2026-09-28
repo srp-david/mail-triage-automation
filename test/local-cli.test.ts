@@ -31,6 +31,22 @@ test('stale listener cannot receive the local capability before authenticating i
   await assert.rejects(controlRequest({port:3080,pid:process.pid,token:'synthetic-private-capability'.repeat(2)},'/api/test',{},transport),/LOCAL_SERVER_IDENTITY_MISMATCH/);
   assert.equal(requests.length,1);assert.equal(requests[0].headers,undefined);assert.match(requests[0].url,/local-challenge\?nonce=[a-f0-9]{64}$/);
 });
+
+test('tray resume needs local capability and settings tickets allow only a fixed local destination',async()=>{
+  const probe=createServer();await new Promise<void>(r=>probe.listen(0,'127.0.0.1',r));const port=(probe.address() as any).port;await new Promise<void>(r=>probe.close(()=>r()));
+  const token='synthetic-control-'.repeat(3);let resumed=0;
+  const server=createBrowserApp({} as any,{port,controlToken:token,resume:async()=>({ok:++resumed>0})}).listen(port,'127.0.0.1');await new Promise<void>(r=>server.once('listening',r));
+  const origin='http://127.0.0.1:'+port,control={port,token,pid:process.pid};
+  try{
+    assert.equal((await fetch(origin+'/api/app-resume',{method:'POST'})).status,401);
+    assert.equal((await fetch(origin+'/api/app-resume',{method:'POST',headers:{origin,authorization:'Bearer '+token,'x-local-client':'1'}})).status,401);
+    assert.equal(resumed,0);assert.equal((await controlRequest(control,'/api/app-resume',{})).status,200);assert.equal(resumed,1);
+    await assert.rejects(controlRequest(control,'/api/browser-ticket',{page:'https://invalid.example'}),/INVALID_BROWSER_PAGE/);
+    const ticket=await (await controlRequest(control,'/api/browser-ticket',{page:'settings'})).json();
+    const response=await fetch(ticket.url,{redirect:'manual'});assert.equal(response.status,302);assert.equal(response.headers.get('location'),'/#settings');
+    assert.equal((await fetch(ticket.url,{redirect:'manual'})).status,401);
+  }finally{server.closeAllConnections();await new Promise<void>(r=>server.close(()=>r()));}
+});
 test('shutdown releases a stopped app lock even when credential cleanup fails',async()=>{
   const order:string[]=[];const step=(name:string,fail=false)=>async()=>{order.push(name);if(fail)throw new Error('synthetic failure');};
   assert.deepEqual(await shutdownLocal({stop:step('stop'),close:step('close'),clear:step('clear',true),release:step('release')}),{ok:false,lockReleased:true});assert.deepEqual(order,['stop','close','clear','release']);

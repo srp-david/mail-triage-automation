@@ -12,13 +12,15 @@ export class LocalRuntime {
   private key?:string;
   private chain:Promise<unknown>=Promise.resolve();
   private drained=false;
+  private pausedKinds:('analysis'|'sync')[]=[];
+  private pausedKey?:string;
   constructor(private history:HistoryClient,private profile:LocalProfile,private session:LocalSession,private secrets:ReceiptStore,private receipts:ReceiptStore,private executor?:Executor){}
   private serial<T>(fn:()=>Promise<T>){const next=this.chain.then(fn,fn);this.chain=next.catch(()=>{});return next;}
   private async initialize(){
     const selected=await this.profile.selection(),actor=await this.session.identity();if(!selected.runnerId)throw new ApiError(409,'RUNNER_REQUIRED');
     const key=actor.userId+':'+selected.runnerId+':'+selected.sourceId;
     if(this.key===key)return;
-    await this.stopLoops();
+    await this.stopLoops();this.pausedKinds=[];this.pausedKey=undefined;
     const device=await this.secrets.read('device-'+selected.runnerId);if(device.userId!==actor.userId||device.id!==selected.runnerId)throw new ApiError(403,'RUNNER_DENIED');
     const check=async(sourceId:string)=>{
       const current=await this.profile.selection(),user=await this.session.identity();
@@ -39,12 +41,33 @@ export class LocalRuntime {
     this.loops.set('sync',new Scheduler(signal=>this.sync!.tick(signal),5000,60000));
     this.key=key;
   }
-  async start(kind:'analysis'|'sync'){return this.serial(async()=>{if(this.drained)throw new ApiError(409,'UPDATE_IN_PROGRESS');if(kind==='analysis'&&!this.executor)throw new ApiError(409,'ADAPTER_NOT_RELEASE_APPROVED');await this.initialize();const loop=this.loops.get(kind)!;if(loop.state==='recovery_required')await loop.stop();return {ok:true,started:loop.start(),state:loop.state};});}
+  async start(kind:'analysis'|'sync'){return this.serial(async()=>{if(this.drained)throw new ApiError(409,'UPDATE_IN_PROGRESS');if(kind==='analysis'&&!this.executor)throw new ApiError(409,'ADAPTER_NOT_RELEASE_APPROVED');await this.initialize();const loop=this.loops.get(kind)!;if(loop.state==='recovery_required')await loop.stop();const started=loop.start();this.pausedKinds=this.pausedKinds.filter(value=>value!==kind);if(!this.pausedKinds.length)this.pausedKey=undefined;return {ok:true,started,state:loop.state};});}
   private async stopLoops(){await Promise.all([...this.loops.values()].map(s=>s.stop()));}
-  async stop(){return this.serial(async()=>{await this.stopLoops();return {ok:true};});}
+  async stop(){return this.serial(async()=>{this.pausedKinds=[];this.pausedKey=undefined;await this.stopLoops();return {ok:true};});}
+  async pause(){return this.serial(async()=>{
+    if(this.drained)throw new ApiError(409,'UPDATE_IN_PROGRESS');
+    const kinds=(['analysis','sync'] as const).filter(kind=>['working','idle','retrying'].includes(this.loops.get(kind)?.state??''));
+    if(kinds.length){this.pausedKinds=[...new Set([...this.pausedKinds,...kinds])];this.pausedKey=this.key;}
+    await this.stopLoops();return {ok:true};
+  });}
+  async resume(){return this.serial(async()=>{
+    if(this.drained)throw new ApiError(409,'UPDATE_IN_PROGRESS');
+    if(!this.pausedKinds.length||!this.pausedKey)throw new ApiError(409,'NO_PAUSED_WORK');
+    await this.session.token();const actor=await this.session.identity();if(actor.mustChangePassword)throw new ApiError(403,'PASSWORD_CHANGE_REQUIRED');
+    const selected=await this.profile.selection();
+    if(actor.userId+':'+selected.runnerId+':'+selected.sourceId!==this.pausedKey||!selected.original)throw new ApiError(409,'SOURCE_CHANGED');
+    await this.initialize();for(const kind of this.pausedKinds)this.loops.get(kind)!.start();
+    this.pausedKinds=[];this.pausedKey=undefined;return {ok:true};
+  });}
+  async reconfigure(apply:()=>Promise<Executor|undefined>){return this.serial(async()=>{
+    if(this.drained)throw new ApiError(409,'UPDATE_IN_PROGRESS');
+    if([...this.loops.values()].some(loop=>loop.state==='working'))throw new ApiError(409,'CONNECTION_WORK_IN_PROGRESS');
+    await this.stopLoops();this.executor=await apply();this.pausedKinds=[];this.pausedKey=undefined;this.key=undefined;this.runner=undefined;this.sync=undefined;this.loops.clear();
+  });}
   async drain(){return this.serial(async()=>{this.drained=true;await Promise.all([...this.loops.values()].map(s=>s.drain()));return {ok:true};});}
   releaseDrain(){this.drained=false;}
   status(){return {analysis:this.loops.get('analysis')?.state??'stopped',sync:this.loops.get('sync')?.state??'stopped',analysisAvailable:!!this.executor};}
+  trayStatus(){const status=this.status();return {...status,canPause:!this.drained&&[status.analysis,status.sync].some(value=>['working','idle','retrying'].includes(value)),canResume:!this.drained&&this.pausedKinds.length>0};}
   async recovery(){return this.serial(async()=>{await this.initialize();return {analysis:await this.runner!.recovery(),sync:await this.sync!.recovery()};});}
   async resolve(action:'archive-analysis'|'archive-sync'|'deliver'|'deliver-sync'|'recover'){return this.serial(async()=>{
     await this.initialize();await this.loops.get(action.includes('sync')?'sync':'analysis')!.stop();

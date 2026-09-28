@@ -1,5 +1,5 @@
 import {validateEvidenceRoots} from '../../../packages/agent-adapters/src/evidence.js';
-import {readFile,mkdir} from 'node:fs/promises';
+import {readFile,mkdir,access} from 'node:fs/promises';
 import {randomBytes} from 'node:crypto';
 import {join} from 'node:path';
 import {HistoryClient} from '../../../packages/history-client/src/index.js';
@@ -16,32 +16,42 @@ import {shutdownLocal} from './shutdown.js';
 import {fileURLToPath} from 'node:url';
 import {z} from 'zod';
 import {acquireInstance} from '../../../packages/runner/src/instance.js';
+import {localSettingsSchema,connectionsOf,ConnectionStore,type Connections} from './connections.js';
+import {connectionRoutes} from './connection-routes.js';
+import {dbEvidence} from './mcp-connections.js';
+import {WindowsTray,openLocalBrowser} from './tray.js';
 const root=process.env.TRIAGE_LOCAL_HOME;if(!root)throw new Error('TRIAGE_LOCAL_HOME required');
-const command=z.object({executable:z.string().min(1),prefix:z.array(z.string()).max(5).optional()}).strict();
-const settings=z.object({localPort:z.number().int().min(1024).max(65535).default(3080),historyUrl:z.string().url(),auth:z.object({mode:z.literal('username'),issuer:z.string().url(),audience:z.string().min(1)}).strict(),mailMcpUrl:z.string().url().optional(),agents:z.object({codex:command.optional(),claude:command.optional()}).optional(),evidenceRoots:z.record(z.string().regex(/^[a-z][a-z0-9_-]{0,39}$/),z.union([z.string().min(1),z.object({path:z.string().min(1),files:z.array(z.string()).max(200).optional()}).strict()])).default({})}).parse(JSON.parse(await readFile(join(root,'config','settings.json'),'utf8')));
+const settings=localSettingsSchema.parse(JSON.parse(await readFile(join(root,'config','settings.json'),'utf8')));
+let connections=connectionsOf(settings);
 const secrets=new ProtectedStore(join(root,'secrets'));
 const login=new UsernameLogin(settings.historyUrl,settings.auth.issuer,settings.auth.audience);
 const session=new LocalSession(login,secrets,token=>login.identify(token));
 const history=new HistoryClient(settings.historyUrl,()=>session.token());
 const profile=new LocalProfile(history,session,secrets,settings.mailMcpUrl);
 const receipts=new ProtectedStore(join(root,'work'));await receipts.write('initialized',{version:1});
-const profiles={...(settings.agents?.codex?{codex:{agent:'codex' as const,command:settings.agents.codex}}:{}),...(settings.agents?.claude?{claude:{agent:'claude' as const,command:settings.agents.claude}}:{})};
 await validateEvidenceRoots(settings.evidenceRoots,root);const scratch=join(root,'scratch');await mkdir(scratch,{recursive:true});
-const executor=Object.keys(profiles).length?new LocalExecutor(scratch,profiles,()=>profile.selection(),settings.evidenceRoots):undefined;
-const runtime=new LocalRuntime(history,profile,session,secrets,receipts,executor);
+const makeExecutor=(value:Connections)=>{
+  const profiles={...(value.agents.codex?{codex:{agent:'codex' as const,command:value.agents.codex}}:{}),...(value.agents.claude?{claude:{agent:'claude' as const,command:value.agents.claude}}:{})};
+  return Object.keys(profiles).length?new LocalExecutor(scratch,profiles,()=>profile.selection(),value.evidenceRoots,dbEvidence(value.dbMcpUrl)):undefined;
+};
+const runtime=new LocalRuntime(history,profile,session,secrets,receipts,makeExecutor(connections));
 const installedVersion=await readFile(join(process.cwd(),'manifest.json'),'utf8').then(value=>JSON.parse(value).version as string).catch(()=>'0.0.0');
 const updates=new LocalUpdates(root,installedVersion,history,runtime);
 const release=await acquireInstance(join(root,'app.lock'));
 const port=settings.localPort;
 const controlToken=randomBytes(32).toString('base64url');await secrets.write('cli-control',{port,token:controlToken,pid:process.pid});
 let stopping:Promise<void>|undefined;
-const shutdown=()=>stopping??=(async()=>{const result=await shutdownLocal({stop:()=>runtime.stop(),close:()=>new Promise<void>(r=>{server.close(()=>r());server.closeIdleConnections();}),clear:()=>secrets.write('cli-control',{stopped:true}),release});if(!result.ok){console.error('LOCAL_SHUTDOWN_INCOMPLETE');process.exitCode=1;}})();
-const server=createBrowserApp(session,{port,controlToken,shutdown,pause:()=>runtime.stop(),beforeLogout:()=>runtime.stop(),features:app=>{
+let tray:WindowsTray|undefined;
+const shutdown=()=>stopping??=(async()=>{const result=await shutdownLocal({stop:async()=>{await runtime.stop();await tray?.close();},close:()=>new Promise<void>(r=>{server.close(()=>r());server.closeIdleConnections();}),clear:()=>secrets.write('cli-control',{stopped:true}),release});if(!result.ok){console.error('LOCAL_SHUTDOWN_INCOMPLETE');process.exitCode=1;}})();
+const server=createBrowserApp(session,{port,controlToken,shutdown,pause:()=>runtime.pause(),resume:()=>runtime.resume(),beforeLogout:()=>runtime.stop(),features:app=>{
+  connectionRoutes(app,new ConnectionStore(root),async(value,persist)=>runtime.reconfigure(async()=>{
+    const executor=makeExecutor(value);await profile.changeEndpoint(value.mailMcpUrl,persist);connections=value;return executor;
+  }));
   app.get('/api/admin/users',async(_req,res)=>res.json(await history.request('/admin/users')));
   app.post('/api/admin/users',async(req,res)=>res.json(await history.request('/admin/users',req.body)));
   app.post('/api/admin/users/:id',async(req,res)=>res.json(await history.request('/admin/users/'+z.string().uuid().parse(req.params.id),req.body)));
   app.post('/api/admin/users/:id/reset',async(req,res)=>res.json(await history.request('/admin/users/'+z.string().uuid().parse(req.params.id)+'/reset',{})));
-  localUiRoutes(app,history,{selection:()=>profile.selection(),registerSource:b=>profile.registerSource(b),registerRunner:b=>profile.registerRunner(b),configure:async b=>{await runtime.stop();return profile.configure(b);},status:async()=>({...await profile.status() as object,runtime:runtime.status()}),environment:()=>({mailConfigured:!!settings.mailMcpUrl,agents:(["codex","claude"] as const).filter(agent=>!!settings.agents?.[agent]),evidenceRootCount:Object.keys(settings.evidenceRoots).length,dbConfigured:false})});
+  localUiRoutes(app,history,{selection:()=>profile.selection(),registerSource:b=>profile.registerSource(b),registerRunner:b=>profile.registerRunner(b),configure:async b=>{await runtime.stop();return profile.configure(b);},status:async()=>({...await profile.status() as object,runtime:runtime.status()}),environment:()=>({connectionsEditable:true,mailConfigured:!!connections.mailMcpUrl,agents:(["codex","claude"] as const).filter(agent=>!!connections.agents[agent]),evidenceRootCount:Object.keys(connections.evidenceRoots).length,dbConfigured:!!connections.dbMcpUrl})});
   app.get('/api/runtime',async(_req,res)=>res.json(runtime.status()));
   app.get('/api/updates',async(_req,res)=>res.json(await updates.check()));
   app.post('/api/updates/install',async(req,res)=>{
@@ -56,5 +66,16 @@ const server=createBrowserApp(session,{port,controlToken,shutdown,pause:()=>runt
   app.get('/api/runtime/recovery',async(_req,res)=>res.json(await runtime.recovery()));
   app.post('/api/runtime/recovery',async(req,res)=>res.json(await runtime.resolve(z.object({action:z.enum(['archive-analysis','archive-sync','deliver','deliver-sync','recover'])}).strict().parse(req.body).action)));
 },staticRoot:fileURLToPath(new URL('../../../../public/',import.meta.url))}).listen(port,'127.0.0.1');
+server.once('listening',()=>{void (async()=>{
+  if(process.platform!=='win32'||process.env.TRIAGE_DISABLE_TRAY==='1')return;
+  const executable=join(process.cwd(),'installer','mail-triage-tray.exe');
+  try{await access(executable);}catch{return;}
+  if(stopping)return;
+  tray=new WindowsTray(executable,()=>runtime.trayStatus(),async command=>{
+    if(command==='open'||command==='settings')return openLocalBrowser({port,token:controlToken,pid:process.pid},command==='settings'?'settings':undefined);
+    if(command==='pause')return runtime.pause();if(command==='resume')return runtime.resume();
+    return shutdown();
+  });tray.start();
+})().catch(()=>console.error('TRAY_START_FAILED'));});
 server.on('error',()=>{void release().catch(()=>{}).finally(()=>{process.exitCode=1;});});
 for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>{void shutdown().catch(()=>{process.exitCode=1;});});

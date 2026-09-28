@@ -27,6 +27,10 @@ export const jsonError:ErrorRequestHandler=(error,_req,res,next)=>{
   if(res.headersSent){res.destroy();return;}
   const specific:Record<string,string>={ORIGINAL_UNAVAILABLE:'이 PC에 원본 메일 연결이 없습니다. 공용 이력은 계속 조회할 수 있습니다.',RUNNER_REQUIRED:'설정에서 실행 장치를 선택하세요.',LOCAL_MCP_NOT_CONFIGURED:'로컬 설정에 메일 MCP 주소가 필요합니다.',SOURCE_CHANGED:'출처가 변경되었습니다. 메일을 다시 조회하세요.',LOCAL_MCP_UNAVAILABLE:'이 PC의 메일 MCP에 연결하지 못했습니다.',LOGIN_REQUIRED:'다시 로그인하세요.',SOURCE_CONFIGURATION_CHANGED:'메일 MCP 주소가 변경되었습니다. 출처 연결을 다시 확인하세요.'};
   specific.LOCAL_SESSION_REQUIRED='분석실 바로가기 또는 로컬 open 명령으로 브라우저를 다시 여세요.';
+  specific.CONNECTION_SETTINGS_CHANGED='다른 화면에서 연결 설정이 변경되었습니다. 저장된 연결을 다시 불러오세요.';
+  specific.CONNECTION_WORK_IN_PROGRESS='분석 또는 동기화 작업 중입니다. 작업이 끝난 뒤 연결 환경을 저장하세요.';
+  specific.INVALID_MCP_ENDPOINT='MCP 주소는 인증 정보가 없는 HTTPS 주소 또는 이 PC의 HTTP 주소로 입력하세요.';
+  specific.INVALID_EVIDENCE_ROOT='자료 폴더의 절대 경로와 접근 권한을 확인하세요. 개인 설정·자격 증명 폴더는 지정할 수 없습니다.';
   res.status(status).json({code,message:specific[code]??message(status),requestId:res.locals.requestId});
 };
 // Call only after all feature routes have been registered.

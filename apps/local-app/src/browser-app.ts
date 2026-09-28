@@ -9,11 +9,11 @@ import type {LocalSession} from './session.js';
 const random=()=>randomBytes(32).toString('base64url');
 const same=(a:string,b:string)=>{const first=Buffer.from(a),second=Buffer.from(b);return first.length===second.length&&timingSafeEqual(first,second);};
 const cookie=(req:express.Request,name:string)=>(req.headers.cookie??'').split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='))?.slice(name.length+1)??'';
-export function createBrowserApp(session:LocalSession,options:{port:number;features?:(app:express.Express)=>void;staticRoot?:string;beforeLogout?:()=>Promise<unknown>;controlToken?:string;shutdown?:()=>Promise<unknown>;pause?:()=>Promise<unknown>}){
+export function createBrowserApp(session:LocalSession,options:{port:number;features?:(app:express.Express)=>void;staticRoot?:string;beforeLogout?:()=>Promise<unknown>;controlToken?:string;shutdown?:()=>Promise<unknown>;pause?:()=>Promise<unknown>;resume?:()=>Promise<unknown>}){
   if(options.controlToken&&options.controlToken.length<32)throw new Error('STRONG_CONTROL_TOKEN_REQUIRED');
   const app=express(),origin=`http://127.0.0.1:${options.port}`;
   let browser=random(),csrf=random(),loginCookie='',sessionExpires=Date.now()+8*3600000;
-  let ticket='',ticketExpires=0;
+  let ticket='',ticketExpires=0,ticketPath='/';
   const rotate=()=>{browser=random();csrf=random();sessionExpires=Date.now()+8*3600000;};
   const setCookie=(res:express.Response)=>res.cookie('triage-local',browser,{httpOnly:true,sameSite:'strict',path:'/',maxAge:8*3600000});
   app.disable('x-powered-by');app.use(requestContext);
@@ -36,6 +36,8 @@ export function createBrowserApp(session:LocalSession,options:{port:number;featu
   // The DPAPI-authorized launcher can bootstrap before company login. Loopback alone is not an identity.
   app.post('/api/browser-ticket',(req,res)=>{
     if(!cli(req))throw new ApiError(401,'LOCAL_SESSION_REQUIRED');
+    if(req.body?.page!==undefined&&req.body.page!=='settings')throw new ApiError(400,'INVALID_BROWSER_PAGE');
+    ticketPath=req.body?.page==='settings'?'/#settings':'/';
     ticket=random();ticketExpires=Date.now()+60000;res.json({url:origin+'/auth/bootstrap?ticket='+ticket});
   });
   app.post('/api/app-stop',(req,res)=>{
@@ -46,10 +48,14 @@ export function createBrowserApp(session:LocalSession,options:{port:number;featu
     if(!cli(req)||!options.pause)throw new ApiError(401,'LOCAL_SESSION_REQUIRED');
     res.json(await options.pause());
   });
+  app.post('/api/app-resume',async(req,res)=>{
+    if(!cli(req)||!options.resume)throw new ApiError(401,'LOCAL_SESSION_REQUIRED');
+    res.json(await options.resume());
+  });
   app.get('/auth/bootstrap',(req,res)=>{
     const presented=typeof req.query.ticket==='string'?req.query.ticket:'';
     if(!ticket||Date.now()>ticketExpires||!same(presented,ticket))throw new ApiError(401,'LOCAL_SESSION_REQUIRED');
-    ticket='';ticketExpires=0;rotate();setCookie(res);res.redirect('/');
+    const destination=ticketPath;ticket='';ticketExpires=0;ticketPath='/';rotate();setCookie(res);res.redirect(destination);
   });
   app.get('/api/session',async(req,res)=>{
     if(Date.now()>sessionExpires||!same(cookie(req,'triage-local'),browser))throw new ApiError(401,'LOCAL_SESSION_REQUIRED');

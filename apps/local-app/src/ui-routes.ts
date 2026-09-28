@@ -17,7 +17,7 @@ export interface LocalUiContext {
   registerSource(input:unknown):Promise<unknown>;
   registerRunner(input:unknown):Promise<unknown>;
   status():Promise<unknown>;
-  environment?():{mailConfigured:boolean;agents:('codex'|'claude')[];evidenceRootCount:number;dbConfigured:boolean};
+  environment?():{connectionsEditable?:boolean;mailConfigured:boolean;agents:('codex'|'claude')[];evidenceRootCount:number;dbConfigured:boolean};
 }
 const number=z.coerce.number().int().positive().safe();
 function original(s:LocalSelection){if(!s.original)throw new ApiError(409,'ORIGINAL_UNAVAILABLE');return s.original;}

@@ -11,6 +11,7 @@ export class LocalProfile implements LocalUiContext {
   private instancePromise?:Promise<string>;
   constructor(private history:HistoryClient,private session:LocalSession,private store:SessionStore,private endpoint?:string,private source=mailSource){}
   private serial<T>(fn:()=>Promise<T>){const next=this.chain.then(fn,fn);this.chain=next.catch(()=>{});return next;}
+  async changeEndpoint(endpoint:string|undefined,persist:()=>Promise<void>){return this.serial(async()=>{await persist();this.endpoint=endpoint;this.instancePromise=undefined;});}
   private async read(key:string,fallback:any){try{return await this.store.read(key);}catch(e:any){if(e?.code==='ENOENT')return fallback;throw new ApiError(503,'LOCAL_SETTINGS_UNAVAILABLE');}}
   private async profile(){const {userId}=await this.session.identity();return {userId,value:selection.parse(await this.read('profile-'+userId,{sourceId:'',agent:'codex'}))};}
   private instance(){return this.instancePromise??=(async()=>{let value=await this.read('source-instance',null);if(!value){value={id:randomUUID(),endpoint:this.endpoint};await this.store.write('source-instance',value);}if(value.endpoint!==this.endpoint)throw new ApiError(409,'SOURCE_CONFIGURATION_CHANGED');return uuid.parse(value.id);})().catch(error=>{this.instancePromise=undefined;throw error;});}
