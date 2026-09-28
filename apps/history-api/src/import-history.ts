@@ -26,6 +26,7 @@ export async function importHistory(c:PoolClient,input:unknown,options:unknown,c
   const existingSources=(await c.query('SELECT id,store_id,owner_user_id,team_id,instance_id FROM source WHERE id=ANY($1::uuid[]) OR store_id=ANY($2::text[])',[plan.sources.map(s=>s.sourceId),plan.sources.map(s=>s.storeId)])).rows;
   for(const source of existingSources)if(!plan.sources.some(s=>s.sourceId===source.id&&s.storeId===source.store_id&&s.instanceId===source.instance_id&&source.owner_user_id===plan.ownerId&&source.team_id===plan.teamId))throw Error('SOURCE_MAPPING_CONFLICT');
   const collection=(await c.query('SELECT owner_user_id FROM legacy_collection WHERE id=$1',[plan.collectionId])).rows[0];if(collection&&collection.owner_user_id!==plan.ownerId)throw Error('COLLECTION_MAPPING_CONFLICT');
+  if((await c.query('SELECT 1 FROM legacy_collection_document WHERE document_id=ANY($1::uuid[]) AND collection_id<>$2',[bundle.tables.legacy_document.map(d=>d.id),plan.collectionId])).rowCount)throw Error('COLLECTION_MAPPING_CONFLICT');
   const pending:Record<string,any[]>={},counts:Record<string,{total:number;insert:number}>={};
   for(const table of historyTables){
    const columns=(await c.query('SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=$1',[table])).rows.map(r=>r.column_name);

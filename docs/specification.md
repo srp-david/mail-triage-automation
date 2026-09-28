@@ -100,7 +100,7 @@ CA를 지정할 때 URL의 `sslmode`는 생략하거나 `verify-full`이어야 �
 
 ## 6. 미구현·운영 대기
 
-지속 대화·명시적 보고서 반영/revision·`expectedVersion` 편집 충돌 처리, 구현 작업 시작·업무 등록부는 미구현이다. 현재 후속 분석과 메일당 활성 분석 제한을 이 기능의 완료로 해석하지 않는다. [계획서 6.1·8절](implementation-plan.md)의 설계와 출시 범위를 따른다.
+지속 대화·명시적 보고서 반영/revision·`expectedVersion` 편집 충돌 처리 및 저장소 간 동일 메일 공유·중복 방지를 구현했다. 기존 결과는 보존한다. 코드 검증·Supabase 이관·API 배포·설치본 수용 상태는 [공용 분석 운영](operations/shared-analysis.md)에 구분한다. 구현 작업 시작·업무 등록부는 M5 미구현이다.
 
 GitHub Release 배포·인증된 업데이트 조회·stable/test·사용자별 제공/중단·API 호환 검사·다운로드·별도 updater의 버튼 설치는 미구현이다. 현재는 로컬 payload로 수동 설치/업데이트한다. public 우선·private 전환과 서명/복구 계약은 [Release 업데이트 계획](operations/releases.md)에 있으며 완전 자동 설치는 후속 안정화 대상이다.
 

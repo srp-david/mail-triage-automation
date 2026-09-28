@@ -121,4 +121,6 @@ lease는 `{runnerId,leaseToken,generation}`이다. 토큰을 로그나 URL에 �
 
 인증된 업데이트 조회·설치 전 정책 재확인·로컬 다운로드/updater API는 미구현이다. 경로/필드 제안은 [Release 업데이트 계획](../operations/releases.md)에 있으며 위 현재 API 목록에 포함하지 않는다. 구버전 앱의 인증/업데이트 탈출 경로와 새 API 호환 정책을 함께 구현해야 한다.
 
-지속 대화·명시적 보고서 반영·`expectedVersion` 저장, 구현 작업 시작/업무 등록부도 미구현이다. [통합 계획](../implementation-plan.md) 6.1절과 8절에 따라 보고서 revision 충돌과 요청 멱등성, 업무 단위 활성 작업 제약을 각각 설계한다. 기존 `/runs`의 추가 답변·메일 분석 잠금으로 이 계약을 대신하지 않는다.
+공용 협업 API를 추가했다. 모든 경로는 기존 자체 JWT 및 현재 권한을 검사한다. `POST /sources/:id/mail-identity`는 로컬 MCP에서 확인한 헤더로 동일 메일을 연결한다. `GET /sources/:id/mails/:mailId/shared-reports`는 명시적 팀 공유 보고서만 반환한다. `/reports/:id/share`는 소유자만 변경한다.
+
+`GET /reports/:id/collaboration`, `GET /reports/:id/revisions/:version`, `POST /reports/:id/messages`, `POST /reports/:id/revisions`, `GET /reports/:id/export`로 대화·불변 revision·최신 export를 제공한다. revision 저장의 `expectedVersion` 충돌은 409 `REPORT_VERSION_CONFLICT`, 동일 요청의 다른 내용은 409 `REQUEST_CONFLICT`다. `/reports/:id/questions`와 `/report-questions/:id/result|fail`은 개인 실행 장치 자격으로 질문 작업을 등록·완료한다. 원본 MCP 없이 저장 보고서 기반으로 실행 가능하다. 구현 작업 시작/업무 등록부는 M5 미구현이다. 배포 상태는 [공용 분석 운영](../operations/shared-analysis.md)을 따른다.

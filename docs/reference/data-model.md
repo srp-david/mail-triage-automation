@@ -97,7 +97,7 @@ Supabase 운영자는 schema를 먼저 준비하고 별도 migration 자격으�
 
 아래는 [통합 계획](../implementation-plan.md)의 미구현 모델 요구이며 이번 문서 갱신에서 migration이나 grants를 변경하지 않았다.
 
-- 대화/메시지/결정, 편집 보고서 ID·head·불변 revision·기준 분석 참조가 필요하다. 현재 run당 결과 하나인 `report_version`과 구분하며 기존 결과를 덮어쓰지 않는다. `expectedVersion` 비교와 새 revision/head 저장은 하나의 트랜잭션으로 처리하고 충돌한 초안은 클라이언트에 보존한다.
+- migration 006~009: `common_mail`/`common_mail_link`는 팀별 메일 지문과 각 source의 원본을 연결한다. `analysis_run.common_mail_id`의 활성 unique index로 공통 메일 중복 실행을 차단한다. `report_share`는 명시적 팀 읽기/편집 권한, `personal_mail_handling`은 사용자별 처리 완료다. `report_head`/`report_revision`은 불변 편집 버전, `report_message`는 대화/결정, `report_question_job`은 고정 입력을 가진 개인 Agent 질문 작업이다. 기존 `report_version`을 덮어쓰지 않는다. `expectedVersion` 비교와 새 revision/head 저장은 한 트랜잭션이고 충돌 초안은 클라이언트에 보존한다.
 - 구현 작업 등록부는 업무 ID·대상 repo/프로젝트·작업 종류의 활성 unique 제약, 요청 ID/입력 hash, brief/report revision, 담당자·Agent·진행 상태를 연결한다. 메일 분석의 `one_active_mail`과 별도이며 8절의 attempt/lease/발행 계약으로 확장한다.
 - 업데이트 catalog에는 Release/asset 식별자·버전/채널·플랫폼·API 호환·서명/digest·제공/중단 정책과 변경 감사가 필요하다. 사용자별 제공 정책과 설치 진행 기록의 저장 범위/보존 기간은 D13에서 확정한다. GitHub 토큰을 클라이언트 조회 가능한 행에 넣지 않는다.
 - 모든 추가 모델은 새 migration·최소 grants·ACL·구/신 클라이언트 호환 검증을 거친다. 앱 업데이트나 문서 변경만으로 hosted DB가 갱신되는 것은 아니다.

@@ -40,3 +40,12 @@
 - schema migration 006~009와 `private-grants.sql` 적용 후 새 Edge API 및 local-app을 배포해야 한다. 설치본 코드만 변경하거나 API만 갱신하는 것으로 신규 UI까지 배포되지는 않는다.
 
 실제 자료 복제본 검증: 기존 메일 39건, 분석 13건, 이전 문서 33건, 기존 문서 연결 30건, 관련 메일 4건. MCP 식별 대조 39/39 일치. 공유 가능한 보고서 43건(기존 분석 13 + 연결된 이전 보고서 30), 미연결 문서 3건. 원본 13개 결과 JSON 일치와 동일 이관 재실행 시 중복 없음 확인. 원본 DB와 ERP 데이터는 수정하지 않는다.
+
+## 2026-09-28 실제 적용 상태
+
+- Supabase 프로젝트 `tborximfpwrzzwuazjrb`에 migration 006~009, 최소 runtime 권한, David 소유 자료 이관 완료. 기존 hosted 합성 자료·계정은 보존했다. 최초 CLI 호출은 `--linked` 누락으로 실행 전에 실패했고, 수정한 호출은 exit 0이다.
+- UTC `2026-09-28T03:58:51.148Z` 읽기 전용 대조: 기존 분석 13개 결과 JSON, 이전 문서 33개 본문 일치. 공통 메일 연결 39건, 팀 읽기 공유 보고서 43건, ledger 총 10개 확인. 원본 로컬 DB는 검증 후 다시 중지했다.
+- 새 `history` 함수 배포는 자동 승인 검토가 거절했다. 원격 운영 함수 변경 및 기존 `--no-verify-jwt` 설정의 명시적 승인 부족이 사유다. `supabase/config.toml`에도 기존 verify_jwt=false가 있고 앱은 ES256 자체 JWT·현재 세션·자료 ACL을 검사한다. 이를 우회해 다른 배포 명령을 실행하지 않았다. 신규 공용 API는 아직 활성화되지 않았다.
+- 최종 전체 unit/UI/격리 DB 164건, check/build/Edge bundle 통과. 로컬 Supabase Edge 11군 통과. 실제 개인 Agent·타 PC 사용과 신규 API의 hosted 종단 수용은 미실행이다. GitHub push/Release/catalog 갱신은 수행하지 않았다.
+- 이후 최소 권한 runtime의 신규 HTTP API 검증까지 확장하여 로컬 Edge 총 12군 통과: 공통 메일 공유, revision 동시 저장, 대화·질문 결과 저장, 공유 회수 확인.
+- 로컬 검증용 `.runtime/packages/0.3.4.zip` 생성(3,736개 파일, SHA-256 `0667d0b6a9fbb718ed3f0c581dfa68fd3a53239183873ac3ee85c9d729c3ed97`). 임시 한글 경로 설치·기동·bootstrap 보호·작업 중지·단일 트레이·정상 종료·설정 보존 통과. 실제 인증은 실행하지 않았고 `releaseApproved=false`다. 사용자 `MailTriagePilot`의 활성 0.3.2는 유지했다. 새 API 배포 후 0.3.4 적용과 기존 source 원본 대조를 진행한다.
