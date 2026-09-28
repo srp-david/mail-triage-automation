@@ -6,7 +6,7 @@ import {resultSchema,resultJsonSchema} from '../../contracts/src/schema.js';
 import {evidenceServer,type EvidenceProviders} from './evidence.js';
 export type Agent='codex'|'claude';
 export type Command={executable:string;prefix?:string[]};
-export type Profile={agent:Agent;command:Command;version:string};
+export type Profile={agent:Agent;command:Command};
 export function childEnvironment(){
   const allowed=new Set(['PATH','SYSTEMROOT','WINDIR','TEMP','TMP','USERPROFILE','HOME','APPDATA','LOCALAPPDATA','PROGRAMFILES','PROGRAMFILES(X86)','COMSPEC','PATHEXT','CODEX_HOME']);
   return Object.fromEntries(Object.entries(process.env).filter(([k,v])=>v!==undefined&&allowed.has(k.toUpperCase()))) as NodeJS.ProcessEnv;
