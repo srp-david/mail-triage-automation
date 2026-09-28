@@ -15,7 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form } from '../forms/Form';
 import { settingsSchema } from '../forms/schemas';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSession, errorText } from '../api/client';
 import { Action } from '../components/Common';
 import { Registration, SetupStep } from './SetupControls';
@@ -78,7 +78,15 @@ const stateLabel = (state?: string) =>
   })[state ?? ''] ?? '확인 필요';
 const loopActive = (state?: string) => ['idle', 'working', 'retrying'].includes(state ?? '');
 
-export function Settings({ changed }: { changed: () => Promise<void> }) {
+export function Settings({
+  changed,
+  updates,
+  initialTab = 0,
+}: {
+  changed: () => Promise<void>;
+  updates?: ReactNode;
+  initialTab?: number;
+}) {
   const { api, notice } = useSession();
   const [sources, setSources] = useState<SourceOption[]>([]),
     [collections, setCollections] = useState<CollectionOption[]>([]),
@@ -97,7 +105,7 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
     [recovery, setRecovery] = useState<RecoveryStatus | null>(null);
   const [reconnect, setReconnect] = useState<ReconnectPreview | null>(null),
     [sameStore, setSameStore] = useState(false);
-  const [tab, setTab] = useState(0),
+  const [tab, setTab] = useState(initialTab),
     [loading, setLoading] = useState(true),
     [loadError, setLoadError] = useState(''),
     [runtimeError, setRuntimeError] = useState('');
@@ -211,6 +219,7 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
         aria-label="설정 영역"
         variant="scrollable"
         scrollButtons="auto"
+        allowScrollButtonsMobile
         className="setup-tabs"
       >
         {[
@@ -222,6 +231,7 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
             : [{ label: '개인 연결', value: 0 }]),
           { label: '공유·장치 관리', value: 1 },
           { label: '중단 작업 복구', value: 2 },
+          ...(updates ? [{ label: '앱 업데이트', value: 4 }] : []),
         ].map(({ label, value: i }) => (
           <Tab
             key={label}
@@ -232,6 +242,16 @@ export function Settings({ changed }: { changed: () => Promise<void> }) {
           />
         ))}
       </Tabs>
+      {updates && (
+        <Box
+          role="tabpanel"
+          id="settings-panel-4"
+          aria-labelledby="settings-tab-4"
+          hidden={tab !== 4}
+        >
+          {updates}
+        </Box>
+      )}
       {loading && (
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }} role="status">
           <CircularProgress size={18} /> <span>연결 설정을 불러오는 중입니다.</span>

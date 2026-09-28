@@ -97,6 +97,8 @@ test('browser login, password change and logout use real API and PostgreSQL', as
       route.fulfill({
         json: {
           status: 'offered',
+          phase: 'idle',
+          currentVersion: '0.3.0-candidate.7',
           update: {
             releaseId: 'v0.3.0-candidate.8',
             version: '0.3.0-candidate.8',
@@ -129,12 +131,12 @@ test('browser login, password change and logout use real API and PostgreSQL', as
     await page.getByLabel('비밀번호', { exact: true }).fill(password);
     await page.getByRole('button', { name: '로그인', exact: true }).click();
     await expect(page.getByRole('button', { name: '로그아웃', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: '0.3.0-candidate.8 설치' })).toBeVisible();
-    await page.getByRole('button', { name: '0.3.0-candidate.8 설치' }).click();
+    await page.goto(`http://127.0.0.1:${port}/#updates`);
+    await expect(page.getByRole('button', { name: '지금 설치' })).toBeVisible();
+    await page.getByRole('button', { name: '지금 설치' }).click();
     expect(updateInstalls).toBe(1);
     const token = await session.token();
     expect((await auth.authenticate(token)).userId).toBe(user.id);
-    await page.locator('#notice').getByRole('button').click();
     await page.getByRole('button', { name: '로그아웃', exact: true }).click();
     await expect(page.getByRole('button', { name: '로그인', exact: true })).toBeVisible();
     await expect(auth.authenticate(token)).rejects.toThrow();
