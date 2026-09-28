@@ -47,6 +47,12 @@ export function App() {
     [view, setView] = useState(viewFromHash),
     [menu, setMenu] = useState(false),
     [history, setHistory] = useState<HistoryState | null>(null);
+  const [updateOffer, setUpdateOffer] = useState<{
+    releaseId: string;
+    version: string;
+    assetSha256: string;
+    releaseNotesUrl: string;
+  } | null>(null);
   const mailbox = useRef<MailboxHandle>(null),
     runs = useRef<ListHandle>(null),
     legacy = useRef<ListHandle>(null),
@@ -62,6 +68,35 @@ export function App() {
     closeOfficePreview();
   }, [queryClient]);
   const api = useMemo(() => createApi(unauthorized, () => csrf.current), [unauthorized]);
+  useEffect(() => {
+    if (!native || !authenticated) {
+      queueMicrotask(() => setUpdateOffer(null));
+      return;
+    }
+    let alive = true;
+    const check = async () => {
+      try {
+        const response = await api<{
+          status: string;
+          update?: {
+            releaseId: string;
+            version: string;
+            assetSha256: string;
+            releaseNotesUrl: string;
+          };
+        }>('/updates');
+        if (alive) setUpdateOffer(response.status === 'offered' ? (response.update ?? null) : null);
+      } catch {
+        if (alive) setUpdateOffer(null);
+      }
+    };
+    void check();
+    const timer = setInterval(() => void check(), 60 * 60 * 1000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [native, authenticated, api]);
   const notify = useCallback((text: string) => setNotice(text), []);
   const session = useMemo(
     () => ({ api, storeId: status?.storeId ?? '', userId, notice: notify, unauthorized }),
@@ -239,6 +274,35 @@ export function App() {
                   : '연결 확인 중'
               }
             />
+            {native && authenticated && updateOffer && (
+              <>
+                <Button
+                  component="a"
+                  href={updateOffer.releaseNotesUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  color="inherit"
+                  sx={{ whiteSpace: 'nowrap' }}
+                >
+                  변경 내역
+                </Button>
+                <Action
+                  variant="outlined"
+                  color="inherit"
+                  sx={{ whiteSpace: 'nowrap' }}
+                  onAction={async () => {
+                    notify('업데이트 파일을 확인하고 진행 중인 작업이 끝나기를 기다립니다.');
+                    await api('/updates/install', {
+                      releaseId: updateOffer.releaseId,
+                      assetSha256: updateOffer.assetSha256,
+                    });
+                    notify('업데이트를 설치합니다. 실행 중인 작업이 끝나면 앱이 다시 열립니다.');
+                  }}
+                >
+                  {updateOffer.version} 설치
+                </Action>
+              </>
+            )}
             {native && (authenticated || mustChange) && (
               <Action
                 variant="text"

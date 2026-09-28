@@ -27,6 +27,17 @@ test('scheduler aborts active execution and interrupted receipt cannot silently 
   await assert.rejects(runner.tick(),/RECOVERY_REQUIRES_REVALIDATION/);assert.equal(calls,1);await runner.archiveInterrupted();assert.equal(records.get(runnerId).state,'idle');
 });
 
+test('update drain waits for the active task without aborting or starting another',async()=>{
+  let entered!:()=>void,finish!:()=>void,calls=0,aborted=false;
+  const started=new Promise<void>(resolve=>entered=resolve),pending=new Promise<void>(resolve=>finish=resolve);
+  const scheduler=new Scheduler(async signal=>{calls++;signal.addEventListener('abort',()=>aborted=true);entered();await pending;},1,5);
+  scheduler.start();await started;
+  let drained=false;const drain=scheduler.drain().then(()=>drained=true);
+  await new Promise(resolve=>setTimeout(resolve,5));assert.equal(drained,false);
+  finish();await drain;
+  assert.equal(aborted,false);assert.equal(calls,1);assert.equal(scheduler.state,'stopped');
+});
+
 test('sync response-loss retries its outbox without collecting again; interrupted collection stays uncertain',async()=>{
   const records=new Map<string,any>();const store={async read(k:string){if(!records.has(k))throw Object.assign(new Error(),{code:'ENOENT'});return structuredClone(records.get(k));},async write(k:string,v:any){records.set(k,structuredClone(v));}};
   const id=randomUUID(),lease={runnerId:randomUUID(),leaseToken:'x'.repeat(32),generation:1};let calls=0,submits=0;

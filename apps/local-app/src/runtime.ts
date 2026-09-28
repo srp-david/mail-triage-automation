@@ -11,6 +11,7 @@ export class LocalRuntime {
   private sync?:SyncRunner;
   private key?:string;
   private chain:Promise<unknown>=Promise.resolve();
+  private drained=false;
   constructor(private history:HistoryClient,private profile:LocalProfile,private session:LocalSession,private secrets:ReceiptStore,private receipts:ReceiptStore,private executor?:Executor){}
   private serial<T>(fn:()=>Promise<T>){const next=this.chain.then(fn,fn);this.chain=next.catch(()=>{});return next;}
   private async initialize(){
@@ -38,9 +39,11 @@ export class LocalRuntime {
     this.loops.set('sync',new Scheduler(signal=>this.sync!.tick(signal),5000,60000));
     this.key=key;
   }
-  async start(kind:'analysis'|'sync'){return this.serial(async()=>{if(kind==='analysis'&&!this.executor)throw new ApiError(409,'ADAPTER_NOT_RELEASE_APPROVED');await this.initialize();const loop=this.loops.get(kind)!;if(loop.state==='recovery_required')await loop.stop();return {ok:true,started:loop.start(),state:loop.state};});}
+  async start(kind:'analysis'|'sync'){return this.serial(async()=>{if(this.drained)throw new ApiError(409,'UPDATE_IN_PROGRESS');if(kind==='analysis'&&!this.executor)throw new ApiError(409,'ADAPTER_NOT_RELEASE_APPROVED');await this.initialize();const loop=this.loops.get(kind)!;if(loop.state==='recovery_required')await loop.stop();return {ok:true,started:loop.start(),state:loop.state};});}
   private async stopLoops(){await Promise.all([...this.loops.values()].map(s=>s.stop()));}
   async stop(){return this.serial(async()=>{await this.stopLoops();return {ok:true};});}
+  async drain(){return this.serial(async()=>{this.drained=true;await Promise.all([...this.loops.values()].map(s=>s.drain()));return {ok:true};});}
+  releaseDrain(){this.drained=false;}
   status(){return {analysis:this.loops.get('analysis')?.state??'stopped',sync:this.loops.get('sync')?.state??'stopped',analysisAvailable:!!this.executor};}
   async recovery(){return this.serial(async()=>{await this.initialize();return {analysis:await this.runner!.recovery(),sync:await this.sync!.recovery()};});}
   async resolve(action:'archive-analysis'|'archive-sync'|'deliver'|'deliver-sync'|'recover'){return this.serial(async()=>{

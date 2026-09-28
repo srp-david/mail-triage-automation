@@ -11,6 +11,7 @@ import {sharedHistoryRoutes} from './shared-history-routes.js';
 import {sharedArchiveRoutes} from './shared-archive-routes.js';
 import {ApiError,contractVersion,uuid} from '../../../packages/contracts/src/v1.js';
 import {transaction} from './db.js';
+import {checkUpdate} from './updates.js';
 const bearer=(req:Request)=>{const token=/^Bearer (\S+)$/.exec(req.get('authorization')??'')?.[1];if(!token)throw new ApiError(401,'UNAUTHENTICATED');return token;};
 export function createUsernameApp(auth:UsernameAuth){
   const runs=new Runs(),sync=new SourceSync();
@@ -32,6 +33,7 @@ export function createUsernameApp(auth:UsernameAuth){
   app.post('/api/v1/admin/users',async(req,res)=>res.status(201).json(await auth.createUser(res.locals.actor,req.body)));
   app.post('/api/v1/admin/users/:id',async(req,res)=>res.json(await auth.updateUser(res.locals.actor,uuid.parse(req.params.id),req.body)));
   app.post('/api/v1/admin/users/:id/reset',async(req,res)=>res.json(await auth.resetPassword(res.locals.actor,uuid.parse(req.params.id))));
+  app.get('/api/v1/updates/check',(req,res)=>res.json(checkUpdate(req.query,res.locals.actor,process.env.UPDATE_CATALOG_JSON)));
   directoryRoutes(app,new Directory(auth.teamId));runRoutes(app,runs);syncRoutes(app,sync);sharedHistoryRoutes(app);sharedArchiveRoutes(app);
   return errors(app);
 }

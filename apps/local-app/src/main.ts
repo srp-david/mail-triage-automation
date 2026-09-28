@@ -11,6 +11,7 @@ import {LocalProfile} from './profile.js';
 import {localUiRoutes} from './ui-routes.js';
 import {LocalRuntime} from './runtime.js';
 import {LocalExecutor} from './executor.js';
+import {LocalUpdates} from './updates.js';
 import {shutdownLocal} from './shutdown.js';
 import {fileURLToPath} from 'node:url';
 import {z} from 'zod';
@@ -28,6 +29,8 @@ const profiles={...(settings.agents?.codex?{codex:{agent:'codex' as const,versio
 await validateEvidenceRoots(settings.evidenceRoots,root);const scratch=join(root,'scratch');await mkdir(scratch,{recursive:true});
 const executor=Object.keys(profiles).length?new LocalExecutor(scratch,profiles,()=>profile.selection(),settings.evidenceRoots):undefined;
 const runtime=new LocalRuntime(history,profile,session,secrets,receipts,executor);
+const installedVersion=await readFile(join(process.cwd(),'manifest.json'),'utf8').then(value=>JSON.parse(value).version as string).catch(()=>'0.0.0');
+const updates=new LocalUpdates(root,installedVersion,history,runtime);
 const release=await acquireInstance(join(root,'app.lock'));
 const port=settings.localPort;
 const controlToken=randomBytes(32).toString('base64url');await secrets.write('cli-control',{port,token:controlToken,pid:process.pid});
@@ -40,6 +43,12 @@ const server=createBrowserApp(session,{port,controlToken,shutdown,pause:()=>runt
   app.post('/api/admin/users/:id/reset',async(req,res)=>res.json(await history.request('/admin/users/'+z.string().uuid().parse(req.params.id)+'/reset',{})));
   localUiRoutes(app,history,{selection:()=>profile.selection(),registerSource:b=>profile.registerSource(b),registerRunner:b=>profile.registerRunner(b),configure:async b=>{await runtime.stop();return profile.configure(b);},status:async()=>({...await profile.status() as object,runtime:runtime.status()}),environment:()=>({mailConfigured:!!settings.mailMcpUrl,agents:(["codex","claude"] as const).filter(agent=>!!settings.agents?.[agent]),evidenceRootCount:Object.keys(settings.evidenceRoots).length,dbConfigured:false})});
   app.get('/api/runtime',async(_req,res)=>res.json(runtime.status()));
+  app.get('/api/updates',async(_req,res)=>res.json(await updates.check()));
+  app.post('/api/updates/install',async(req,res)=>{
+    const input=z.object({releaseId:z.string().max(80),assetSha256:z.string().regex(/^[a-f0-9]{64}$/)}).strict().parse(req.body);
+    const result=await updates.prepare(input);
+    res.once('finish',()=>{void shutdown().catch(()=>{});});res.status(202).json(result);
+  });
   app.post('/api/settings/reconnect/preview',async(req,res)=>{await runtime.stop();res.json(await profile.previewReconnect(req.body));});
   app.post('/api/settings/reconnect/apply',async(req,res)=>{await runtime.stop();res.json(await profile.applyReconnect(req.body));});
   app.post('/api/runtime/start',async(req,res)=>res.json(await runtime.start(z.object({kind:z.enum(['analysis','sync'])}).strict().parse(req.body).kind)));

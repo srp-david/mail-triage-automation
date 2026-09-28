@@ -92,6 +92,25 @@ test('browser login, password change and logout use real API and PostgreSQL', as
     servers.push(local);
     await new Promise<void>((r) => local.once('listening', r));
     const page = await scenarioBrowser.newPage();
+    let updateInstalls = 0;
+    await page.route('**/api/updates', (route) =>
+      route.fulfill({
+        json: {
+          status: 'offered',
+          update: {
+            releaseId: 'v0.3.0-candidate.8',
+            version: '0.3.0-candidate.8',
+            assetSha256: 'a'.repeat(64),
+            releaseNotesUrl:
+              'https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.0-candidate.8',
+          },
+        },
+      }),
+    );
+    await page.route('**/api/updates/install', (route) => {
+      updateInstalls += 1;
+      return route.fulfill({ status: 202, json: { accepted: true } });
+    });
     const ticket = await fetch(`http://127.0.0.1:${port}/api/browser-ticket`, {
       method: 'POST',
       headers: { authorization: 'Bearer ' + controlToken, 'x-local-client': '1' },
@@ -110,8 +129,12 @@ test('browser login, password change and logout use real API and PostgreSQL', as
     await page.getByLabel('비밀번호', { exact: true }).fill(password);
     await page.getByRole('button', { name: '로그인', exact: true }).click();
     await expect(page.getByRole('button', { name: '로그아웃', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '0.3.0-candidate.8 설치' })).toBeVisible();
+    await page.getByRole('button', { name: '0.3.0-candidate.8 설치' }).click();
+    expect(updateInstalls).toBe(1);
     const token = await session.token();
     expect((await auth.authenticate(token)).userId).toBe(user.id);
+    await page.locator('#notice').getByRole('button').click();
     await page.getByRole('button', { name: '로그아웃', exact: true }).click();
     await expect(page.getByRole('button', { name: '로그인', exact: true })).toBeVisible();
     await expect(auth.authenticate(token)).rejects.toThrow();
