@@ -1,5 +1,15 @@
 # 검증 기록
 
+## 2026-09-28 v0.3.10 공개 배포 완료
+
+- 사용자 승인으로 원격 main에 일반 push하고 배포 소스 `1b41326eb3676494256c76c095571a07d0ef2d9c`에 `v0.3.10` 태그를 게시했다. [Release](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.10)는 `draft=false`, `prerelease=false`. 기존 candidate 릴리스는 수정하지 않았다. 마지막 공개 태그 대비 누적 변경을 한국어 패치노트에 정리했다.
+- 직전 정적 검사·관련 28개 테스트 통과에 이어 전체 빌드, 설치/업데이트/자동 실행/트레이/UI 관련 22개 테스트를 통과했다. Docusaurus 문서를 다시 빌드해 3,999파일 패키지를 생성했다. 새 문서 빌드에서 Chrome 새 탭·검색·도표·하위 경로·모바일 검증을 통과했다. 외부 요청·CSP 위반 0.
+- Git 새 커밋 22개의 Gitleaks 검사 통과. 패키지 검사 99건은 모두 manifest의 실제 파일 SHA-256을 API 키로 오인한 것으로 파일별 해시를 재계산해 확인했고 미해결 탐지 0건이다. 개인 설정·메일 원문·서명 비밀키를 자산에 넣지 않았다.
+- 실제 EXE로 격리 폴더의 0.3.9→0.3.10 업그레이드, 설정·작업 파일·DPAPI 합성 저장소 보존, UI hash 대조, 문서/하위 경로/README 200, 비인증 업데이트 401, 정상 종료와 잠금 해제를 확인했다. 초기 테스트의 주소 입력 대기는 합성 설정을 설치 전에 준비해 해소했다. 개인 설치본은 교체하지 않았다.
+- 게시 자산 5개를 다시 다운로드해 로컬 및 GitHub digest와 전부 대조했다. EXE `63f28f7cdbd1b61809177f174fef49fd9c4bf2bae9db0ec77485794d28cdcef5`, ZIP `47a5fbb0dab2a9aa281a60bd60c0ac852169bf0959baa3ce16a57a9af1494aba`, metadata 파일 `99080115c04efce99322ac6bf2d344a679939043b295bda27830431cb9339871`. Ed25519 metadata 서명과 태그/sourceCommit 일치 확인. EXE Authenticode는 `NotSigned`, 패키지는 `releaseApproved=false`, catalog 채널은 `test`다.
+- 승인된 Supabase 프로젝트 `tborximfpwrzzwuazjrb`의 `UPDATE_CATALOG_JSON`만 갱신했다. catalog digest `82fffde99c9b36c191d5ec23d914432d2b91f8ccced59d1b9ee085a9aa8da4b4` 대조, health 200·비인증 업데이트 401 확인. 함수 재배포·DB migration·ERP 변경은 없다. 실계정 offered/current·앱 updater 설치와 2PC 업무 분석은 미검증이다.
+- 상세 증거는 `.runtime/release-0.3.10/`에 보존한다. 설치본 내장 문서는 배포 소스 시점이며 이 게시 완료 기록은 후속 문서 커밋이다.
+
 ## 2026-09-28 v0.3.7~v0.3.10 작업별 커밋 정리
 
 - 누적 변경을 로그인 복원, 설정 정리와 요청 시 자동 실행, 5초 알림, 팝업 UI, 설치본 기술 문서, 릴리스·운영 문서의 6개 커밋으로 분리했다. 여러 작업이 포함된 `App.tsx`는 변경 목적에 맞춰 나눠 스테이징했다.

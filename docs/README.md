@@ -28,7 +28,7 @@ slug: /
 | [로그인 유지와 자동 로그인](operations/login.md) | 30일 세션·토큰 갱신·Windows 저장 위치·종료/업데이트와 로그아웃·재로그인 조건 |
 | [기술 문서 사이트](guides/documentation.md) | Docusaurus 빌드·탐색·검색·도표 검증 |
 | [Windows 설치·사용](operations/windows.md) | 웹 설정·트레이·계정 UI, 자동 로그인, 업데이트, 자동 실행·알림·팝업 및 v0.3.10 내장 기술 문서 안내. 기존 candidate 설치 절차는 이력 |
-| [Release 업데이트](operations/releases.md) | candidate.10 GitHub prerelease·hosted catalog 갱신, 실계정 제공/설치 검증 대기. public→private·서명키 운영은 후속 결정 |
+| [Release 업데이트](operations/releases.md) | v0.3.10 공개 배포·테스트 채널 catalog, 실계정 제공/설치 검증 대기. 기존 candidate 보존·서명키 운영 안내 |
 | [Supabase 운영](operations/supabase.md) | 현재 공용 API·비공개 DB와 최초 계정·운영 절차 |
 | [팀 파일럿](operations/team-pilot.md) | 제한된 2명/2PC 수용과 피드백. 간편 배포 묶음은 미구현 |
 | [일반 Node 서버](operations/node-server.md) | 이후 자체 호스팅 코드 경로. 실제 AWS 배포 완료 아님 |
