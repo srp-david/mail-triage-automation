@@ -1,11 +1,12 @@
 import {spawn,type ChildProcessWithoutNullStreams} from 'node:child_process';
 import {controlRequest} from './control-client.js';
+import type {UpdateState} from '../../../packages/contracts/src/update-state.js';
 
-type TrayCommand='open'|'settings'|'pause'|'resume'|'quit';
-type TrayState={analysis:string;sync:string;canPause:boolean;canResume:boolean};
-const allowed=new Set(['open','settings','pause','resume','quit']);
+type TrayCommand='open'|'settings'|'updates'|'pause'|'resume'|'quit';
+type TrayState={analysis:string;sync:string;canPause:boolean;canResume:boolean;update?:UpdateState};
+const allowed=new Set(['open','settings','updates','pause','resume','quit']);
 const labels:Record<string,string>={stopped:'중지',idle:'대기',working:'작업 중',retrying:'재시도',recovery_required:'복구 필요'};
-export async function openLocalBrowser(control:{port:number;token:string;pid:number},page?:'settings'){
+export async function openLocalBrowser(control:{port:number;token:string;pid:number},page?:'settings'|'updates'){
   const {url}=await (await controlRequest(control,'/api/browser-ticket',page?{page}:{})).json();
   if(typeof url!=='string'||!/^http:\/\/127\.0\.0\.1:[0-9]{4,5}\/auth\/bootstrap\?ticket=[A-Za-z0-9_-]{43}$/.test(url))throw new Error('INVALID_BOOTSTRAP');
   await new Promise<void>((resolve,reject)=>{
@@ -19,6 +20,7 @@ export class WindowsTray {
   private closed=false;
   private busy=false;
   private restarts=0;
+  private notified?:string;
   constructor(private executable:string,private state:()=>TrayState,private action:(command:TrayCommand)=>Promise<unknown>,private launch=(file:string)=>spawn(file,[],{windowsHide:true,stdio:['pipe','pipe','pipe']})){}
   start(){
     if(this.closed||this.child)return;
@@ -38,7 +40,11 @@ export class WindowsTray {
     this.update();this.timer=setInterval(()=>this.update(),1000);this.timer.unref();
   }
   private send(value:object){if(!this.closed&&this.child?.stdin.writable)this.child.stdin.write(JSON.stringify(value)+'\n');}
-  private update(message?:string){const s=this.state();this.send({label:`분석 ${labels[s.analysis]??'확인 필요'} · 동기화 ${labels[s.sync]??'확인 필요'}`,canPause:s.canPause,canResume:s.canResume,busy:this.busy,...(message?{message}:{})});}
+  private update(message?:string){const s=this.state(),u=s.update;
+    const available=u?.status==='offered'&&u.phase==='idle'&&!u.deferred;
+    if(available&&u.update&&this.notified!==u.update.releaseId){this.notified=u.update.releaseId;message??=`새 버전 ${u.update.version}이 있습니다. 업데이트 확인 메뉴에서 설치할 수 있습니다.`;}
+    this.send({label:`분석 ${labels[s.analysis]??'확인 필요'} · 동기화 ${labels[s.sync]??'확인 필요'}`,canPause:s.canPause,canResume:s.canResume,busy:this.busy,
+      updateLabel:available?`새 버전 ${u.update?.version} · 업데이트 확인`:u?.phase==='checking'?'업데이트 확인 중':u?.phase==='error'?'업데이트 확인 필요':u&&['downloading','verifying','waiting','installing'].includes(u.phase)?'업데이트 진행 중':'업데이트 확인',...(message?{message}:{})});}
   private async perform(command:TrayCommand){
     this.busy=true;this.update();
     try{await this.action(command);}

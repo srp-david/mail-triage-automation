@@ -45,6 +45,8 @@ test('tray resume needs local capability and settings tickets allow only a fixed
     const ticket=await (await controlRequest(control,'/api/browser-ticket',{page:'settings'})).json();
     const response=await fetch(ticket.url,{redirect:'manual'});assert.equal(response.status,302);assert.equal(response.headers.get('location'),'/#settings');
     assert.equal((await fetch(ticket.url,{redirect:'manual'})).status,401);
+    const updateTicket=await (await controlRequest(control,'/api/browser-ticket',{page:'updates'})).json();
+    assert.equal((await fetch(updateTicket.url,{redirect:'manual'})).headers.get('location'),'/#updates');
   }finally{server.closeAllConnections();await new Promise<void>(r=>server.close(()=>r()));}
 });
 test('shutdown releases a stopped app lock even when credential cleanup fails',async()=>{

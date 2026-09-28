@@ -21,7 +21,9 @@ internal static class TrayTest {
                 Check(((NotifyIcon)Field(context,"icon")).Visible,"visible");
                 Check(((ToolStripMenuItem)Field(context,"pause")).Enabled,"pause enabled");
                 Check(!((ToolStripMenuItem)Field(context,"resume")).Enabled,"resume disabled");
-                foreach(string name in new[]{"open","settings","pause","resume","quit"}) {
+                state.updateLabel="new update";apply.Invoke(context,new object[]{state});
+                Check(((ToolStripMenuItem)Field(context,"updates")).Text=="new update","update label");
+                foreach(string name in new[]{"open","settings","updates","pause","resume","quit"}) {
                     state.canResume=true;apply.Invoke(context,new object[]{state});((ToolStripMenuItem)Field(context,name)).PerformClick();
                     Check(!((ToolStripMenuItem)Field(context,"quit")).Enabled,"busy disabled");
                 }
@@ -44,7 +46,7 @@ $process=[Diagnostics.Process]::Start($start)
 try {
     if(-not $process.WaitForExit(15000)) { $process.Kill();throw 'TRAY_TEST_TIMEOUT' }
     $actual=$process.StandardOutput.ReadToEnd().Trim();$errors=$process.StandardError.ReadToEnd()
-    if($process.ExitCode -ne 0 -or ($actual -replace "`r",'') -ne "ready`nopen`nsettings`npause`nresume`nquit`nnative-menu-passed"){throw "TRAY_MENU_TEST_FAILED $actual $errors"}
+    if($process.ExitCode -ne 0 -or ($actual -replace "`r",'') -ne "ready`nopen`nsettings`nupdates`npause`nresume`nquit`nnative-menu-passed"){throw "TRAY_MENU_TEST_FAILED $actual $errors"}
 }finally{$process.Dispose()}
 $start.FileName=Join-Path $output 'mail-triage-tray.exe'
 $process=[Diagnostics.Process]::Start($start)

@@ -12,6 +12,7 @@ import {localUiRoutes} from './ui-routes.js';
 import {LocalRuntime} from './runtime.js';
 import {LocalExecutor} from './executor.js';
 import {LocalUpdates} from './updates.js';
+import {updateRoutes} from './update-routes.js';
 import {shutdownLocal} from './shutdown.js';
 import {fileURLToPath} from 'node:url';
 import {z} from 'zod';
@@ -42,8 +43,8 @@ const port=settings.localPort;
 const controlToken=randomBytes(32).toString('base64url');await secrets.write('cli-control',{port,token:controlToken,pid:process.pid});
 let stopping:Promise<void>|undefined;
 let tray:WindowsTray|undefined;
-const shutdown=()=>stopping??=(async()=>{const result=await shutdownLocal({stop:async()=>{await runtime.stop();await tray?.close();},close:()=>new Promise<void>(r=>{server.close(()=>r());server.closeIdleConnections();}),clear:()=>secrets.write('cli-control',{stopped:true}),release});if(!result.ok){console.error('LOCAL_SHUTDOWN_INCOMPLETE');process.exitCode=1;}})();
-const server=createBrowserApp(session,{port,controlToken,shutdown,pause:()=>runtime.pause(),resume:()=>runtime.resume(),beforeLogout:()=>runtime.stop(),features:app=>{
+const shutdown=()=>stopping??=(async()=>{updates.stop();const result=await shutdownLocal({stop:async()=>{await runtime.stop();await tray?.close();},close:()=>new Promise<void>(r=>{server.close(()=>r());server.closeIdleConnections();}),clear:()=>secrets.write('cli-control',{stopped:true}),release});if(!result.ok){console.error('LOCAL_SHUTDOWN_INCOMPLETE');process.exitCode=1;}})();
+const server=createBrowserApp(session,{port,controlToken,shutdown,pause:()=>runtime.pause(),resume:()=>runtime.resume(),beforeLogout:async()=>{updates.reset();await runtime.stop();},afterLogin:()=>{void updates.check();},features:app=>{
   connectionRoutes(app,new ConnectionStore(root),async(value,persist)=>runtime.reconfigure(async()=>{
     const executor=makeExecutor(value);await profile.changeEndpoint(value.mailMcpUrl,persist);connections=value;return executor;
   }));
@@ -54,12 +55,7 @@ const server=createBrowserApp(session,{port,controlToken,shutdown,pause:()=>runt
   localUiRoutes(app,history,{selection:()=>profile.selection(),registerSource:b=>profile.registerSource(b),registerRunner:b=>profile.registerRunner(b),configure:async b=>{await runtime.stop();return profile.configure(b);},status:async()=>({...await profile.status() as object,runtime:runtime.status()}),environment:()=>({connectionsEditable:true,mailConfigured:!!connections.mailMcpUrl,agents:(["codex","claude"] as const).filter(agent=>!!connections.agents[agent]),evidenceRootCount:Object.keys(connections.evidenceRoots).length,dbConfigured:!!connections.dbMcpUrl})});
   app.get('/api/runtime',async(_req,res)=>res.json(runtime.status()));
   app.post('/api/reports/:id/questions',async(req,res)=>res.json(await runtime.askReport(z.string().uuid().parse(req.params.id),req.body)));
-  app.get('/api/updates',async(_req,res)=>res.json(await updates.check()));
-  app.post('/api/updates/install',async(req,res)=>{
-    const input=z.object({releaseId:z.string().max(80),assetSha256:z.string().regex(/^[a-f0-9]{64}$/)}).strict().parse(req.body);
-    const result=await updates.prepare(input);
-    res.once('finish',()=>{void shutdown().catch(()=>{});});res.status(202).json(result);
-  });
+  updateRoutes(app,updates,shutdown);
   app.post('/api/settings/reconnect/preview',async(req,res)=>{await runtime.stop();res.json(await profile.previewReconnect(req.body));});
   app.post('/api/settings/reconnect/apply',async(req,res)=>{await runtime.stop();res.json(await profile.applyReconnect(req.body));});
   app.post('/api/runtime/start',async(req,res)=>res.json(await runtime.start(z.object({kind:z.enum(['analysis','sync'])}).strict().parse(req.body).kind)));
@@ -68,13 +64,15 @@ const server=createBrowserApp(session,{port,controlToken,shutdown,pause:()=>runt
   app.post('/api/runtime/recovery',async(req,res)=>res.json(await runtime.resolve(z.object({action:z.enum(['archive-analysis','archive-sync','deliver','deliver-sync','recover'])}).strict().parse(req.body).action)));
 },staticRoot:fileURLToPath(new URL('../../../../public/',import.meta.url))}).listen(port,'127.0.0.1');
 server.once('listening',()=>{void (async()=>{
+  updates.start();
   if(process.platform!=='win32'||process.env.TRIAGE_DISABLE_TRAY==='1')return;
   const executable=join(process.cwd(),'installer','mail-triage-tray.exe');
   try{await access(executable);}catch{return;}
   if(stopping)return;
-  tray=new WindowsTray(executable,()=>runtime.trayStatus(),async command=>{
+  tray=new WindowsTray(executable,()=>({...runtime.trayStatus(),update:updates.snapshot()}),async command=>{
     if(command==='open'||command==='settings')return openLocalBrowser({port,token:controlToken,pid:process.pid},command==='settings'?'settings':undefined);
     if(command==='pause')return runtime.pause();if(command==='resume')return runtime.resume();
+    if(command==='updates'){void updates.check(true);return openLocalBrowser({port,token:controlToken,pid:process.pid},'updates');}
     return shutdown();
   });tray.start();
 })().catch(()=>console.error('TRAY_START_FAILED'));});

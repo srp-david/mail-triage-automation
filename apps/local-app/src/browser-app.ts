@@ -9,7 +9,7 @@ import type {LocalSession} from './session.js';
 const random=()=>randomBytes(32).toString('base64url');
 const same=(a:string,b:string)=>{const first=Buffer.from(a),second=Buffer.from(b);return first.length===second.length&&timingSafeEqual(first,second);};
 const cookie=(req:express.Request,name:string)=>(req.headers.cookie??'').split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='))?.slice(name.length+1)??'';
-export function createBrowserApp(session:LocalSession,options:{port:number;features?:(app:express.Express)=>void;staticRoot?:string;beforeLogout?:()=>Promise<unknown>;controlToken?:string;shutdown?:()=>Promise<unknown>;pause?:()=>Promise<unknown>;resume?:()=>Promise<unknown>}){
+export function createBrowserApp(session:LocalSession,options:{port:number;features?:(app:express.Express)=>void;staticRoot?:string;beforeLogout?:()=>Promise<unknown>;afterLogin?:()=>void;controlToken?:string;shutdown?:()=>Promise<unknown>;pause?:()=>Promise<unknown>;resume?:()=>Promise<unknown>}){
   if(options.controlToken&&options.controlToken.length<32)throw new Error('STRONG_CONTROL_TOKEN_REQUIRED');
   const app=express(),origin=`http://127.0.0.1:${options.port}`;
   let browser=random(),csrf=random(),loginCookie='',sessionExpires=Date.now()+8*3600000;
@@ -36,8 +36,8 @@ export function createBrowserApp(session:LocalSession,options:{port:number;featu
   // The DPAPI-authorized launcher can bootstrap before company login. Loopback alone is not an identity.
   app.post('/api/browser-ticket',(req,res)=>{
     if(!cli(req))throw new ApiError(401,'LOCAL_SESSION_REQUIRED');
-    if(req.body?.page!==undefined&&req.body.page!=='settings')throw new ApiError(400,'INVALID_BROWSER_PAGE');
-    ticketPath=req.body?.page==='settings'?'/#settings':'/';
+    if(req.body?.page!==undefined&&!['settings','updates'].includes(req.body.page))throw new ApiError(400,'INVALID_BROWSER_PAGE');
+    ticketPath=req.body?.page==='updates'?'/#updates':req.body?.page==='settings'?'/#settings':'/';
     ticket=random();ticketExpires=Date.now()+60000;res.json({url:origin+'/auth/bootstrap?ticket='+ticket});
   });
   app.post('/api/app-stop',(req,res)=>{
@@ -64,14 +64,14 @@ export function createBrowserApp(session:LocalSession,options:{port:number;featu
   });
   app.post('/auth/login',async(req,res)=>{
     if(req.get('origin')!==origin||!same(cookie(req,'triage-local'),browser)||!same(req.get('x-csrf-token')??'',csrf))throw new ApiError(403,'CSRF_REQUIRED');
-    if(session.usernameMode){await options.beforeLogout?.();await session.credentials(req.body);rotate();setCookie(res);res.json({ok:true});return;}
+    if(session.usernameMode){await options.beforeLogout?.();await session.credentials(req.body);options.afterLogin?.();rotate();setCookie(res);res.json({ok:true});return;}
     loginCookie=random();res.cookie('triage-login',loginCookie,{httpOnly:true,sameSite:'lax',path:'/auth',maxAge:300000});res.json({url:session.begin()});
   });
   app.get('/auth/callback',async(req,res)=>{
     if(session.usernameMode)throw new ApiError(401,'LEGACY_AUTH_DISABLED');
     const expected=loginCookie;loginCookie='';res.clearCookie('triage-login',{path:'/auth'});
     if(!expected||!same(cookie(req,'triage-login'),expected))throw new ApiError(401,'INVALID_OIDC_CALLBACK');
-    try{await session.accept(new URL(req.originalUrl,origin));rotate();setCookie(res);res.redirect('/');}
+    try{await session.accept(new URL(req.originalUrl,origin));options.afterLogin?.();rotate();setCookie(res);res.redirect('/');}
     catch{res.redirect('/?login=failed');}
   });
   app.use('/api',async(req,_res,next)=>{
