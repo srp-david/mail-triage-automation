@@ -5,6 +5,7 @@ import {Scheduler} from '../../../packages/runner/src/scheduler.js';
 import type {HistoryClient} from '../../../packages/history-client/src/index.js';
 import type {LocalSession} from './session.js';
 import type {LocalProfile} from './profile.js';
+import {askReport} from './report-questions.js';
 export class LocalRuntime {
   private loops=new Map<string,Scheduler>();
   private runner?:Runner;
@@ -14,6 +15,8 @@ export class LocalRuntime {
   private drained=false;
   private pausedKinds:('analysis'|'sync')[]=[];
   private pausedKey?:string;
+  private reportController?:AbortController;
+  private reportWork?:Promise<unknown>;
   constructor(private history:HistoryClient,private profile:LocalProfile,private session:LocalSession,private secrets:ReceiptStore,private receipts:ReceiptStore,private executor?:Executor){}
   private serial<T>(fn:()=>Promise<T>){const next=this.chain.then(fn,fn);this.chain=next.catch(()=>{});return next;}
   private async initialize(){
@@ -42,7 +45,18 @@ export class LocalRuntime {
     this.key=key;
   }
   async start(kind:'analysis'|'sync'){return this.serial(async()=>{if(this.drained)throw new ApiError(409,'UPDATE_IN_PROGRESS');if(kind==='analysis'&&!this.executor)throw new ApiError(409,'ADAPTER_NOT_RELEASE_APPROVED');await this.initialize();const loop=this.loops.get(kind)!;if(loop.state==='recovery_required')await loop.stop();const started=loop.start();this.pausedKinds=this.pausedKinds.filter(value=>value!==kind);if(!this.pausedKinds.length)this.pausedKey=undefined;return {ok:true,started,state:loop.state};});}
-  private async stopLoops(){await Promise.all([...this.loops.values()].map(s=>s.stop()));}
+  private async stopLoops(){this.reportController?.abort(new Error('APP_STOPPED'));await Promise.all([...this.loops.values()].map(s=>s.stop()));await this.reportWork?.catch(()=>{});}
+  async askReport(id:string,input:unknown){
+    if(this.drained)throw new ApiError(409,'UPDATE_IN_PROGRESS');if(this.reportController)throw new ApiError(409,'REPORT_AGENT_BUSY');
+    if(!this.executor)throw new ApiError(409,'AGENT_NOT_CONFIGURED');
+    const controller=new AbortController();this.reportController=controller;
+    this.reportWork=(async()=>{const actor=await this.session.identity(),selected=await this.profile.selection();
+      if(!selected.runnerId)throw new ApiError(409,'RUNNER_REQUIRED');const device=await this.secrets.read('device-'+selected.runnerId);
+      if(device.userId!==actor.userId||device.id!==selected.runnerId)throw new ApiError(403,'RUNNER_DENIED');
+      return askReport(this.history,this.receipts,this.executor!,actor.userId,selected.runnerId,device.credential,id,input,AbortSignal.any([controller.signal,AbortSignal.timeout(540000)]));
+    })();
+    try{return await this.reportWork;}finally{this.reportController=undefined;this.reportWork=undefined;}
+  }
   async stop(){return this.serial(async()=>{this.pausedKinds=[];this.pausedKey=undefined;await this.stopLoops();return {ok:true};});}
   async pause(){return this.serial(async()=>{
     if(this.drained)throw new ApiError(409,'UPDATE_IN_PROGRESS');
@@ -61,10 +75,10 @@ export class LocalRuntime {
   });}
   async reconfigure(apply:()=>Promise<Executor|undefined>){return this.serial(async()=>{
     if(this.drained)throw new ApiError(409,'UPDATE_IN_PROGRESS');
-    if([...this.loops.values()].some(loop=>loop.state==='working'))throw new ApiError(409,'CONNECTION_WORK_IN_PROGRESS');
+    if(this.reportController||[...this.loops.values()].some(loop=>loop.state==='working'))throw new ApiError(409,'CONNECTION_WORK_IN_PROGRESS');
     await this.stopLoops();this.executor=await apply();this.pausedKinds=[];this.pausedKey=undefined;this.key=undefined;this.runner=undefined;this.sync=undefined;this.loops.clear();
   });}
-  async drain(){return this.serial(async()=>{this.drained=true;await Promise.all([...this.loops.values()].map(s=>s.drain()));return {ok:true};});}
+  async drain(){return this.serial(async()=>{this.drained=true;this.reportController?.abort(new Error('APP_STOPPED'));await this.reportWork?.catch(()=>{});await Promise.all([...this.loops.values()].map(s=>s.drain()));return {ok:true};});}
   releaseDrain(){this.drained=false;}
   status(){return {analysis:this.loops.get('analysis')?.state??'stopped',sync:this.loops.get('sync')?.state??'stopped',analysisAvailable:!!this.executor};}
   trayStatus(){const status=this.status();return {...status,canPause:!this.drained&&[status.analysis,status.sync].some(value=>['working','idle','retrying'].includes(value)),canResume:!this.drained&&this.pausedKinds.length>0};}

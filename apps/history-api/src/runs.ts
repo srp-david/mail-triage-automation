@@ -66,6 +66,9 @@ export class Runs {
       const count=(await c.query(`SELECT count(*)::int AS total,count(*) FILTER(WHERE v.target_runner_id=$1)::int AS owned
         FROM analysis_run a JOIN v1_run v ON v.run_id=a.id JOIN source s ON s.id=v.source_id WHERE a.status='running' AND s.team_id=$2`,[runnerId,m.team_id])).rows[0];
       if(count.owned||count.total>=2)return null;
+      await c.query("UPDATE report_question_job SET status='failed' WHERE status='running' AND expires_at<=now()");
+      const chats=(await c.query("SELECT count(*)::int AS total,count(*) FILTER(WHERE q.runner_id=$1)::int AS owned FROM report_question_job q JOIN membership m ON m.user_id=q.requested_by AND m.active WHERE q.status='running' AND m.team_id=$2",[runnerId,m.team_id])).rows[0];
+      if(chats.owned||count.total+chats.total>=2)return null;
       job=(await c.query(`SELECT a.*,v.* FROM analysis_run a JOIN v1_run v ON v.run_id=a.id JOIN source s ON s.id=v.source_id
         LEFT JOIN source_access acl ON acl.source_id=s.id AND acl.user_id=$2
         WHERE a.status='queued' AND v.target_runner_id=$1 AND s.active AND s.team_id=$3 AND (s.owner_user_id=$2 OR acl.can_write)

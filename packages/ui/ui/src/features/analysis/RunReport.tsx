@@ -9,6 +9,7 @@ import { MarkdownView } from '../../components/Documents';
 import { RunProgress } from './RunProgress';
 import { RelatedMails } from './RelatedMails';
 import { ReportSharing } from './SharedReports';
+import { ReportCollaboration } from './ReportCollaboration';
 import { readDraft, saveDraft } from '../../../../../../public/answer-drafts.js';
 export interface ReportHandle {
   refresh: () => Promise<unknown>;
@@ -192,7 +193,11 @@ export const RunReport = forwardRef<
       {r.result && (
         <>
           {r.collaboration && <ReportSharing id={r.id} />}
-          <MarkdownView value={r.result.report} label="보고서" />
+          {r.collaboration ? (
+            <ReportCollaboration key={r.id} id={r.id} />
+          ) : (
+            <MarkdownView value={r.result.report} label="보고서" />
+          )}
           {r.result.knowledge && (
             <>
               <Typography component="h3" variant="h3">

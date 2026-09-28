@@ -24,6 +24,16 @@ export function createApi(unauthorized: () => void, csrf: () => string = () => '
     const value = await response.json();
     if (!response.ok) {
       const messages: Record<string, string> = {
+        REPORT_VERSION_CONFLICT:
+          '다른 사용자가 먼저 저장했습니다. 초안을 유지한 채 최신 버전과 비교해 주세요.',
+        REPORT_AGENT_BUSY:
+          '이 실행 장치 또는 팀에서 분석 중입니다. 기존 작업 완료 후 다시 시도하세요.',
+        QUESTION_EXECUTION_UNCERTAIN:
+          '이 질문의 실행이 끝났거나 실행 여부가 불확실합니다. 대화 기록을 확인하고 필요한 경우 새 요청으로 준비하세요.',
+        QUESTION_EXPIRED:
+          '질문 실행 기한이 지났습니다. 대화 기록을 확인한 뒤 새 요청으로 준비하세요.',
+        AGENT_NOT_CONFIGURED:
+          '선택한 AI가 연결되지 않았습니다. 연결 환경에서 실행 경로를 설정하세요.',
         COMMON_MAIL_BUSY:
           '다른 사용자가 같은 메일을 분석 중입니다. 잠시 후 공유 분석을 다시 확인하세요.',
         COMMON_MAIL_IDENTITY_CHANGED:

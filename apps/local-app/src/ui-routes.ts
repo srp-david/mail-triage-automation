@@ -32,6 +32,10 @@ export function localUiRoutes(app:express.Express,h:HistoryClient,context:LocalU
   const threadCache=new ThreadSearchCache<Awaited<ReturnType<typeof scanThreadMails>>>();
   const summaries=(sourceId:string,ids:number[])=>h.request<any[]>('/sources/'+sourceId+'/mail-analysis',{mailIds:ids}).then(x=>x??[]);
   app.get('/api/reports/:id',async(req,res)=>res.json(await h.request('/reports/'+uuid.parse(req.params.id))));
+  app.get('/api/reports/:id/collaboration',async(req,res)=>res.json(await h.request('/reports/'+uuid.parse(req.params.id)+'/collaboration')));
+  app.get('/api/reports/:id/revisions/:version',async(req,res)=>res.json(await h.request('/reports/'+uuid.parse(req.params.id)+'/revisions/'+number.parse(req.params.version))));
+  for(const action of ['messages','revisions'])app.post('/api/reports/:id/'+action,async(req,res)=>res.json(await h.request('/reports/'+uuid.parse(req.params.id)+'/'+action,req.body)));
+  app.get('/api/reports/:id/export',async(req,res)=>{const body=await h.request<string>('/reports/'+uuid.parse(req.params.id)+'/export',undefined,undefined,{text:true});res.set('X-Report-SHA256',createHash('sha256').update(body!).digest('hex')).type('text/markdown').send(body);});
   app.post('/api/reports/:id/share',async(req,res)=>res.json(await h.request('/reports/'+uuid.parse(req.params.id)+'/share',req.body)));
   app.post('/api/mails/:id/shared-reports',async(req,res)=>{
     const s=await context.selection(),mailId=number.parse(req.params.id),raw=await original(s).call('get_email',{id:mailId,body_limit:1});identity(raw,{id:mailId});

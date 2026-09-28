@@ -22,3 +22,11 @@
 공통 메일 식별자를 가진 queued/running 실행은 팀 내 하나만 허용한다. 요청 중복은 기존 requestId 계약을 유지하고, 다른 요청의 경합은 COMMON_MAIL_BUSY로 거절한다. PostgreSQL 부분 unique index와 기존 트랜잭션 잠금으로 보장한다. 식별 헤더가 부족한 메일은 기존 source별 제한만 적용된다. 처리 완료는 사용자별로 저장한다.
 
 검증: 식별 unit 2건, 공용 협업/기존 실행 통합 13건, local UI/계약 3건 및 check 통과. 합성 자료와 임시 PostgreSQL 기준이며 hosted 배포 증거는 아니다.
+
+## 보고서 협업
+
+보고서마다 불변 revision을 만들고 현재 head를 관리한다. 최초 분석은 v1이며 수정본은 v2부터 시작한다. 보고서 수정 요청에 expectedVersion, requestId, 변경 내용, 근거를 포함한다. 최신 head가 다르면 409 REPORT_VERSION_CONFLICT를 반환한다. UI는 초안과 기준 버전을 sessionStorage에 보관하며 최신 내용과 비교 후 명시적으로 기준을 변경한다. 동일 요청 재전송은 이미 저장한 버전을 반환한다. 최신 export와 최초 분석 원본 export는 별도로 제공한다.
+
+질문·추가 조사·결정·미확정 사항·회신 초안을 공용 대화로 저장한다. 개인 Agent 질문은 기준 보고서와 최근 30개 대화의 snapshot을 사용하고 원본 메일을 조회하지 않는다. 사용자가 허용한 경우에만 설정된 로컬 읽기 자료와 DB 도구를 제공한다. AI 답변은 대화에만 추가하며 보고서 반영은 명시적 편집 저장이다. 질문 작업은 실행 장치당 하나, 기존 분석과 합산하여 팀당 두 개로 제한한다. 10분 실행 기한, DPAPI outbox와 요청 대조를 사용하며 불확실한 실행을 자동 반복하지 않는다.
+
+검증: 전체 unit/UI/격리 PostgreSQL 163건, check/build/Edge bundle 통과. 로컬 Supabase Edge의 migration 재실행·runtime grants·인증·Runner·복원 11군 통과. 실제 개인 AI 및 타 PC의 사용 검증은 수행하지 않았다.

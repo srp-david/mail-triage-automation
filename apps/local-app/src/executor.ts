@@ -9,6 +9,13 @@ export class LocalExecutor implements Executor {
   constructor(private workRoot:string,private profiles:Partial<Record<'codex'|'claude',Profile>>,private selection:()=>Promise<LocalSelection>,private roots:EvidenceProviders['roots'],private queries:EvidenceProviders['queries']={},private make=(p:Profile)=>new AgentAdapter(p)){}
   async execute(run:any,signal:AbortSignal,progress?:(event:RunnerProgress)=>Promise<void>){
     const profile=this.profiles[run.agent as 'codex'|'claude'];if(!profile||profile.agent!==run.agent)throw new ApiError(409,'AGENT_NOT_CONFIGURED');
+    if(run.reportOnly){
+      const directory=await mkdtemp(join(this.workRoot,'report-')),adapter=this.make(profile);
+      try{await adapter.prepare(directory);const {result}=await adapter.executeEvidence({directory,
+        providers:{mail:async()=>{throw new ApiError(409,'ORIGINAL_UNAVAILABLE');},context:async()=>({question:run.answer,...run.reportContext,originalAvailable:false}),roots:run.allowEvidence?this.roots:{},queries:run.allowEvidence?this.queries:{}},
+        instruction:JSON.stringify({task:'저장 보고서와 대화를 읽고 사용자 질문에 답한다. 원본 메일은 제공되지 않는다. 새 근거를 확인하지 않았다면 명확히 밝힌다. 보고서를 수정하지 않고 답변과 반영 제안을 작성한다. ERP 쓰기와 메일 변경 금지.',question:run.answer,allowEvidence:run.allowEvidence})},signal);return result;}
+      finally{await rm(directory,{recursive:true,force:true});}
+    }
     const source=async()=>{signal.throwIfAborted();const selected=await this.selection();if(selected.sourceId!==run.sourceId||!selected.original)throw new ApiError(409,'SOURCE_CHANGED');return selected.original;};
     const mail=async()=>{const value=await (await source()).full(run.mailId);signal.throwIfAborted();if(Number(value.id)!==Number(run.mailId)||(value.messageId??null)!==run.messageId)throw new ApiError(409,'MAIL_IDENTITY_CHANGED');return value;};
     // Check identity before any AI process starts, then again on each evidence request.

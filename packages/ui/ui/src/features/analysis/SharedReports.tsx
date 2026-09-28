@@ -3,7 +3,7 @@ import { Button, Dialog, DialogContent, DialogTitle } from '@mui/material';
 import { useSession } from '../../api/client';
 import { useResource } from '../../hooks/async';
 import { Action } from '../../components/Common';
-import { MarkdownView } from '../../components/Documents';
+import { ReportCollaboration } from './ReportCollaboration';
 import { date } from '../../api/types';
 
 export type SharedReport = {
@@ -30,7 +30,7 @@ export function SharedReportView({ id }: { id: string }) {
       <p>
         {r.author} · {date(r.createdAt)}
       </p>
-      <MarkdownView value={r.report} label="공유 보고서" />
+      <ReportCollaboration id={id} />
     </>
   );
 }

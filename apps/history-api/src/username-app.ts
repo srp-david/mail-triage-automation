@@ -17,7 +17,7 @@ const bearer=(req:Request)=>{const token=/^Bearer (\S+)$/.exec(req.get('authoriz
 export function createUsernameApp(auth:UsernameAuth){
   const runs=new Runs(),sync=new SourceSync();
   const app=createHistoryApp(runs,t=>auth.authenticate(t),app=>{
-    app.get('/health/ready',async(_req,res)=>{try{await transaction(c=>c.query("SELECT 1 FROM schema_migration WHERE id='005_username_auth.sql'").then(r=>{if(!r.rowCount)throw new Error('SCHEMA_NOT_READY');}));res.json({ok:true});}catch{res.status(503).json({ok:false});}});
+    app.get('/health/ready',async(_req,res)=>{try{await transaction(c=>c.query("SELECT 1 FROM schema_migration WHERE id='009_report_questions.sql'").then(r=>{if(!r.rowCount)throw new Error('SCHEMA_NOT_READY');}));res.json({ok:true});}catch{res.status(503).json({ok:false});}});
     app.use('/auth',(req,res,next)=>{
       res.set('Cache-Control','no-store');
       if(req.get('origin')||req.get('sec-fetch-site')==='cross-site')throw new ApiError(403,'BROWSER_ACCESS_DENIED');

@@ -53,6 +53,7 @@ const server=createBrowserApp(session,{port,controlToken,shutdown,pause:()=>runt
   app.post('/api/admin/users/:id/reset',async(req,res)=>res.json(await history.request('/admin/users/'+z.string().uuid().parse(req.params.id)+'/reset',{})));
   localUiRoutes(app,history,{selection:()=>profile.selection(),registerSource:b=>profile.registerSource(b),registerRunner:b=>profile.registerRunner(b),configure:async b=>{await runtime.stop();return profile.configure(b);},status:async()=>({...await profile.status() as object,runtime:runtime.status()}),environment:()=>({connectionsEditable:true,mailConfigured:!!connections.mailMcpUrl,agents:(["codex","claude"] as const).filter(agent=>!!connections.agents[agent]),evidenceRootCount:Object.keys(connections.evidenceRoots).length,dbConfigured:!!connections.dbMcpUrl})});
   app.get('/api/runtime',async(_req,res)=>res.json(runtime.status()));
+  app.post('/api/reports/:id/questions',async(req,res)=>res.json(await runtime.askReport(z.string().uuid().parse(req.params.id),req.body)));
   app.get('/api/updates',async(_req,res)=>res.json(await updates.check()));
   app.post('/api/updates/install',async(req,res)=>{
     const input=z.object({releaseId:z.string().max(80),assetSha256:z.string().regex(/^[a-f0-9]{64}$/)}).strict().parse(req.body);

@@ -16,3 +16,12 @@ test('local executor rejects stale mail before agent start, revalidates reads an
     await assert.rejects(executor.execute({...run,agent:'claude'},new AbortController().signal),/AGENT_NOT_CONFIGURED/);
   }finally{await rm(root,{recursive:true,force:true});}
 });
+test('report-only question works without MCP and requires explicit evidence opt-in',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'report-executor-'));
+ const factory:any=()=>({prepare:async()=>{},executeEvidence:async(task:any)=>{
+   await assert.rejects(task.providers.mail(),/ORIGINAL_UNAVAILABLE/);assert.deepEqual(task.providers.roots,{});assert.deepEqual(task.providers.queries,{});
+   assert.equal((await task.providers.context()).report,'Frozen version');return {result:{report:'Answer'}};
+ }});
+ const executor=new LocalExecutor(root,{codex:{agent:'codex',command:{executable:'unused'}}},async()=>{throw Error('Must not access MCP');},{privateRoot:'unused'},undefined,factory);
+ try{assert.deepEqual(await executor.execute({reportOnly:true,agent:'codex',reportContext:{report:'Frozen version'},answer:'Question',allowEvidence:false},new AbortController().signal),{report:'Answer'});assert.deepEqual(await readdir(root),[]);}finally{await rm(root,{recursive:true,force:true});}
+});
