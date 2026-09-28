@@ -4,7 +4,7 @@
 
 ## 1. 목표와 현재 우선순위
 
-2026-09-28 신규 설치 피드백: v0.3.11에서 공용 API·issuer 입력을 제거하고 공개 서비스 기본값을 자동 저장한다. 기존 설정 파일은 덮어쓰지 않는다. 빈 설치 위치에서 입력 없이 설치·로그인 화면 진입과 기존 사용자 설정 보존을 실제 EXE로 확인한다.
+2026-09-28 신규 설치 피드백: v0.3.11에서 공용 API·issuer 입력을 제거하고 공개 서비스 기본값을 자동 저장한다. 기존 설정 파일은 덮어쓰지 않는다. 빈 설치 위치에서 입력 없이 설치·로그인 화면 진입과 기존 사용자 설정 보존을 실제 EXE로 확인했고 [v0.3.11](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.11) 공개 및 catalog 갱신을 완료했다.
 
 2026-09-28 배포 완료: 작업별 커밋을 원격 main에 push하고 [v0.3.10](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.10)을 숫자 버전의 일반 Release로 게시했다. 설치 EXE·ZIP·체크섬·서명 metadata 검증과 hosted 테스트 채널 catalog 갱신 완료. 배포 소스는 `1b41326eb3676494256c76c095571a07d0ef2d9c`. 다음 수용 작업은 개인 연결과 실메일 분석, 실계정 앱 업데이트, 2PC 검증이며 stable 승인과는 구분한다.
 

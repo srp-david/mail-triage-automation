@@ -1,5 +1,14 @@
 # 검증 기록
 
+## 2026-09-28 v0.3.11 신규 설치 자동 설정·배포
+
+- `WriteFirstSettings`의 콘솔 입력을 제거하고 공개 API·issuer 기본값을 저장한다. 기존 설정 존재 검사는 유지한다. 배포 소스 `87be9a0aff916c0e35cba7a5f42e7e276e6eb6c3`, [v0.3.11 Release](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.11).
+- `npm.cmd run check`, 설치/복원/제거 테스트 3개, 문서 포함 패키징·EXE 컴파일 통과. 소스 비밀 검사 탐지 0. 패키지의 generic-api-key 탐지 99개는 manifest 파일 해시로 전부 실파일 대조했고 미해결 0. 패키지 4,001파일, `releaseApproved=false`.
+- `node scripts/verify-windows-setup.mjs 0.3.11 0.3.10`: 빈 한글 경로에서 stdin을 닫고 실제 EXE 설치 성공, 공용 기본값·설정 스키마 확인. 격리 앱에서 Chrome 사용자명/비밀번호 로그인 화면 진입·외부 브라우저 요청 0·정상 종료 확인. 실제 계정으로 로그인하지 않았다. 브라우저 검증에만 충돌 없는 임시 포트를 사용했다.
+- 0.3.10→0.3.11 실제 EXE 업그레이드에서 별도 서버 주소·issuer·audience·포트·MCP·AI·사용자 확장 설정 전체가 byte 단위로 동일하다. 합성 DPAPI 저장소와 작업 파일 보존 확인. 검증 결과는 `.runtime/setup-defaults/run-BcqsPE` 아래에 있으며 `.runtime/`는 Git 제외다. 개인 설치본은 변경하지 않았다.
+- 자산 5개를 GitHub 게시 후 다시 다운로드해 SHA-256·metadata 서명·태그를 대조했다. EXE `6dd4fb6c183fbbae396701bdc5ec154ff3520855d068f2d1e04376ea5fd830e5`, ZIP `8967e9029fe81d5dc3b5eba3844c63057e87620fa63197da294d6442083d2927`. Authenticode `NotSigned`; 기존 공개 자산은 보존했다.
+- 승인된 프로젝트 `tborximfpwrzzwuazjrb`의 catalog만 0.3.11로 갱신했다. digest `ee6f063b14a46703b21d7629397273a27996dec7bbb372b0c9929a765e87a091`, health 200·비인증 업데이트 401. `test` 채널 유지, API/DB/ERP 변경 없음. 실계정 offered/current와 사용자 PC 수용은 별도다. 설치본 내장 문서는 소스 시점이며 이 결과는 후속 문서 커밋이다.
+
 ## 2026-09-28 v0.3.10 공개 배포 완료
 
 - 사용자 승인으로 원격 main에 일반 push하고 배포 소스 `1b41326eb3676494256c76c095571a07d0ef2d9c`에 `v0.3.10` 태그를 게시했다. [Release](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.10)는 `draft=false`, `prerelease=false`. 기존 candidate 릴리스는 수정하지 않았다. 마지막 공개 태그 대비 누적 변경을 한국어 패치노트에 정리했다.

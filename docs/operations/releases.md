@@ -1,6 +1,8 @@
 # GitHub Release 배포·업데이트 계획
 
-최신 배포: **[v0.3.10](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.10) 공개 완료 (2026-09-28)**. 소스 `1b41326eb3676494256c76c095571a07d0ef2d9c`, 자산 5개 다운로드/hash·서명 대조 완료. 숫자 제목/태그와 `prerelease=false`를 적용했고 기존 candidate 릴리스는 보존했다. hosted catalog는 0.3.10의 `test` 채널이며 실계정 updater·2PC 수용은 별도다. 아래 candidate.10 통합 내용은 이전 배포 기록이다.
+최신 배포: **[v0.3.11](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.11) (2026-09-28)**. 신규 설치의 공용 API·issuer 자동 설정, 무입력 설치와 기존 설정 보존 검증 완료. 소스 `87be9a0aff916c0e35cba7a5f42e7e276e6eb6c3`, 공개 자산 5개 대조와 테스트 채널 catalog 갱신 완료. [검증 기록](../validation.md)을 따른다.
+
+직전 배포: **[v0.3.10](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.10) 공개 완료 (2026-09-28)**. 소스 `1b41326eb3676494256c76c095571a07d0ef2d9c`, 자산 5개 다운로드/hash·서명 대조 완료. 숫자 제목/태그와 `prerelease=false`를 적용했고 기존 candidate 릴리스는 보존했다. hosted catalog는 0.3.10의 `test` 채널이며 실계정 updater·2PC 수용은 별도다. 아래 candidate.10 통합 내용은 이전 배포 기록이다.
 
 2026-09-28 · **로컬 이력·원격 main·Release·hosted catalog 통합 완료, 실계정 수용 미검증**. [통합 계획 v3.3](../implementation-plan.md)의 5.5절과 U1~U3를 구체화한다. 기존 41개 SHA를 보존한 코드·문서 이력으로 원격 main과 두 태그를 전환했다. 두 Release 설명/target_commitish/update.json 갱신 및 공개 metadata 서명/sourceCommit/hash·asset digest·catalog 대조를 완료했다. main은 문서 후속 커밋 포함 같은 로컬 이력이다. Release asset 10개 전체 백업 다운로드는 검증했다. 실계정 앱 updater를 통한 설치 파일 다운로드·설치와 실메일 분석은 사용자 테스트 전이다.
 
