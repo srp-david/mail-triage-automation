@@ -10,6 +10,7 @@ const integration = [
   'v1-directory',
   'v1-mapping',
   'v1-runs',
+  'shared-collaboration',
 ].map((name) => `test/${name}.test.ts`);
 
 export default defineConfig({

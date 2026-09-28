@@ -1,0 +1,28 @@
+import {test,afterAll,expect} from 'vitest';
+import pg from 'pg';
+import {randomUUID} from 'node:crypto';
+process.env.NODE_ENV='test';
+const schema='triage_test_'+randomUUID().replaceAll('-','');
+if(!process.env.DATABASE_URL)throw Error('Dedicated test database required');
+const admin=new pg.Client({connectionString:process.env.DATABASE_URL});await admin.connect();await admin.query('CREATE SCHEMA '+schema);process.env.PGOPTIONS='-c search_path='+schema;
+const {pool}=await import('../apps/history-api/src/db.js');
+const {migrateVersioned}=await import('../apps/history-api/src/migrations.js');await migrateVersioned();
+const {Directory}=await import('../apps/history-api/src/directory.js');
+const {bindMail}=await import('../apps/history-api/src/common-mail.js');
+const team=randomUUID();await pool.query('INSERT INTO team VALUES($1,$2)',[team,'Synthetic']);
+const directory=new Directory(team);
+const a=await directory.login({issuer:'https://test/',subject:'a',email:'a@example.test'}),b=await directory.login({issuer:'https://test/',subject:'b',email:'b@example.test'});
+const sa=await directory.registerSource(a,{instanceId:randomUUID(),displayName:'A'}),sb=await directory.registerSource(b,{instanceId:randomUUID(),displayName:'B'});
+const evidence={messageId:'<shared@example.test>',subject:'Synthetic shared mail',from:[{address:'sender@example.test'}],sentAt:'2026-09-28T00:00:00Z'};
+const proof=(mailId:number)=>({mailId,evidence,verifiedAt:new Date().toISOString()});
+afterAll(async()=>{await pool.end();await admin.query('DROP SCHEMA '+schema+' CASCADE');await admin.end();});
+test('cross-source identity is team-scoped, idempotent, and grants no source access',async()=>{
+ const [x,y]=await Promise.all([bindMail(a,sa.id,proof(123)),bindMail(b,sb.id,proof(789))]);
+ expect(x.commonId).toBe(y.commonId);expect((await bindMail(a,sa.id,proof(123))).commonId).toBe(x.commonId);
+ await expect(bindMail(b,sa.id,proof(123))).rejects.toThrow('SOURCE_NOT_FOUND');
+ await expect(bindMail(a,sa.id,{...proof(123),evidence:{...evidence,subject:'Changed'}})).rejects.toThrow('COMMON_MAIL_IDENTITY_CHANGED');
+ expect((await bindMail(a,sa.id,{...proof(124),evidence:{...evidence,messageId:null}})).matched).toBe(false);
+ const otherTeam=randomUUID();await pool.query('INSERT INTO team VALUES($1,$2)',[otherTeam,'Other']);
+ const d=new Directory(otherTeam),u=await d.login({issuer:'https://test/',subject:'c',email:'c@example.test'}),s=await d.registerSource(u,{instanceId:randomUUID(),displayName:'C'});
+ expect((await bindMail(u,s.id,proof(123))).commonId).not.toBe(x.commonId);
+});
