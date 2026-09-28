@@ -4,7 +4,9 @@
 
 ## 최신 로컬 전달물
 
-**`.runtime/packages/0.3.3-setup.exe`**가 최신 로컬 설치본이다. 기존 candidate.10 이후 다음 변경을 포함한다.
+최신 로컬 설치본은 **`.runtime/packages/0.3.5.zip`**이다. 현재 PC에 설치·기동하고 Codex를 앱 버전 폴더 밖의 실제 `codex.exe`로 설정했다. 자동 찾기·실행 옵션·제공 UI hash 대조를 확인했으며 GitHub/catalog에는 미게시다. ZIP SHA-256은 `e36a0d8be5396a73f8ecb3b1e253c3316222570a3e6665c5bfc1ed3670dac906`이다.
+
+아래는 이전 **`.runtime/packages/0.3.3-setup.exe`**까지의 EXE 생성 기록이다. 0.3.4·0.3.5는 ZIP으로 설치했다. 기존 candidate.10 이후 다음 변경을 포함한다.
 
 | 작업 | 구현·로컬 검증 | 남은 확인 |
 |---|---|---|
@@ -24,8 +26,10 @@ EXE SHA-256 `e77bab9916ac32cb9f818ed4cf32ffec90e257f195de9c105e521f3bce0c2bba`, 
 | 0.3.1 | 트레이·바탕화면 바로가기 | [초안](releases/v0.3.1.md) |
 | 0.3.2 | 설정 화면 구성·가독성 | [초안](releases/v0.3.2.md) |
 | 0.3.3 | 관리자 계정 화면·내 계정 메뉴 | [초안](releases/v0.3.3.md) |
+| 0.3.4 | 공통 메일 공유·보고서 협업·기존 자료 이관 | [운영 기록](operations/shared-analysis.md) |
+| 0.3.5 | Codex 실제 exe 자동 찾기·현재 PC 설정 전환 | [Windows 안내](operations/windows.md#codex-실행-파일-자동-찾기-v035) |
 
-네 버전은 로컬 설치본이며 GitHub에는 미게시다. 버전별 파일 해시·브라우저·업그레이드·제공 UI 대조 결과는 [검증 일지](validation.md)에 보존한다. 마지막으로 확인한 공개 배포는 candidate.10이며 이번 작업에서 원격 상태를 재조회하지 않았다.
+위 숫자 버전은 로컬 설치본이며 GitHub에는 미게시다. 버전별 파일 해시·브라우저·업그레이드·제공 UI 대조 결과는 [검증 일지](validation.md)에 보존한다. 마지막으로 확인한 공개 배포는 candidate.10이며 이번 작업에서 원격 상태를 재조회하지 않았다.
 
 ## 제품 경계
 
@@ -37,7 +41,7 @@ EXE SHA-256 `e77bab9916ac32cb9f818ed4cf32ffec90e257f195de9c105e521f3bce0c2bba`, 
 | 공용 DB | PostgreSQL 17.6, `triage_private`, migration 10개, runtime DDL 차단 | 외부 백업·복원과 운영 담당 확정 |
 | Data API | 사용자 비활성화 확인, publishable key 접근 401 확인 | 모든 관리 키까지 차단했다는 의미는 아님 |
 | 로그인 | 최초 관리자 생성, hosted 로그인·첫 변경 제한 확인 | 팀원 계정 발급·각 사용자 최초 변경 |
-| Windows 앱 | 현재 PC 0.3.2→0.3.4 설치·기동, 설정 보존·제공 UI hash·기존 인증 보고서 조회 확인. 이전 candidate.10 게시 기록 보존 | 새 소스 게시·숫자 버전 GitHub 배포·깨끗한 팀 PC/2PC 수용·실업무 분석 |
+| Windows 앱 | 현재 PC 0.3.4→0.3.5 설치·기동, Codex exe 설정·자동 찾기·실행 확인·기타 설정 보존·제공 UI hash 대조. 0.3.4 인증 보고서 조회와 candidate.10 게시 기록 보존 | 새 소스 게시·숫자 버전 GitHub 배포·깨끗한 팀 PC/2PC 수용·실업무 분석 |
 | GitHub 저장소 | 기존 41개 SHA 보존·공개 검사 통과, 이전 통합 시 원격 main·태그 확인. 이번 후속 커밋은 로컬만 진행. 원격 candidate.9 태그 `83be2a941f6125db58c70ac05a5efc63f45fe566`·candidate.10 태그 `6fe6de9a93c1df3313541ad4d78a085483edbe17` 및 Release metadata/catalog 대조 완료 | 자동 게시 CI·private 전환·실계정 수용은 별도 |
 | Release 업데이트 | candidate.10 prerelease 게시·서버 asset digest 일치. 공용 분석 API를 새로 배포했으며 catalog는 기존 candidate.10 설정 유지. 이전 비인증 update check 401 확인 | 실계정의 버전별 `current`/`offered`·앱 updater 다운로드/설치 미검증 |
 | 보고서 협업 | 동일 메일 공유·중복 방지, 지속 대화·revision·낙관적 락 구현. 전체 테스트 164건 통과 | Supabase 보고서 43건 공유 이관·새 API 배포·현재 PC 0.3.4 설치 완료. 기존 로그인으로 보고서·협업 조회 확인. 개인 MCP/Agent 연결·두 PC 수용은 후속. [상세](operations/shared-analysis.md) |

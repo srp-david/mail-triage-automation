@@ -1,6 +1,7 @@
 import {readFile,lstat,access} from 'node:fs/promises';
 import {homedir} from 'node:os';
-import {join,delimiter,isAbsolute} from 'node:path';
+import {join,dirname,delimiter,isAbsolute} from 'node:path';
+import {createRequire} from 'node:module';
 import {endpointSchema,type Connections} from './connections.js';
 import {checkMcp} from './mcp-connections.js';
 
@@ -34,15 +35,37 @@ export function configEndpoints(body:string,format:'json'|'toml',source:string):
   }
   return found;
 }
-async function commands(home:string):Promise<Connections['agents']>{
+async function isFile(path:string){try{return (await lstat(path)).isFile();}catch{return false;}}
+async function npmCodex(directory:string,arch:string){
+  const target=arch==='x64'?'x86_64-pc-windows-msvc':arch==='arm64'?'aarch64-pc-windows-msvc':undefined;
+  if(!target)return;
+  const root=join(directory,'node_modules','@openai','codex'),entry=join(root,'bin','codex.js');
+  if(!await isFile(entry))return;
+  // Resolve from the installed CLI, supporting both nested and hoisted optional packages.
+  // Read paths only: never import or execute the discovered package during discovery.
+  let vendor=join(root,'vendor');
+  try{vendor=join(dirname(createRequire(entry).resolve('@openai/codex-win32-'+arch+'/package.json')),'vendor');}catch{}
+  for(const sub of ['bin','codex']){
+    const executable=join(vendor,target,sub,'codex.exe');
+    if(await isFile(executable))return {executable};
+  }
+}
+export async function discoverAgentCommands(home:string,options:{paths?:string[];platform?:NodeJS.Platform;arch?:string}={}):Promise<Connections['agents']>{
   const result:Connections['agents']={};
-  const paths=[join(home,'.local','bin'),...(process.env.PATH??'').split(delimiter).filter(isAbsolute)];
+  const platform=options.platform??process.platform,arch=options.arch??process.arch;
+  const paths=[...new Set([join(home,'.local','bin'),...(options.paths??[...(process.env.PATH??'').split(delimiter),...(process.env.APPDATA?[join(process.env.APPDATA,'npm')]:[])]).filter(isAbsolute)])];
   for(const agent of ['codex','claude'] as const){
+    // Prefer standalone executables across PATH before considering npm layouts.
     for(const directory of paths){
-      const executable=join(directory,agent+(process.platform==='win32'?'.exe':''));
-      try{if((await lstat(executable)).isFile()){result[agent]={executable};break;}}catch{}
-      if(process.platform==='win32'){
-        const script=join(directory,'node_modules',agent==='codex'?'@openai/codex/bin/codex.js':'@anthropic-ai/claude-code/cli.js');
+      const executable=join(directory,agent+(platform==='win32'?'.exe':''));
+      if(await isFile(executable)){result[agent]={executable};break;}
+    }
+    if(result[agent]||platform!=='win32')continue;
+    for(const directory of paths){
+      if(agent==='codex'){
+        const command=await npmCodex(directory,arch);if(command){result.codex=command;break;}
+      }else{
+        const script=join(directory,'node_modules','@anthropic-ai/claude-code/cli.js');
         try{await access(script);result[agent]={executable:process.execPath,prefix:[script]};break;}catch{}
       }
     }
@@ -66,6 +89,6 @@ export async function discoverConnections(options:{home?:string;probe?:typeof ch
     const [mail,db]=await Promise.all([probe(candidate.url,'mail'),probe(candidate.url,'db')]);
     return {...candidate,mail:mail.connected&&mail.compatible,db:db.connected&&db.compatible};
   }));
-  return {mail:results.filter(value=>value.mail).map(({url,source})=>({url,source})),db:results.filter(value=>value.db).map(({url,source})=>({url,source})),agents:await commands(home),
+  return {mail:results.filter(value=>value.mail).map(({url,source})=>({url,source})),db:results.filter(value=>value.db).map(({url,source})=>({url,source})),agents:await discoverAgentCommands(home),
     note:'Codex·Claude의 HTTP 연결과 이 PC의 기본 주소를 확인했습니다. 인증 헤더·OAuth·stdio 연결은 자동으로 가져오지 않습니다.'};
 }

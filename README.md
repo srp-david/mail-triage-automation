@@ -31,19 +31,19 @@
 
 팀 담당자가 안내한 버전의 설치 파일을 받는다. 게시된 파일은 [GitHub Releases](https://github.com/srp-david/mail-triage-automation/releases)에서 확인할 수 있다.
 
-**2026-09-28 기준, 아래 공유 분석 사용법의 대상은 0.3.4다.** 0.3.4는 공용 API 배포와 개발 PC 설치를 마쳤으며 ZIP은 별도 전달 대상이다. 아직 GitHub Release·자동 업데이트 catalog에 게시하지 않았다. 기존 candidate 릴리스를 내려받으면 아래 최신 기능이 모두 포함되지 않는다.
+**2026-09-28 기준, 최신 로컬 설치본은 0.3.5다.** 0.3.4의 공유 분석에 Codex exe 자동 찾기 보완을 포함하며 개발 PC 설치를 마쳤다. ZIP은 별도 전달 대상이고 아직 GitHub Release·자동 업데이트 catalog에 게시하지 않았다. 기존 candidate 릴리스를 내려받으면 아래 최신 기능이 모두 포함되지 않는다.
 
 ### 2. Windows에 설치하기
 
 **담당자가 제공한 `버전-setup.exe`가 있는 경우:** 실행한 뒤 안내에 따라 설치한다. 최초 설치에서는 공용 API URL과 인증 issuer URL을 입력한다. 기본 설치 위치는 `%LOCALAPPDATA%\MailTriagePilot`이며 바탕화면에 **메일 분석실** 바로가기를 만든다. 업데이트할 때는 트레이에서 기존 앱을 종료하고 같은 위치에 설치한다.
 
-**0.3.4 ZIP으로 설치하는 경우:** 전달받은 SHA-256과 파일 해시를 대조하고 빈 폴더에 압축을 푼다. 다음 명령은 PowerShell에서 실행하며 `$payload`를 실제 압축 해제 경로로 바꾼다. ZIP 루트에 `node.exe`, `manifest.json`, `installer`가 있어야 한다.
+**0.3.5 ZIP으로 설치하는 경우:** 전달받은 SHA-256과 파일 해시를 대조하고 빈 폴더에 압축을 푼다. 다음 명령은 PowerShell에서 실행하며 `$payload`를 실제 압축 해제 경로로 바꾼다. ZIP 루트에 `node.exe`, `manifest.json`, `installer`가 있어야 한다.
 
 ```powershell
 # 압축 해제 전, 출력된 해시를 담당자가 전달한 SHA-256과 대조한다.
-Get-FileHash -LiteralPath "$env:USERPROFILE\Downloads\0.3.4.zip" -Algorithm SHA256
+Get-FileHash -LiteralPath "$env:USERPROFILE\Downloads\0.3.5.zip" -Algorithm SHA256
 
-$payload = Join-Path $env:USERPROFILE 'Downloads\0.3.4'
+$payload = Join-Path $env:USERPROFILE 'Downloads\0.3.5'
 $installRoot = Join-Path $env:LOCALAPPDATA 'MailTriagePilot'
 & (Join-Path $payload 'node.exe') (Join-Path $payload 'installer\manage.mjs') install $installRoot $payload --candidate
 if ($LASTEXITCODE -ne 0) { throw '설치 실패: 오류를 확인하세요.' }
@@ -86,7 +86,7 @@ if ($LASTEXITCODE -ne 0) { throw '실행 실패: 오류를 확인하세요.' }
 ## 처음 연결하기
 
 1. **설정 → 연결 환경**에서 **이 PC에서 자동 찾기**를 실행하거나 Mail MCP 주소를 입력한다. 기존 MCP를 먼저 실행하고 **Mail MCP 연결 확인**으로 통신을 확인한다.
-2. 새 분석을 사용할 경우 Codex 또는 Claude Code의 실행 경로·인수를 설정하고 실행 확인을 한다. 필요하면 ERP 읽기 자료 폴더·DB MCP를 추가한다.
+2. 새 분석을 사용할 경우 Codex 또는 Claude Code의 실행 경로·인수를 설정하고 실행 확인을 한다. Windows에서는 앱 버전 폴더 밖의 `codex.exe`·`claude.exe`를 사용한다. 0.3.5부터 Codex 자동 찾기는 npm 설치에서도 실제 `codex.exe`를 찾으며 앱에 포함된 `node.exe`를 추천하지 않는다. 기존 Node 기반 설정을 바꾸는 방법은 [Codex 경로 안내](docs/operations/windows.md#codex-실행-파일-자동-찾기-v035)를 참고한다. 필요하면 ERP 읽기 자료 폴더·DB MCP를 추가한다.
 3. **연결 환경 저장** 후 **분석 준비** 탭으로 이동한다.
 4. 자신의 메일 출처를 선택한다. 처음 사용하는 저장소라면 **처음 연결하는 메일 등록 → 현재 MCP 출처 등록**으로 등록한다. 기존 출처 복원은 화면의 원본 재연결 절차로 대조한다.
 5. 분석할 AI 도구를 선택하고 **이 PC 실행 장치 등록**으로 장치를 등록·선택한다. 선택을 저장한 뒤 **실행 상태 확인 → 분석 실행 켜기**를 누른다.
@@ -132,7 +132,7 @@ if ($LASTEXITCODE -ne 0) { throw '실행 실패: 오류를 확인하세요.' }
 & (Join-Path $release 'node.exe') (Join-Path $release 'installer\lifecycle.mjs') stop $installRoot
 ```
 
-업데이트는 실행 중 작업을 확인하고 앱을 정상 종료한 뒤, 새 버전을 기존 설치 위치에 설치한다. 설정·로그인·작업 기록을 보존하며 파일을 직접 덮어쓰거나 잠금 파일을 지우지 않는다. 앱 업데이트 화면은 서버가 제공한 버전만 안내하므로 별도 전달한 0.3.4가 자동으로 표시되지는 않는다.
+업데이트는 실행 중 작업을 확인하고 앱을 정상 종료한 뒤, 새 버전을 기존 설치 위치에 설치한다. 설정·로그인·작업 기록을 보존하며 파일을 직접 덮어쓰거나 잠금 파일을 지우지 않는다. 앱 업데이트 화면은 서버가 제공한 버전만 안내하므로 별도 전달한 0.3.5가 자동으로 표시되지는 않는다.
 
 | 증상 | 확인할 내용 |
 |---|---|
@@ -152,7 +152,8 @@ if ($LASTEXITCODE -ne 0) { throw '실행 실패: 오류를 확인하세요.' }
 - Supabase 공용 API 배포, 기존 공유 보고서 43건·메일 연결 39건 이관 및 원본 보존 확인.
 - 개발 PC 0.3.2→0.3.4 설치·기동, 기존 설정·로그인 보존, 이관 보고서·협업 정보 조회 확인.
 - 전체 테스트 164건, 로컬 Supabase Edge 검증 12군 통과. 실제 개인 MCP/Agent 분석·두 PC 업무 수용은 남아 있다.
-- 0.3.4 GitHub 게시·자동 업데이트 catalog 갱신은 미실행. 외부 백업 설정은 보류 상태다.
+- 개발 PC 0.3.4→0.3.5 설치와 Codex exe 설정·실행 옵션 검사 완료. 관련 테스트 8건·정적 검사·빌드 통과. 실제 AI 분석을 실행한 검증은 아니다.
+- 0.3.4·0.3.5 GitHub 게시·자동 업데이트 catalog 갱신은 미실행. 외부 백업 설정은 보류 상태다.
 - 기존 단일 사용자 Docker 서비스(v0)는 보존하며 공용 Supabase DB와 별개다.
 
 완료 근거와 미완료 범위는 [현재 상태](docs/current-status.md), 작업 순서는 [통합 구현 계획](docs/implementation-plan.md)을 따른다.

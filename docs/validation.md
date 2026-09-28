@@ -1,5 +1,14 @@
 # 검증 기록
 
+## 2026-09-28 Codex exe 자동 찾기와 0.3.5 설치
+
+- Windows 자동 찾기는 독립된 Codex exe를 우선하고 npm의 현재 아키텍처 플랫폼 패키지(중첩/상위 설치)·기존 vendor 구조를 조회한다. 앱 Node + codex.js fallback은 Codex에서 제거했다. 기존 사용자 지정 명령은 덮어쓰지 않는다.
+- `agent-discovery`·`connections` 테스트 8/8, `npm.cmd run check`, `npm.cmd run build` 통과. 실제 설치된 `codex-cli 0.156.0`의 `--version`·`exec --help`로 필수 실행 옵션 호환성을 확인했다. AI 요청이나 메일 분석은 실행하지 않았다.
+- 0.3.5 ZIP 3,736개 파일, SHA-256 `e36a0d8be5396a73f8ecb3b1e253c3316222570a3e6665c5bfc1ed3670dac906`. 기존 0.3.4와 별도 패키징하며 `releaseApproved=false`를 유지했다.
+- 현재 PC의 인증된 연결 설정 API로 Codex만 실제 exe로 저장하고 다른 설정을 대조했다. 정상 종료 후 0.3.4→0.3.5 설치·기동, 설치 전후 설정 파일 바이트 보존을 확인했다.
+- UTC `2026-09-28T04:55:05.869Z` 설치본 HTTP 검증: 자동 찾기와 저장된 Codex exe 일치, 실행 확인 installed/supported true, analysisAvailable true, 비인증 연결 조회 401, 제공 JS/CSS 2개 hash 일치. 브라우저 열기 성공. Git 제외 `.runtime/install-codex-native-result.json`, `.runtime/codex-native-verification.json`에 기록했다.
+- 공용 API·DB 재배포, GitHub Release·catalog 갱신은 수행하지 않았다. 실제 AI 분석·팀 PC 수용은 남아 있다.
+
 ## 2026-09-28 공용 분석 연결·보고서 협업·기존 이관
 
 - 전체 unit/UI/격리 DB 164/164, check/build/Edge bundle 통과. 두 사용자 공통 메일 동시 분석, revision CAS, 초안 보존·재전송, 권한 회수, report-only Agent 입력과 outbox를 검증했다.
