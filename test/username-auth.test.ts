@@ -85,3 +85,47 @@ test('operator mapping preserves legacy UUID/source ownership and recovery only 
  await assert.rejects(auth.authenticate(tokens.access_token),/LOGIN_DENIED/);
  assert.equal((await auth.login({username:current.username,password:recovery.temporaryPassword})).mustChangePassword,true);
 });
+
+
+test('administrator adds teams and assigns accounts while team administrators stay scoped',async()=>{
+ const current=(await pool.query("SELECT u.id FROM app_user u JOIN membership m ON m.user_id=u.id WHERE m.team_id=$1 AND m.role='admin' AND u.active AND m.active",[team])).rows[0];
+ const root={userId:current.id},created=await auth.createTeam(root,{name:'Development 2'});
+ assert.ok((await auth.teams(root)).teams.some(t=>t.id===created.id));
+ await assert.rejects(auth.createTeam(root,{name:'development 2'}),/TEAM_NAME_EXISTS/);
+ const manager=await auth.createUser(root,{username:'team.two.admin',displayName:'Team Two Admin',role:'admin',teamId:created.id});
+ const peer={userId:manager.id};
+ assert.equal((await auth.teams(peer)).canCreate,false);
+ assert.deepEqual((await auth.teams(peer)).teams.map(t=>t.id),[created.id]);
+ await assert.rejects(auth.createTeam(peer,{name:'Forbidden'}),/ADMIN_REQUIRED/);
+ await assert.rejects(auth.createUser(peer,{username:'cross.team',displayName:'Denied',role:'analyst',teamId:team}),/ADMIN_REQUIRED/);
+ const worker=await auth.createUser(peer,{username:'team.two.worker',displayName:'Worker',role:'analyst'});
+ assert.equal((await auth.users(peer)).find(u=>u.id===worker.id).team_id,created.id);
+ await assert.rejects(auth.resetPassword(peer,root.userId),/ADMIN_REQUIRED/);
+ await assert.rejects(auth.updateUser(root,manager.id,{displayName:'Manager',role:'admin',active:true,teamId:team}),/LAST_ADMIN/);
+ await auth.updateUser(root,worker.id,{displayName:'Worker',role:'analyst',active:true,teamId:team});
+ assert.equal((await auth.users(root)).find(u=>u.id===worker.id).team_id,team);
+ const directory=new Directory(team);await directory.registerSource({userId:worker.id},{instanceId:randomUUID(),displayName:'Existing evidence'});
+ await assert.rejects(auth.updateUser(root,worker.id,{displayName:'Worker',role:'analyst',active:true,teamId:created.id}),/USER_TEAM_HAS_DATA/);
+});
+
+test('development team migration preserves named account IDs, roles, sessions and source IDs',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const ids=[];for(const name of ['srp-tom','david','sara']){
+   const id=randomUUID();ids.push(id);await pool.query('INSERT INTO app_user(id,username,display_name) VALUES($1,$2,$2)',[id,name]);
+   await pool.query("INSERT INTO membership(user_id,team_id,role) VALUES($1,$2,'analyst')",[id,team]);
+ }
+ const sourceId=randomUUID();await pool.query('INSERT INTO source(id,team_id,owner_user_id,instance_id,display_name,store_id) VALUES($1,$2,$3,$4,$5,$6)',[sourceId,team,ids[0],randomUUID(),'Existing source',sourceId]);
+ const sessionId=randomUUID();await pool.query("INSERT INTO auth_session(id,user_id,restricted,expires_at) VALUES($1,$2,false,now()+interval '1 day')",[sessionId,ids[1]]);
+ const migration=await readFile(new URL('../apps/history-api/migrations/010_team_history.sql',import.meta.url),'utf8');
+ const mapping=migration.slice(0,migration.indexOf('CREATE INDEX'));
+ await pool.query(mapping);await pool.query(mapping);
+ assert.equal((await pool.query('SELECT name FROM team WHERE id=$1',[team])).rows[0].name,'개발1팀');
+ assert.equal((await pool.query('SELECT revoked_at FROM auth_session WHERE id=$1',[sessionId])).rows[0].revoked_at,null);
+ assert.equal((await pool.query("SELECT count(*)::int AS n FROM membership WHERE user_id=ANY($1::uuid[]) AND team_id=$2 AND role='analyst' AND active",[ids,team])).rows[0].n,3);
+ assert.deepEqual((await pool.query('SELECT id FROM app_user WHERE id=ANY($1::uuid[]) ORDER BY id',[ids])).rows.map(r=>r.id),ids.sort());
+ assert.equal((await pool.query('SELECT team_id FROM source WHERE id=$1',[sourceId])).rows[0].team_id,team);
+ const other=randomUUID();await pool.query('INSERT INTO team VALUES($1,$2)',[other,'Separate']);
+ await pool.query('UPDATE membership SET team_id=$2 WHERE user_id=$1',[ids[0],other]);
+ await assert.rejects(pool.query(mapping),/DEVELOPMENT_TEAM_MAPPING_REQUIRES_REVIEW/);
+ await pool.query('UPDATE membership SET team_id=$2 WHERE user_id=$1',[ids[0],team]);
+});

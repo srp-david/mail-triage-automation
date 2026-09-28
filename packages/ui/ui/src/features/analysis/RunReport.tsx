@@ -8,7 +8,6 @@ import { Action } from '../../components/Common';
 import { MarkdownView } from '../../components/Documents';
 import { RunProgress } from './RunProgress';
 import { RelatedMails } from './RelatedMails';
-import { ReportSharing } from './SharedReports';
 import { ReportCollaboration } from './ReportCollaboration';
 import { readDraft, saveDraft } from '../../../../../../public/answer-drafts.js';
 export interface ReportHandle {
@@ -184,7 +183,7 @@ export const RunReport = forwardRef<
           처리가 완료된 메일입니다. 아래 보고서와 질문은 당시 분석 기록으로 보존됩니다.
         </p>
       )}
-      {(r.handled_at || !!r.relatedMails?.length) && (
+      {r.originalAvailable !== false && (r.handled_at || !!r.relatedMails?.length) && (
         <RelatedMails
           key={JSON.stringify([r.id, r.handled_at, r.relatedMails])}
           run={r}
@@ -195,7 +194,6 @@ export const RunReport = forwardRef<
       {resource.error && !active && <p role="alert">{resource.error}</p>}
       {r.result && (
         <>
-          {r.collaboration && <ReportSharing id={r.id} />}
           {r.collaboration ? (
             <ReportCollaboration key={r.id} id={r.id} />
           ) : (
@@ -224,7 +222,9 @@ export const RunReport = forwardRef<
               </Typography>
               <p>{r.result.question}</p>
             </>
-          ) : !r.handled_at && ['needs_input', 'completed'].includes(r.status) ? (
+          ) : !r.handled_at &&
+            r.originalAvailable !== false &&
+            ['needs_input', 'completed'].includes(r.status) ? (
             r.identity_kind === 'outlook' ? (
               <>
                 {r.result.question && <p>{r.result.question}</p>}

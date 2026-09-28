@@ -61,6 +61,9 @@ export interface RelatedLink {
   metadata: Mail;
 }
 export interface Run {
+  originalAvailable?: boolean;
+  author?: string;
+  sourceName?: string;
   collaboration?: boolean;
   id: string;
   subject: string;

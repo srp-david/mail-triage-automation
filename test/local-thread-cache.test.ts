@@ -7,15 +7,17 @@ import {requestContext,finishRoutes} from '../packages/contracts/src/http.js';
 import {ApiError} from '../packages/contracts/src/v1.js';
 
 test('v1 thread pages share scans while permissions, states, links, sync and scope remain fresh',async()=>{
-  const sourceId=randomUUID(),mails=Array.from({length:205},(_,i)=>({id:i+1,messageId:`<${i}@example.test>`,fetchedAt:'2026-09-21T00:00:00Z',inReplyTo:[],references:[]}));
+  const sourceId=randomUUID(),mails=Array.from({length:205},(_,i)=>({id:i+1,messageId:`<${i}@example.test>`,fetchedAt:'2026-09-21T00:00:00Z',subject:'Synthetic',inReplyTo:[],references:[]}));
   let source=sourceId,scope='user-a:instance-a',allowed=true,completed=1,links:any[]=[],batch=0,fail=false;
   let calls=0,sessions=0,linkReads=0;
   const search=async(args:any)=>{calls++;if(fail)throw new ApiError(502,'LOCAL_MCP_UNAVAILABLE');return {emails:mails.slice(args.offset,args.offset+100),nextOffset:args.offset+100<mails.length?args.offset+100:null};};
-  const original={call:async(name:string,args:any)=>{assert.equal(name,'search_emails');return search(args);},async withSearch(action:any){sessions++;return action(search);}};
+  const original={call:async(name:string,args:any)=>{if(name==='get_email')return mails.find(m=>m.id===args.id);assert.equal(name,'search_emails');return search(args);},async withSearch(action:any){sessions++;return action(search);}};
   const history:any={async request(path:string,body:any){
     if(!allowed)throw new ApiError(404,'SOURCE_NOT_FOUND');
     if(path.endsWith('/thread-links')){linkReads++;return links;}
     if(path.endsWith('/sync-latest'))return {id:'sync',status:'running',saved:batch,batch_count:batch};
+    if(path.endsWith('/mail-identities'))return [];
+    if(path.endsWith('/mail-identity-checks'))return [];
     if(path.endsWith('/mail-analysis'))return body.mailIds.map((mailId:number)=>({mailId,runCount:1,legacyCount:0,latestStatus:mailId===completed?'completed':'failed'}));
     throw new Error('Unexpected history request');
   }};

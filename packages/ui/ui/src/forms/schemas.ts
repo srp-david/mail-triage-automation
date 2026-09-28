@@ -28,8 +28,18 @@ export const passwordSchema = z.object({
       '새 비밀번호는 UTF-8 기준 128바이트까지 입력하세요.',
     ),
 });
-export const createUserSchema = z.object({ username, displayName, role });
-export const updateUserSchema = z.object({ displayName, role, active: z.boolean() });
+export const createUserSchema = z.object({
+  username,
+  displayName,
+  role,
+  teamId: z.union([z.string().uuid(), z.literal('')]).optional(),
+});
+export const updateUserSchema = z.object({
+  displayName,
+  role,
+  active: z.boolean(),
+  teamId: z.union([z.string().uuid(), z.literal('')]).optional(),
+});
 export const settingsSchema = z.object({
   sourceId: z.string().min(1, '메일 출처를 선택하세요.'),
   collectionId: z.string().optional(),

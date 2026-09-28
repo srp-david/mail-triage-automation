@@ -1,5 +1,13 @@
 # 검증 기록
 
+## 2026-09-28 팀 이력·동일 메일·팀 관리 검증
+
+- 단위·화면 **45파일 / 147개** 통과. 설정 없는 팀 조회, 검색/페이지 초기화, 한글 IME, 팀 생성·계정 선택을 포함한다.
+- 격리 PostgreSQL **10파일 / 66개** 통과. 새 출처의 동일 메일은 헤더 검증 후 팀 보고서·분석 완료 집계에 포함된다. 다른 팀/조회 전용 편집 차단, 개인 처리 완료 분리, 최신 보고서 검색, 103건 페이지 처리, 팀 추가·계정 배정, 개발1팀 매핑 및 UUID·세션 보존을 확인했다.
+- 실제 Chrome 합성 UI: 개인 설정 없는 목록, 검색·초기화, 팀 보고서 새 버전 저장, 공유 버튼 제거, 팀 생성·계정 소속 선택, 1440/390px 넘침 없음. `.runtime/team-ui/run-0ZytDH/result.json` 및 PNG에 기록했다.
+- `npm.cmd run check`, `npm.cmd run build`, Edge bundle 생성과 build compatibility 통과. 번들 크기 경고는 기존과 같이 남는다.
+- 운영 반영 없음. Supabase 실제 계정·메일 자료를 변경하지 않았고 설치본 교체·Release·push도 하지 않았다. [운영 계약](operations/team-history.md) 참조.
+
 ## 2026-09-28 Codex·Claude WSL 실행 지원
 
 - 두 Agent별 Windows/WSL, 배포판·Linux 사용자·실행 경로 저장과 배포판 목록·연결 진단을 구현했다. 기존 Windows 설정, 공용 서버 설정, 다른 Agent 선택을 보존한다. WSL 내부 Python 3를 통해 Windows 작업 경로를 변환하고 읽기 전용 자료 서버에 작업별 인증으로 연결한다. 기본 NAT 우회·WSL/방화벽 자동 설정은 포함하지 않는다.

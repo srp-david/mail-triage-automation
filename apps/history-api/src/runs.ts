@@ -6,6 +6,7 @@ import {lock,member,sourceAccess,deviceAccess,digest,secretMatches} from './dire
 import {ApiError,runInput,leaseSchema,uuid,completionSchema,runFailureCode,type Principal,type RunInput} from '../../../packages/contracts/src/v1.js';
 import {progressSchema} from '../../../src/progress.js';
 import {SharedHistory} from './shared-history.js';
+import {sameMail,type HistoryFilters} from './team-history.js';
 import {bindCommonMail} from './common-mail.js';
 async function expire(c:PoolClient){
   await c.query(`UPDATE analysis_run r SET status=CASE WHEN v.cancel_requested_at IS NULL THEN 'failed' ELSE 'cancelled' END,error='LEASE_OR_QUEUE_EXPIRED',finished_at=now(),lease_until=NULL
@@ -45,7 +46,7 @@ export class Runs {
       }
       let mail=(await c.query('SELECT * FROM mail_identity WHERE store_id=$1 AND mail_id=$2',[s.store_id,b.mailId])).rows[0];
       if(mail&&mail.message_id!==b.messageId)throw new ApiError(409,'MAIL_IDENTITY_CHANGED');
-      if(mail&&(await c.query('SELECT 1 FROM personal_mail_handling WHERE mail_key=$1 AND user_id=$2',[mail.id,actor.userId])).rowCount)throw new ApiError(409,'MAIL_HANDLED');
+      if(mail&&(await c.query(`SELECT 1 FROM personal_mail_handling ph JOIN mail_identity other ON other.id=ph.mail_key JOIN source os ON os.store_id=other.store_id AND os.team_id=$3 AND os.active JOIN mail_identity m ON m.id=$1 WHERE ph.user_id=$2 AND ${sameMail('m','other')}`,[mail.id,actor.userId,s.team_id])).rowCount)throw new ApiError(409,'MAIL_HANDLED');
       if(!mail)mail=(await c.query('INSERT INTO mail_identity(id,store_id,mail_id,message_id,subject) VALUES($1,$2,$3,$4,$5) RETURNING *',[randomUUID(),s.store_id,b.mailId,b.messageId,b.subject])).rows[0];
       if(b.parentId){const parent=await row(c,actor,b.parentId,true);if(parent.mail_key!==mail.id)throw new ApiError(409,'PARENT_MISMATCH');if(parent.status==='needs_input'&&!b.answer?.trim())throw new ApiError(400,'ANSWER_REQUIRED');}
       const common=(await c.query('SELECT common_id FROM common_mail_link WHERE mail_key=$1',[mail.id])).rows[0]?.common_id??null;
@@ -57,7 +58,7 @@ export class Runs {
     });
   }
   async get(actor:Principal,id:string){return new SharedHistory().get(actor,id);}
-  async list(actor:Principal,sourceId:string,offset=0,mailId?:number,query=''){return new SharedHistory().list(actor,sourceId,offset,mailId,query);}
+  async list(actor:Principal,sourceId?:string,offset=0,mailId?:number,query='',filters:Partial<HistoryFilters>={}){return new SharedHistory().list(actor,sourceId,offset,mailId,query,filters);}
   async claim(actor:Principal,runnerId:string,requestId:string,device:string){return transaction(async c=>{
     await lock(c);const r=await deviceAccess(c,actor,runnerId,device);const m=await member(c,actor);await expire(c);
     let job=(await c.query(`SELECT a.*,v.* FROM v1_run v JOIN analysis_run a ON a.id=v.run_id WHERE v.claim_request_id=$1`,[requestId])).rows[0];

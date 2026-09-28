@@ -198,7 +198,7 @@ export function App() {
       setAuthenticated(true);
       setNotice('');
       setBootState('ready');
-      if (native && !value.storeId && viewFromHash() === 'mailbox') location.hash = 'settings';
+      if (native && !value.storeId && viewFromHash() === 'mailbox') location.hash = 'history';
     } catch (e) {
       if (cancelled()) return;
       setBootError(errorText(e));
@@ -540,8 +540,8 @@ export function App() {
                   </Action>
                 </div>
                 <p>
-                  직접 스킬과 웹에서 실행한 분석을 함께 표시합니다. 분석 완료는 고객 문의 해결과
-                  별개입니다.
+                  같은 팀의 모든 출처에서 등록한 분석을 표시합니다. 개인 연결 없이 조회할 수 있으며,
+                  분석 완료와 개인별 처리 완료는 별개입니다.
                 </p>
                 {authenticated && (
                   <HistoryList

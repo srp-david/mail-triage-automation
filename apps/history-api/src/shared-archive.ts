@@ -73,7 +73,7 @@ export class SharedArchive {
   });}
   async prepareKnowledge(actor:Principal,input:unknown){
     const b=z.object({runId:uuid,namespace:z.string().min(1).max(200),target:relativePath.refine(x=>/^erp\/(gg|gg-fac|d-code)\/docs\/.+\.md$/.test(x)),baseHash:hash,reportHash:hash,nextHash:hash}).strict().parse(input);
-    return transaction(async c=>{await lock(c);await historyAccess(c,actor,b.runId,true);
+    return transaction(async c=>{await lock(c);const access=await historyAccess(c,actor,b.runId,true);await sourceAccess(c,actor,access.source_id,true);
       const report=(await c.query('SELECT result FROM report_version WHERE run_id=$1',[b.runId])).rows[0]?.result;
       if(!report?.knowledge?.trim()||digest(report.report)!==b.reportHash)throw new ApiError(409,'KNOWLEDGE_VERSION_MISMATCH');
       const addition=`\n\n<!-- triage-knowledge:${b.runId}:${b.reportHash} -->\n${report.knowledge.trim()}\n`;
@@ -83,5 +83,5 @@ export class SharedArchive {
       const {owner_hash,...safe}=row;return safe;
     });
   }
-  async knowledge(actor:Principal,id:string){return transaction(async c=>{await lockShared(c);const r=(await c.query('SELECT * FROM knowledge_proposal WHERE id=$1',[id])).rows[0];if(!r)throw new ApiError(404,'KNOWLEDGE_NOT_FOUND');await historyAccess(c,actor,r.run_id);const {owner_hash,...safe}=r;return safe;});}
+  async knowledge(actor:Principal,id:string){return transaction(async c=>{await lockShared(c);const r=(await c.query('SELECT * FROM knowledge_proposal WHERE id=$1',[id])).rows[0];if(!r)throw new ApiError(404,'KNOWLEDGE_NOT_FOUND');const access=await historyAccess(c,actor,r.run_id);await sourceAccess(c,actor,access.source_id);const {owner_hash,...safe}=r;return safe;});}
 }

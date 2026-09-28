@@ -82,7 +82,7 @@ export const MailboxPage = forwardRef<MailboxHandle, Props>(function MailboxPage
     listScroll = useRef(0),
     detailRef = useRef<HTMLElement>(null),
     restore = useRef<ReturnType<typeof captureMailPosition> | null>(null);
-  async function refreshSummary(result = pageRef.current) {
+  async function refreshSummary(result = pageRef.current, force = false) {
     if (!enabled) return;
     const version = ++summaryEpoch.current;
     summaryRequest.current?.abort();
@@ -103,7 +103,11 @@ export const MailboxPage = forwardRef<MailboxHandle, Props>(function MailboxPage
       for (let i = 0; i < ids.length; i += 100) {
         rows.push(
           ...(await api<Summary[]>(
-            '/mail-analysis?' + new URLSearchParams({ mailIds: ids.slice(i, i + 100).join(',') }),
+            '/mail-analysis?' +
+              new URLSearchParams({
+                mailIds: ids.slice(i, i + 100).join(','),
+                ...(force ? { refresh: '1' } : {}),
+              }),
             undefined,
             controller.signal,
           )),
@@ -117,7 +121,7 @@ export const MailboxPage = forwardRef<MailboxHandle, Props>(function MailboxPage
       if (version === summaryEpoch.current && !aborted(e)) setUnavailable(true);
     }
   }
-  async function load(force = false) {
+  async function load(force = false, recheck = false) {
     if (!enabled) return;
     const version = ++epoch.current;
     request.current?.abort();
@@ -144,12 +148,16 @@ export const MailboxPage = forwardRef<MailboxHandle, Props>(function MailboxPage
       const result = await queryClient.fetchQuery({
         queryKey,
         queryFn: ({ signal }) =>
-          api<MailPage>('/mails?' + params + (force ? '&refresh=1' : ''), undefined, signal),
+          api<MailPage>(
+            '/mails?' + params + (force ? '&refresh=1' : '') + (recheck ? '&recheck=1' : ''),
+            undefined,
+            signal,
+          ),
       });
       if (version !== epoch.current || controller.signal.aborted) return;
       if (q.offset > 0 && q.offset >= result.total) {
         query.current = { ...q, offset: Math.max(0, Math.floor((result.total - 1) / 30) * 30) };
-        return load();
+        return load(force, recheck);
       }
       restore.current = lastQuery.current === params.toString() ? captureMailPosition() : null;
       lastQuery.current = params.toString();
@@ -165,7 +173,7 @@ export const MailboxPage = forwardRef<MailboxHandle, Props>(function MailboxPage
       setOffset(q.offset);
       setApplied({ query: q.query, from: q.from, after: q.after, status: q.status });
       setLoading(false);
-      await refreshSummary(result);
+      await refreshSummary(result, recheck && q.status === 'all');
     } catch (e) {
       if (version !== epoch.current || aborted(e)) return;
       setError(errorText(e));
@@ -361,6 +369,9 @@ export const MailboxPage = forwardRef<MailboxHandle, Props>(function MailboxPage
                 </span>
               </div>
               <div className="mail-list-options">
+                <Action disabled={loading} onAction={() => load(true, true)}>
+                  메일 목록 새로고침
+                </Action>
                 <div className="mail-view-tools">
                   <label htmlFor="mail-view">목록 보기</label>
                   <SelectField

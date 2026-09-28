@@ -17,7 +17,7 @@ const bearer=(req:Request)=>{const token=/^Bearer (\S+)$/.exec(req.get('authoriz
 export function createUsernameApp(auth:UsernameAuth){
   const runs=new Runs(),sync=new SourceSync();
   const app=createHistoryApp(runs,t=>auth.authenticate(t),app=>{
-    app.get('/health/ready',async(_req,res)=>{try{await transaction(c=>c.query("SELECT 1 FROM schema_migration WHERE id='009_report_questions.sql'").then(r=>{if(!r.rowCount)throw new Error('SCHEMA_NOT_READY');}));res.json({ok:true});}catch{res.status(503).json({ok:false});}});
+    app.get('/health/ready',async(_req,res)=>{try{await transaction(c=>c.query("SELECT 1 FROM schema_migration WHERE id='011_mail_identity_checks.sql'").then(r=>{if(!r.rowCount)throw new Error('SCHEMA_NOT_READY');}));res.json({ok:true});}catch{res.status(503).json({ok:false});}});
     app.use('/auth',(req,res,next)=>{
       res.set('Cache-Control','no-store');
       if(req.get('origin')||req.get('sec-fetch-site')==='cross-site')throw new ApiError(403,'BROWSER_ACCESS_DENIED');
@@ -30,6 +30,8 @@ export function createUsernameApp(auth:UsernameAuth){
     app.post('/auth/password',async(req,res)=>res.json(await auth.changePassword(await auth.authenticate(bearer(req),true),req.body)));
     app.use('/api/v1',(_req,res,next)=>{res.set('Cache-Control','no-store');next();});
   });
+  app.get('/api/v1/admin/teams',async(_req,res)=>res.json(await auth.teams(res.locals.actor)));
+  app.post('/api/v1/admin/teams',async(req,res)=>res.status(201).json(await auth.createTeam(res.locals.actor,req.body)));
   app.get('/api/v1/admin/users',async(_req,res)=>res.json(await auth.users(res.locals.actor)));
   app.post('/api/v1/admin/users',async(req,res)=>res.status(201).json(await auth.createUser(res.locals.actor,req.body)));
   app.post('/api/v1/admin/users/:id',async(req,res)=>res.json(await auth.updateUser(res.locals.actor,uuid.parse(req.params.id),req.body)));

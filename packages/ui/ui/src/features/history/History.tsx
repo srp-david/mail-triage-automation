@@ -1,5 +1,5 @@
 import { Panel, Disclosure, DisclosureTitle } from '../../components/Controls';
-import { Button, Chip, Dialog, Typography } from '@mui/material';
+import { Button, Chip, Dialog, Typography, Stack, TextField, MenuItem } from '@mui/material';
 import {
   forwardRef,
   useEffect,
@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { Form } from '../../forms/Form';
 import { useSession } from '../../api/client';
 import { date, labels, legacyTitle, type Legacy, type Run } from '../../api/types';
 import { usePolling, useResource } from '../../hooks/async';
@@ -33,8 +34,12 @@ export const HistoryList = forwardRef<
     enabled?: boolean;
   }
 >(function HistoryList({ kind, mailId, prefix = '', open, enabled = true }, ref) {
-  const { api, storeId, notice } = useSession(),
-    [extra, setExtra] = useState<(Run | Legacy)[]>([]),
+  const { api, storeId, userId, notice } = useSession();
+  const [draft, setDraft] = useState({ query: '', status: '', from: '', to: '', authorId: '' });
+  const [filters, setFilters] = useState<Record<string, string>>({});
+  const filterKey = JSON.stringify(filters);
+  const showSearch = kind === 'runs' && !mailId && !!userId;
+  const [extra, setExtra] = useState<(Run | Legacy)[]>([]),
     [moreAvailable, setMoreAvailable] = useState(false),
     life = useRef(0),
     [activated, setActivated] = useState(enabled);
@@ -47,11 +52,12 @@ export const HistoryList = forwardRef<
     '?' +
     new URLSearchParams({
       ...(mailId ? { storeId, mailId: String(mailId) } : {}),
+      ...filters,
       offset: String(offset),
     });
   const resource = useResource(
     (s) => api<(Run | Legacy)[]>(path(), undefined, s),
-    storeId + ':' + mailId + ':' + kind,
+    storeId + ':' + mailId + ':' + kind + ':' + filterKey,
     activated,
   );
   useEffect(() => {
@@ -62,11 +68,11 @@ export const HistoryList = forwardRef<
     return () => {
       life.current += 1;
     };
-  }, [mailId, kind, enabled]);
+  }, [mailId, kind, enabled, filterKey]);
   useEffect(() => {
     setExtra([]);
     setMoreAvailable((resource.data?.length ?? 0) >= 100);
-  }, [resource.data]);
+  }, [resource.data, filterKey]);
   useImperativeHandle(ref, () => ({ refresh: resource.refresh }));
   const listId = prefix + (kind === 'runs' ? 'runs' : 'legacy-list'),
     moreId = prefix + (kind === 'runs' ? 'more-runs' : 'legacy-more');
@@ -80,6 +86,96 @@ export const HistoryList = forwardRef<
   );
   return (
     <>
+      {showSearch && (
+        <Stack
+          component={Form}
+          direction="row"
+          spacing={1}
+          useFlexGap
+          sx={{ flexWrap: 'wrap', my: 2 }}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (draft.from && draft.to && draft.from > draft.to) {
+              notice('조회 기간을 확인하세요.');
+              return;
+            }
+            const next: Record<string, string> = {};
+            for (const name of ['query', 'status', 'authorId'] as const)
+              if (draft[name]) next[name] = draft[name];
+            if (draft.from) next.from = new Date(draft.from + 'T00:00:00').toISOString();
+            if (draft.to) next.to = new Date(draft.to + 'T23:59:59.999').toISOString();
+            setFilters(next);
+          }}
+        >
+          <TextField
+            size="small"
+            label="제목·보고서 검색"
+            value={draft.query}
+            onChange={(e) => setDraft({ ...draft, query: e.target.value })}
+          />
+          <TextField
+            select
+            size="small"
+            label="분석 상태"
+            value={draft.status}
+            sx={{ minWidth: 140 }}
+            onChange={(e) => setDraft({ ...draft, status: e.target.value })}
+          >
+            <MenuItem value="">전체 상태</MenuItem>
+            {['queued', 'running', 'completed', 'needs_input', 'failed', 'cancelled'].map(
+              (status) => (
+                <MenuItem key={status} value={status}>
+                  {labels[status] ?? status}
+                </MenuItem>
+              ),
+            )}
+          </TextField>
+          <TextField
+            select
+            size="small"
+            label="작성 범위"
+            value={draft.authorId}
+            sx={{ minWidth: 140 }}
+            onChange={(e) => setDraft({ ...draft, authorId: e.target.value })}
+          >
+            <MenuItem value="">팀 전체</MenuItem>
+            <MenuItem value={userId}>내가 분석한 이력</MenuItem>
+          </TextField>
+          <TextField
+            size="small"
+            type="date"
+            label="시작일"
+            slotProps={{ inputLabel: { shrink: true } }}
+            value={draft.from}
+            onChange={(e) => setDraft({ ...draft, from: e.target.value })}
+          />
+          <TextField
+            size="small"
+            type="date"
+            label="종료일"
+            slotProps={{ inputLabel: { shrink: true } }}
+            value={draft.to}
+            onChange={(e) => setDraft({ ...draft, to: e.target.value })}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing) e.preventDefault();
+            }}
+          >
+            검색
+          </Button>
+          <Button
+            onClick={() => {
+              setDraft({ query: '', status: '', from: '', to: '', authorId: '' });
+              setFilters({});
+            }}
+          >
+            초기화
+          </Button>
+        </Stack>
+      )}
       <div id={listId}>
         {resource.error ? (
           <p>
@@ -105,6 +201,8 @@ export const HistoryList = forwardRef<
                 >
                   <span className="history-entry-title">{(item as Run).subject}</span>
                   <span className="history-entry-meta">
+                    {(item as Run).author &&
+                      `${(item as Run).author} · ${(item as Run).sourceName ?? ''} · `}
                     {(item as Run).source === 'direct' ? '직접 실행' : '웹'} ·{' '}
                     {date((item as Run).created_at)}
                   </span>

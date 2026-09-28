@@ -2,14 +2,15 @@ import {randomUUID} from 'node:crypto';
 import type {PoolClient} from 'pg';
 import {z} from 'zod';
 import {transaction} from './db.js';
-import {lockShared,lock,sourceAccess,digest} from './directory.js';
+import {lockShared,lock,sourceAccess,member,digest} from './directory.js';
 import {ApiError,uuid,type Principal} from '../../../packages/contracts/src/v1.js';
+import {sameMail,handlingJoin,teamSourceAccess,type HistoryFilters} from './team-history.js';
 
 export async function historyAccess(c:PoolClient,actor:Principal,id:string,write=false){
   const r=(await c.query(`SELECT r.*,m.store_id,m.mail_id,m.message_id,m.subject,m.identity_kind,h.handled_at,s.id AS source_id
     FROM analysis_run r JOIN mail_identity m ON m.id=r.mail_key JOIN source s ON s.store_id=m.store_id
-    LEFT JOIN personal_mail_handling h ON h.mail_key=m.id AND h.user_id=$2 WHERE r.id=$1`,[id,actor.userId])).rows[0];
-  if(!r)throw new ApiError(404,'RUN_NOT_FOUND');await sourceAccess(c,actor,r.source_id,write);return r;
+    ${handlingJoin("$2")} WHERE r.id=$1`,[id,actor.userId])).rows[0];
+  if(!r)throw new ApiError(404,'RUN_NOT_FOUND');await teamSourceAccess(c,actor,r.source_id,write);return r;
 }
 const mailProof=z.object({id:z.number().int().positive().safe(),messageId:z.string().max(4000).nullable(),fetchedAt:z.string().min(1).max(100),subject:z.string().max(10000)}).strict();
 export const freshProof=z.string().datetime().refine(x=>Math.abs(Date.now()-Date.parse(x))<=300000,'STALE_MAIL_PROOF');
@@ -24,20 +25,34 @@ export class SharedHistory {
     const p=(await c.query('SELECT result FROM report_version WHERE run_id=$1',[id])).rows[0];
     const v=(await c.query('SELECT * FROM v1_run WHERE run_id=$1',[id])).rows[0];
     const reviews=(await c.query(`SELECT r.id,r.author,coalesce(u.email,r.author) AS "authorDisplay",r.body,r.created_at FROM review r LEFT JOIN app_user u ON u.id::text=r.author WHERE r.run_id=$1 ORDER BY r.created_at,r.id`,[id])).rows;
-    const related=(await c.query('SELECT id,store_id,mail_id,message_id,metadata,linked_at FROM related_mail WHERE mail_key=$1 AND store_id=$2 ORDER BY linked_at,id',[r.mail_key,r.store_id])).rows;
+    const related=(await c.query(`SELECT rm.id,rm.store_id,rm.mail_id,rm.message_id,rm.metadata,rm.linked_at
+      FROM related_mail rm JOIN source s ON s.store_id=rm.store_id
+      LEFT JOIN source_access a ON a.source_id=s.id AND a.user_id=$3
+      WHERE rm.mail_key=$1 AND rm.store_id=$2 AND (s.owner_user_id=$3 OR a.user_id IS NOT NULL)
+      ORDER BY rm.linked_at,rm.id`,[r.mail_key,r.store_id,actor.userId])).rows;
     return {id:r.id,sourceId:r.source_id,storeId:r.store_id,mailId:r.mail_id===null?null:Number(r.mail_id),messageId:r.message_id,subject:r.subject,identityKind:r.identity_kind,
       status:r.status,agent:v?.agent??'unknown',runnerId:v?.target_runner_id??null,requestedBy:v?.requested_by??null,
       progress:r.progress_events,handledAt:r.handled_at,createdAt:r.created_at,startedAt:r.started_at,finishedAt:r.finished_at,error:r.error,
       result:p?.result??null,reportHash:p?digest(p.result.report):null,reviews,relatedMails:related,
       cancelRequested:!!v?.cancel_requested_at,verifiedBy:v?.verified_by??null,verifiedAt:v?.verified_at??null,parentId:r.parent_id,answer:r.answer};
   });}
-  async list(actor:Principal,sourceId:string,offset=0,mailId?:number,query=''){return transaction(async c=>{
-    await lockShared(c);const s=await sourceAccess(c,actor,sourceId);
-    return (await c.query(`SELECT r.id,r.status,r.created_at AS "createdAt",r.finished_at AS "finishedAt",r.error,m.mail_id AS "mailId",m.subject,h.handled_at AS "handledAt",v.agent
-      FROM analysis_run r JOIN mail_identity m ON m.id=r.mail_key LEFT JOIN v1_run v ON v.run_id=r.id
-      LEFT JOIN personal_mail_handling h ON h.mail_key=m.id AND h.user_id=$5
-      WHERE m.store_id=$1 AND ($3::bigint IS NULL OR m.mail_id=$3) AND ($4='' OR strpos(lower(m.subject),lower($4))>0)
-      ORDER BY r.created_at DESC,r.id DESC LIMIT 100 OFFSET $2`,[s.store_id,offset,mailId??null,query,actor.userId])).rows;
+  async list(actor:Principal,sourceId?:string,offset=0,mailId?:number,query='',filters:Partial<HistoryFilters>={}){return transaction(async c=>{
+    await lockShared(c);const membership=await member(c,actor);
+    if(sourceId)await teamSourceAccess(c,actor,sourceId);
+    return (await c.query(`SELECT r.id,r.status,r.created_at AS "createdAt",r.finished_at AS "finishedAt",r.error,m.mail_id AS "mailId",m.subject,h.handled_at AS "handledAt",v.agent,
+      s.id AS "sourceId",s.display_name AS "sourceName",coalesce(u.display_name,u.username,u.email,'이전 분석') AS author
+      FROM analysis_run r JOIN mail_identity m ON m.id=r.mail_key JOIN source s ON s.store_id=m.store_id AND s.active
+      LEFT JOIN v1_run v ON v.run_id=r.id LEFT JOIN app_user u ON u.id=coalesce(v.requested_by,s.owner_user_id)
+      LEFT JOIN report_version p ON p.run_id=r.id LEFT JOIN report_head head ON head.run_id=r.id
+      LEFT JOIN report_revision rev ON rev.run_id=r.id AND rev.version=head.version
+      ${handlingJoin("$5")}
+      WHERE s.team_id=$1 AND ($6::uuid IS NULL OR ($3::bigint IS NULL AND s.id=$6) OR ($3::bigint IS NOT NULL AND EXISTS (
+        SELECT 1 FROM mail_identity local JOIN source ls ON ls.store_id=local.store_id
+        WHERE ls.id=$6 AND local.mail_id=$3 AND ${sameMail('local','m')})))
+      AND ($4='' OR strpos(lower(m.subject),lower($4))>0 OR strpos(lower(coalesce(rev.report,p.result->>'report','')),lower($4))>0)
+      AND ($7::uuid IS NULL OR coalesce(v.requested_by,s.owner_user_id)=$7) AND ($8::text IS NULL OR r.status=$8)
+      AND ($9::timestamptz IS NULL OR r.created_at>=$9) AND ($10::timestamptz IS NULL OR r.created_at<=$10)
+      ORDER BY r.created_at DESC,r.id DESC LIMIT 100 OFFSET $2`,[membership.team_id,offset,mailId??null,query,actor.userId,sourceId??null,filters.authorId??null,filters.status??null,filters.from??null,filters.to??null])).rows;
   });}
   async review(actor:Principal,id:string,input:unknown){
     const b=z.object({requestId:uuid,body:z.string().trim().min(1).max(500000)}).strict().parse(input);
@@ -50,15 +65,17 @@ export class SharedHistory {
   }
   async handling(actor:Principal,id:string,completed:boolean){return transaction(async c=>{
     await lock(c);const r=await historyAccess(c,actor,id,true);
-    if(completed&&(await c.query("SELECT 1 FROM analysis_run WHERE mail_key=$1 AND status IN ('queued','running')",[r.mail_key])).rowCount)throw new ApiError(409,'RUN_ACTIVE');
+    if(completed&&(await c.query(`SELECT 1 FROM analysis_run ar JOIN mail_identity other ON other.id=ar.mail_key JOIN source os ON os.store_id=other.store_id AND os.active JOIN mail_identity m ON m.id=$1 JOIN source s ON s.store_id=m.store_id AND s.team_id=os.team_id WHERE ${sameMail('m','other')} AND ar.status IN ('queued','running')`,[r.mail_key])).rowCount)throw new ApiError(409,'RUN_ACTIVE');
     if(completed)return (await c.query('INSERT INTO personal_mail_handling(mail_key,user_id) VALUES($1,$2) ON CONFLICT(mail_key,user_id) DO UPDATE SET handled_at=personal_mail_handling.handled_at RETURNING handled_at AS "handledAt"',[r.mail_key,actor.userId])).rows[0];
-    await c.query('DELETE FROM personal_mail_handling WHERE mail_key=$1 AND user_id=$2',[r.mail_key,actor.userId]);return {handledAt:null};
+    await c.query(`DELETE FROM personal_mail_handling ph USING mail_identity hm,mail_identity m,source hs,source s WHERE m.id=$1 AND ph.user_id=$2 AND hm.id=ph.mail_key AND hs.store_id=hm.store_id AND s.store_id=m.store_id AND hs.team_id=s.team_id AND ${sameMail('m','hm')}`,[r.mail_key,actor.userId]);return {handledAt:null};
   });}
   async summaries(actor:Principal,sourceId:string,ids:number[]){return transaction(async c=>{
     await lockShared(c);const s=await sourceAccess(c,actor,sourceId);
     return (await c.query(`SELECT m.mail_id::text AS "mailId",h.handled_at AS "handledAt",a.*,l."legacyCount" FROM mail_identity m
-      LEFT JOIN personal_mail_handling h ON h.mail_key=m.id AND h.user_id=$3
-      CROSS JOIN LATERAL (SELECT count(*)::int AS "runCount",count(*) FILTER(WHERE r.status='completed')::int AS "completedCount",(array_agg(r.status ORDER BY r.created_at DESC,r.id DESC))[1] AS "latestStatus" FROM analysis_run r WHERE r.mail_key=m.id) a
+      LEFT JOIN LATERAL (SELECT max(ph.handled_at) AS handled_at FROM personal_mail_handling ph
+        JOIN mail_identity hm ON hm.id=ph.mail_key JOIN source hs ON hs.store_id=hm.store_id AND hs.team_id=$4 AND hs.active
+        WHERE ph.user_id=$3 AND ${sameMail('m','hm')}) h ON true
+      CROSS JOIN LATERAL (SELECT count(*)::int AS "runCount",count(*) FILTER(WHERE r.status='completed')::int AS "completedCount",(array_agg(r.status ORDER BY r.created_at DESC,r.id DESC))[1] AS "latestStatus" FROM analysis_run r JOIN mail_identity other ON other.id=r.mail_key JOIN source os ON os.store_id=other.store_id AND os.active AND os.team_id=$4 WHERE ${sameMail('m','other')}) a
       CROSS JOIN LATERAL (SELECT count(*)::int AS "legacyCount" FROM legacy_link ll JOIN legacy_collection_document d ON d.document_id=ll.document_id JOIN legacy_collection lc ON lc.id=d.collection_id
         JOIN membership own ON own.user_id=lc.owner_user_id AND own.team_id=$4 AND own.active
         LEFT JOIN legacy_collection_access la ON la.collection_id=lc.id AND la.user_id=$3
@@ -67,7 +84,7 @@ export class SharedHistory {
   });}
   async related(actor:Principal,id:string,input:unknown){
     const b=z.object({mail:mailProof,verifiedAt:freshProof}).strict().parse(input);
-    return transaction(async c=>{await lock(c);const r=await historyAccess(c,actor,id,true);
+    return transaction(async c=>{await lock(c);const r=await historyAccess(c,actor,id,true);await sourceAccess(c,actor,r.source_id,true);
       if(!r.handled_at)throw new ApiError(409,'MAIL_NOT_HANDLED');
       if(Number(r.mail_id)===b.mail.id||!b.mail.messageId)throw new ApiError(409,'MAIL_IDENTITY_CHANGED');
       await c.query(`INSERT INTO related_mail(id,mail_key,store_id,mail_id,message_id,metadata) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(mail_key,store_id,mail_id) DO NOTHING`,[randomUUID(),r.mail_key,r.store_id,b.mail.id,b.mail.messageId,JSON.stringify(b.mail)]);
@@ -76,7 +93,7 @@ export class SharedHistory {
     });
   }
   async unlinkRelated(actor:Principal,id:string,linkId:string){return transaction(async c=>{
-    await lock(c);const r=await historyAccess(c,actor,id,true);await c.query('DELETE FROM related_mail WHERE id=$1 AND mail_key=$2',[linkId,r.mail_key]);return {ok:true};
+    await lock(c);const r=await historyAccess(c,actor,id,true);await sourceAccess(c,actor,r.source_id,true);await c.query('DELETE FROM related_mail WHERE id=$1 AND mail_key=$2',[linkId,r.mail_key]);return {ok:true};
   });}
   async threads(actor:Principal,sourceId:string){return transaction(async c=>{
     await lockShared(c);const s=await sourceAccess(c,actor,sourceId);return (await c.query('SELECT * FROM manual_thread_link WHERE store_id=$1 ORDER BY created_at DESC,id',[s.store_id])).rows.map(link);

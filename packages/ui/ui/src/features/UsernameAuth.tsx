@@ -174,7 +174,10 @@ export function PasswordForm({
   );
 }
 
+type Team = { id: string; name: string };
 type User = {
+  team_id?: string;
+  team_name?: string;
   id: string;
   username: string | null;
   display_name: string | null;
@@ -184,6 +187,9 @@ type User = {
 };
 export function AdminUsers() {
   const { api, notice } = useSession();
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [canCreateTeam, setCanCreateTeam] = useState(false);
+  const [teamName, setTeamName] = useState('');
   const [users, setUsers] = useState<User[]>([]),
     [temporary, setTemporary] = useState<{ password: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true),
@@ -202,7 +208,13 @@ export function AdminUsers() {
     setLoading(true);
     setLoadError('');
     try {
-      setUsers(await api<User[]>('/admin/users'));
+      const [users, directory] = await Promise.all([
+        api<User[]>('/admin/users'),
+        api<{ teams: Team[]; canCreate: boolean }>('/admin/teams'),
+      ]);
+      setUsers(users);
+      setTeams(directory.teams);
+      setCanCreateTeam(directory.canCreate);
     } catch (error) {
       setLoadError(errorText(error));
     } finally {
@@ -216,7 +228,7 @@ export function AdminUsers() {
   const visible = users.filter(
     (user) =>
       !needle ||
-      [user.username, user.display_name].some((value) =>
+      [user.username, user.display_name, user.team_name].some((value) =>
         value?.toLocaleLowerCase().includes(needle),
       ),
   );
@@ -281,6 +293,35 @@ export function AdminUsers() {
           </Button>
         </DialogActions>
       </Dialog>
+      <Box sx={{ my: 2 }}>
+        <Typography variant="h3">팀 관리</Typography>
+        <Stack direction="row" spacing={1} sx={{ my: 1 }}>
+          {teams.map((team) => (
+            <Chip key={team.id} label={team.name} />
+          ))}
+        </Stack>
+        {canCreateTeam && (
+          <Stack direction="row" spacing={1}>
+            <Field
+              aria-label="새 팀 이름"
+              value={teamName}
+              onChange={(event) => setTeamName(event.target.value)}
+              placeholder="추가할 팀 이름"
+            />
+            <Action
+              disabled={!teamName.trim()}
+              onAction={async () => {
+                await api('/admin/teams', { name: teamName.trim() });
+                setTeamName('');
+                await load();
+                notice('팀을 추가했습니다.');
+              }}
+            >
+              팀 추가
+            </Action>
+          </Stack>
+        )}
+      </Box>
       <Disclosure className="admin-create">
         <DisclosureTitle>새 계정 만들기</DisclosureTitle>
         <Typography variant="body2" color="text.secondary" sx={{ px: 1, my: 1 }}>
@@ -291,7 +332,10 @@ export function AdminUsers() {
           onSubmit={handleSubmit(async (values) => {
             try {
               setTemporary(null);
-              const result = await api<{ temporaryPassword: string }>('/admin/users', values);
+              const result = await api<{ temporaryPassword: string }>('/admin/users', {
+                ...values,
+                teamId: values.teamId || undefined,
+              });
               setTemporary({ password: result.temporaryPassword, name: values.username });
               reset({ ...values, username: '', displayName: '' });
               await load();
@@ -318,6 +362,17 @@ export function AdminUsers() {
               <option value="analyst">분석 사용자</option>
               <option value="viewer">조회 사용자</option>
               <option value="admin">관리자</option>
+            </SelectField>
+          </label>
+          <label>
+            소속 팀
+            <SelectField aria-label="새 계정 소속 팀" {...register('teamId')}>
+              <option value="">내 팀 (기본)</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
             </SelectField>
           </label>
           <Button type="submit" variant="contained" disabled={isSubmitting}>
@@ -357,6 +412,7 @@ export function AdminUsers() {
           <UserRow
             key={user.id}
             user={user}
+            teams={teams}
             changed={load}
             secret={(password) =>
               setTemporary(
@@ -374,10 +430,12 @@ export function AdminUsers() {
 
 function UserRow({
   user,
+  teams,
   changed,
   secret,
 }: {
   user: User;
+  teams: Team[];
   changed: () => Promise<void>;
   secret: (s: string) => void;
 }) {
@@ -390,11 +448,21 @@ function UserRow({
     formState: { errors, isSubmitting },
   } = useForm<z.infer<typeof updateUserSchema>>({
     resolver: zodResolver(updateUserSchema),
-    defaultValues: { displayName: user.display_name ?? '', role: user.role, active: user.active },
+    defaultValues: {
+      displayName: user.display_name ?? '',
+      role: user.role,
+      active: user.active,
+      teamId: user.team_id,
+    },
   });
   useEffect(() => {
-    reset({ displayName: user.display_name ?? '', role: user.role, active: user.active });
-  }, [user.display_name, user.role, user.active, reset]);
+    reset({
+      displayName: user.display_name ?? '',
+      role: user.role,
+      active: user.active,
+      teamId: user.team_id,
+    });
+  }, [user.display_name, user.role, user.active, user.team_id, reset]);
   return (
     <Box
       component="article"
@@ -407,7 +475,7 @@ function UserRow({
             {user.display_name || user.username || '표시 이름 없음'}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            사용자명 · {user.username ?? '이관 대기'}
+            사용자명 · {user.username ?? '이관 대기'} · {user.team_name ?? '팀 확인 필요'}
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
@@ -450,6 +518,16 @@ function UserRow({
               <option value="viewer">조회 사용자</option>
               <option value="analyst">분석 사용자</option>
               <option value="admin">관리자</option>
+            </SelectField>
+          </label>
+          <label>
+            소속 팀
+            <SelectField aria-label="소속 팀" {...register('teamId')}>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
             </SelectField>
           </label>
           <label>

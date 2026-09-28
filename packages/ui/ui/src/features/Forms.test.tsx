@@ -4,6 +4,7 @@ import { expect, test, vi } from 'vitest';
 import { UsernameForm, PasswordForm, AdminUsers } from './UsernameAuth';
 import { Settings } from './Settings';
 import { createApi, SessionContext } from '../api/client';
+import type { Api } from '../api/types';
 import { passwordSchema } from '../forms/schemas';
 
 test('login validates before sending and submits the registered values once', async () => {
@@ -163,13 +164,23 @@ test('expired session still requests login and never reports password change suc
 test('admin row loads checkbox state and sends edited name, role and active flag', async () => {
   const user = {
     id: 'synthetic',
+    team_id: '11111111-1111-4111-8111-111111111111',
+    team_name: '개발1팀',
     username: 'test.user',
     display_name: 'Original',
     role: 'viewer',
     active: true,
     must_change: false,
   };
-  const api = vi.fn().mockImplementation(async (_path, body) => (body ? {} : [user]));
+  const api = vi
+    .fn()
+    .mockImplementation(async (path, body) =>
+      path === '/admin/teams'
+        ? { teams: [{ id: user.team_id, name: user.team_name }], canCreate: true }
+        : body
+          ? {}
+          : [user],
+    );
   render(
     <SessionContext.Provider value={{ api, notice: vi.fn(), storeId: '', unauthorized: vi.fn() }}>
       <AdminUsers />
@@ -179,13 +190,14 @@ test('admin row loads checkbox state and sends edited name, role and active flag
   await userEvent.click(group.getByText('계정 정보 수정'));
   expect(group.getByRole('checkbox')).toBeChecked();
   await userEvent.click(group.getByRole('checkbox'));
-  await userEvent.selectOptions(group.getByRole('combobox'), 'analyst');
+  await userEvent.selectOptions(group.getByRole('combobox', { name: '역할' }), 'analyst');
   await userEvent.click(group.getByRole('button', { name: '계정 저장' }));
   await waitFor(() =>
     expect(api).toHaveBeenCalledWith('/admin/users/synthetic', {
       displayName: 'Original',
       role: 'analyst',
       active: false,
+      teamId: user.team_id,
     }),
   );
 });
@@ -221,4 +233,45 @@ test('settings hydrate loaded values and clear the runner when the source change
     ),
   );
   expect(changed).toHaveBeenCalledOnce();
+});
+
+test('admin can add a team and select it when creating an account', async () => {
+  const teams = [{ id: '11111111-1111-4111-8111-111111111111', name: '개발1팀' }];
+  const api = vi.fn(async (path: string, body?: unknown) => {
+    if (path === '/admin/teams' && body) {
+      teams.push({
+        id: '22222222-2222-4222-8222-222222222222',
+        name: (body as { name: string }).name,
+      });
+      return teams[1];
+    }
+    if (path === '/admin/teams') return { teams: [...teams], canCreate: true };
+    if (path === '/admin/users' && body) return { temporaryPassword: 'synthetic-password' };
+    return [];
+  });
+  render(
+    <SessionContext.Provider
+      value={{ api: api as Api, notice: vi.fn(), storeId: '', unauthorized: vi.fn() }}
+    >
+      <AdminUsers />
+    </SessionContext.Provider>,
+  );
+  const name = await screen.findByLabelText('새 팀 이름');
+  await userEvent.type(name, '개발2팀');
+  await userEvent.click(screen.getByRole('button', { name: '팀 추가' }));
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/admin/teams', { name: '개발2팀' }));
+  await userEvent.click(screen.getByText('새 계정 만들기'));
+  await userEvent.type(screen.getByLabelText(/^새 사용자명/), 'new.user');
+  await userEvent.type(screen.getByLabelText(/^표시 이름/), '새 사용자');
+  await userEvent.selectOptions(
+    screen.getByRole('combobox', { name: '새 계정 소속 팀' }),
+    teams[1].id,
+  );
+  await userEvent.click(screen.getByRole('button', { name: '계정 생성' }));
+  await waitFor(() =>
+    expect(api).toHaveBeenCalledWith(
+      '/admin/users',
+      expect.objectContaining({ username: 'new.user', teamId: teams[1].id }),
+    ),
+  );
 });

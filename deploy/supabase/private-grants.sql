@@ -17,5 +17,6 @@ GRANT SELECT,INSERT,UPDATE,DELETE ON auth_throttle TO triage_runtime;
 GRANT SELECT,INSERT,UPDATE ON common_mail,analysis_run,report_head,report_question_job TO triage_runtime;
 GRANT SELECT,INSERT ON common_mail_link,report_revision,report_message TO triage_runtime;
 GRANT SELECT,INSERT,UPDATE,DELETE ON report_share,personal_mail_handling TO triage_runtime;
+GRANT SELECT,INSERT,UPDATE,DELETE ON mail_identity_check TO triage_runtime;
 GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA triage_private TO triage_runtime;
 RESET search_path;

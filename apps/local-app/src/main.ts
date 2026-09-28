@@ -48,6 +48,8 @@ const server=createBrowserApp(session,{port,controlToken,shutdown,pause:()=>runt
   connectionRoutes(app,new ConnectionStore(root),async(value,persist)=>runtime.reconfigure(async()=>{
     const executor=makeExecutor(value);await profile.changeEndpoint(value.mailMcpUrl,persist);connections=value;return executor;
   }));
+  app.get('/api/admin/teams',async(_req,res)=>res.json(await history.request('/admin/teams')));
+  app.post('/api/admin/teams',async(req,res)=>res.json(await history.request('/admin/teams',req.body)));
   app.get('/api/admin/users',async(_req,res)=>res.json(await history.request('/admin/users')));
   app.post('/api/admin/users',async(req,res)=>res.json(await history.request('/admin/users',req.body)));
   app.post('/api/admin/users/:id',async(req,res)=>res.json(await history.request('/admin/users/'+z.string().uuid().parse(req.params.id),req.body)));

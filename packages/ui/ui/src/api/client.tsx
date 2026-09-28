@@ -35,10 +35,10 @@ export function createApi(unauthorized: () => void, csrf: () => string = () => '
         AGENT_NOT_CONFIGURED:
           '선택한 AI가 연결되지 않았습니다. 연결 환경에서 실행 경로를 설정하세요.',
         COMMON_MAIL_BUSY:
-          '다른 사용자가 같은 메일을 분석 중입니다. 잠시 후 공유 분석을 다시 확인하세요.',
+          '다른 사용자가 같은 메일을 분석 중입니다. 잠시 후 팀 분석을 다시 확인하세요.',
         COMMON_MAIL_IDENTITY_CHANGED:
           '기존 연결과 메일 식별 정보가 다릅니다. 담당자에게 연결 확인을 요청하세요.',
-        REPORT_NOT_FOUND: '보고서를 찾을 수 없거나 공유 권한이 변경되었습니다.',
+        REPORT_NOT_FOUND: '보고서를 찾을 수 없거나 소속 팀의 자료가 아닙니다.',
         LOCAL_MCP_NOT_CONFIGURED:
           'Mail MCP 주소가 설정되지 않았습니다. 개인 연결의 연결 환경에서 입력하세요.',
         RUNNER_REQUIRED: '이 PC의 실행 장치를 선택하고 저장하세요.',
@@ -59,6 +59,10 @@ export function createApi(unauthorized: () => void, csrf: () => string = () => '
           '기존 이력과 현재 메일 저장소가 일치하지 않습니다. 다른 저장소라면 새 출처로 등록하세요.',
         RECONNECT_EXPIRED:
           '원본 대조 시간이 만료됐습니다. 기존 이력과 원본 대조를 다시 실행하세요.',
+        TEAM_NAME_EXISTS: '이미 등록된 팀 이름입니다.',
+        TEAM_SHARING_REQUIRED: '보고서는 팀 전체에 공개됩니다. 개별 공유 설정은 사용하지 않습니다.',
+        USER_TEAM_HAS_DATA:
+          '이 계정에 연결된 출처·실행기·분석 자료가 있습니다. 자료 이관 후 소속 팀을 변경하세요.',
         LAST_ADMIN: '마지막 활성 관리자는 비활성화하거나 강등할 수 없습니다.',
         USERNAME_EXISTS: '이미 사용 중인 사용자명입니다.',
         USERNAME_INVALID: '사용자명은 영문으로 시작하는 3~32자 영문·숫자·_.-만 사용할 수 있습니다.',

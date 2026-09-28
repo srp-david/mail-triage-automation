@@ -9,6 +9,7 @@ import {analysisStatus,searchByAnalysis} from './mail-search.js';
 import {searchThreads,scanThreadMails} from './mail-threads.js';
 import {ThreadSearchCache} from './thread-cache.js';
 import {attachmentDownload} from './attachments.js';
+import {historyFilters} from '../../../packages/contracts/src/history-filters.js';
 import {evidenceFromMail} from '../../../packages/contracts/src/mail-identity.js';
 // cacheScope is backend-only and binds snapshots to the authenticated user and MCP instance/endpoint.
 export type LocalSelection={sourceId:string;cacheScope?:string;collectionId?:string;runnerId?:string;agent:'codex'|'claude';original?:MailSource};
@@ -28,10 +29,34 @@ function identity(mail:any,expected?:{id:number;messageId?:string|null;fetchedAt
   if(expected&&(value.id!==expected.id||expected.messageId!==undefined&&value.messageId!==expected.messageId||expected.fetchedAt!==undefined&&value.fetchedAt!==expected.fetchedAt))throw new ApiError(409,'MAIL_IDENTITY_CHANGED');return value;
 }
 const present=(r:any,selection:LocalSelection)=>({...r,store_id:r.sourceId??selection.sourceId,mail_id:r.mailId,message_id:r.messageId,identity_kind:r.identityKind,handled_at:r.handledAt,created_at:r.createdAt,started_at:r.startedAt,finished_at:r.finishedAt,progress_events:r.progress,source:r.agent==='unknown'?'legacy':'web',
-  collaboration:true,relatedMails:r.relatedMails?.map((x:any)=>({...x,store_id:r.sourceId,available:!!selection.original&&r.sourceId===selection.sourceId&&x.store_id===r.storeId}))});
+  collaboration:true,originalAvailable:!!selection.original&&r.sourceId===selection.sourceId,relatedMails:r.relatedMails?.map((x:any)=>({...x,store_id:r.sourceId,available:!!selection.original&&r.sourceId===selection.sourceId&&x.store_id===r.storeId}))});
 export function localUiRoutes(app:express.Express,h:HistoryClient,context:LocalUiContext){
   const threadCache=new ThreadSearchCache<Awaited<ReturnType<typeof scanThreadMails>>>();
-  const summaries=(sourceId:string,ids:number[])=>h.request<any[]>('/sources/'+sourceId+'/mail-analysis',{mailIds:ids}).then(x=>x??[]);
+  const bindVisible=async(selection:LocalSelection,ids:number[],refresh=false)=>{
+    if(!selection.original||!ids.length)return;
+    // Missing scope means the MCP identity is not bound: never reuse a prior proof.
+    const scopeHash=selection.cacheScope?createHash('sha256').update(selection.cacheScope).digest('hex'):undefined;
+    const checked=scopeHash?await h.request<{mailId:string}[]>('/sources/'+selection.sourceId+'/mail-identity-checks',{scopeHash,mailIds:ids,refresh}):[];
+    const known=new Set((checked??[]).map(x=>Number(x.mailId)));
+    const pending=[...new Set(ids)].filter(id=>!known.has(id));
+    const mails:any[]=[];
+    // Bound MCP concurrency; verify from original headers, never subject-only or local numeric IDs.
+    for(let i=0;i<pending.length;i+=4){
+      const group=await Promise.all(pending.slice(i,i+4).map(async mailId=>{
+        const verifiedAt=new Date().toISOString();
+        const raw=await selection.original!.call('get_email',{id:mailId,body_limit:1});identity(raw,{id:mailId});
+        return {mailId,evidence:evidenceFromMail(raw),verifiedAt};
+      }));mails.push(...group);
+    }
+    if(mails.length){
+      await h.request('/sources/'+selection.sourceId+'/mail-identities',{mails,...(scopeHash?{scopeHash}:{})});
+    }
+  };
+  const summaries=async(sourceId:string,ids:number[],refresh=false)=>{
+    const selected=await context.selection();if(selected.sourceId!==sourceId)throw new ApiError(409,'SOURCE_CHANGED');
+    await bindVisible(selected,ids,refresh);
+    return await h.request<any[]>('/sources/'+sourceId+'/mail-analysis',{mailIds:ids})??[];
+  };
   app.get('/api/reports/:id',async(req,res)=>res.json(await h.request('/reports/'+uuid.parse(req.params.id))));
   app.get('/api/reports/:id/collaboration',async(req,res)=>res.json(await h.request('/reports/'+uuid.parse(req.params.id)+'/collaboration')));
   app.get('/api/reports/:id/revisions/:version',async(req,res)=>res.json(await h.request('/reports/'+uuid.parse(req.params.id)+'/revisions/'+number.parse(req.params.version))));
@@ -53,7 +78,16 @@ export function localUiRoutes(app:express.Express,h:HistoryClient,context:LocalU
   app.post('/api/collections',async(req,res)=>res.json(await h.request('/collections',req.body)));
   for(const name of ['sources','collections'])app.post('/api/'+name+'/:id/grants',async(req,res)=>res.json(await h.request('/'+name+'/'+uuid.parse(req.params.id)+'/grants',req.body)));
   app.post('/api/runners/:id/revoke',async(req,res)=>res.json(await h.request('/runners/'+uuid.parse(req.params.id)+'/revoke',{})));
-  app.get('/api/runs',async(req,res)=>{const s=await context.selection(),q=z.object({offset:z.coerce.number().int().min(0).default(0),mailId:number.optional()}).parse(req.query);res.json((await h.request<any[]>('/runs',undefined,undefined,{query:{sourceId:uuid.parse(s.sourceId),offset:String(q.offset),...(q.mailId?{mailId:String(q.mailId)}:{})}}))!.map(r=>present(r,s)));});
+  app.get('/api/runs',async(req,res)=>{
+    const selected=await context.selection();
+    const raw={...req.query};delete raw.storeId;
+    if(raw.mailId){
+      if(req.query.storeId!==undefined&&req.query.storeId!==selected.sourceId)throw new ApiError(409,'SOURCE_CHANGED');
+      raw.sourceId=selected.sourceId;await bindVisible(selected,[number.parse(raw.mailId)]);
+    }
+    const q=historyFilters.parse(raw),query=Object.fromEntries(Object.entries(q).filter(([,v])=>v!==undefined).map(([k,v])=>[k,String(v)]));
+    res.json((await h.request<any[]>('/runs',undefined,undefined,{query}))!.map(r=>present(r,selected)));
+  });
   app.get('/api/runs/:id',async(req,res)=>res.json(present(await h.get(uuid.parse(req.params.id)),await context.selection())));
   app.post('/api/runs',async(req,res)=>{
     const b=z.object({storeId:uuid,mailId:number,messageId:z.string().nullable().optional(),requestId:uuid,parentId:uuid.optional(),answer:z.string().max(20000).optional()}).parse(req.body),s=await context.selection();
@@ -69,11 +103,12 @@ export function localUiRoutes(app:express.Express,h:HistoryClient,context:LocalU
   });
   app.get('/api/legacy/:id',async(req,res)=>res.json(await h.request('/legacy/'+uuid.parse(req.params.id))));
   app.post('/api/legacy/:id/link',async(req,res)=>{const s=await context.selection(),b=z.object({mailId:number,messageId:z.string(),hash:z.string().regex(/^[a-f0-9]{64}$/)}).parse(req.body),mail=identity(await original(s).call('get_email',{id:b.mailId,body_limit:1}),{id:b.mailId,messageId:b.messageId});res.json(await h.request('/legacy/'+uuid.parse(req.params.id)+'/link',{...b,sourceId:s.sourceId,subject:mail.subject,verifiedAt:new Date().toISOString()}));});
-  app.get('/api/mail-analysis',async(req,res)=>{const ids=z.string().max(2000).regex(/^\d+(,\d+)*$/).transform(x=>x.split(',').map(Number)).pipe(z.array(z.number().int().positive().safe()).max(100)).parse(req.query.mailIds);res.json(await summaries((await context.selection()).sourceId,ids));});
+  app.get('/api/mail-analysis',async(req,res)=>{const ids=z.string().max(2000).regex(/^\d+(,\d+)*$/).transform(x=>x.split(',').map(Number)).pipe(z.array(z.number().int().positive().safe()).max(100)).parse(req.query.mailIds);const refresh=z.enum(['1']).optional().parse(req.query.refresh)==='1';res.json(await summaries((await context.selection()).sourceId,ids,refresh));});
   app.get('/api/mails',async(req,res)=>{const s=await context.selection(),m=original(s),args=z.object({query:z.string().max(1000).optional(),from_address:z.string().max(320).optional(),sent_after:z.string().datetime({offset:true}).optional(),sent_before:z.string().datetime({offset:true}).optional(),limit:z.coerce.number().int().min(1).max(100).default(30),offset:z.coerce.number().int().min(0).default(0)}).parse(req.query),status=analysisStatus.default('all').parse(req.query.analysis_status);
-    const search=(args:any)=>m.call('search_emails',args),summary=(ids:number[])=>summaries(s.sourceId,ids);
-    if(req.query.view!=='threads'){res.json(await searchByAnalysis(args,status,search,summary));return;}
     const refresh=z.enum(['1']).optional().parse(req.query.refresh)==='1';
+    const recheck=z.enum(['1']).optional().parse(req.query.recheck)==='1';
+    const search=(args:any)=>m.call('search_emails',args),summary=(ids:number[])=>summaries(s.sourceId,ids,recheck);
+    if(req.query.view!=='threads'){res.json(await searchByAnalysis(args,status,search,summary));return;}
     // Always recheck source access, current links and sync state, including cache hits.
     const [links,sync]=await Promise.all([h.request<any[]>('/sources/'+s.sourceId+'/thread-links'),h.request<any>('/sources/'+s.sourceId+'/sync-latest')]);
     const revision=JSON.stringify([s.cacheScope,s.sourceId,sync?.id,sync?.status,sync?.saved,sync?.batch_count,sync?.finished_at]);
