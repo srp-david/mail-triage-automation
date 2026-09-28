@@ -6,11 +6,13 @@ export class Scheduler {
   private sleep?:AbortController;
   private task?:Promise<void>;
   private draining=false;
+  private wakeRequested=false;
   state:LoopState='stopped';
   lastError?:string;
   constructor(private tick:(signal:AbortSignal)=>Promise<unknown>,private intervalMs=3000,private maxBackoffMs=30000){}
   start(){if(this.task)return false;this.draining=false;this.controller=new AbortController();const signal=this.controller.signal;this.task=this.run(signal).finally(()=>{this.task=undefined;this.controller=undefined;this.sleep=undefined;this.state='stopped';});return true;}
   async stop(){this.controller?.abort();await this.task;}
+  wake(){if(!this.task||this.draining||this.state==='recovery_required')return;if(this.sleep)this.sleep.abort();else this.wakeRequested=true;}
   async drain(){this.draining=true;this.sleep?.abort();await this.task;}
   private async run(signal:AbortSignal){let failures=0,idle=0;
     while(!signal.aborted&&!this.draining){let wait=this.intervalMs;
@@ -27,6 +29,7 @@ export class Scheduler {
         this.state='retrying';this.lastError='TEMPORARY_FAILURE';wait=Math.min(this.maxBackoffMs,this.intervalMs*2**Math.min(++failures,10));
       }
       if(this.draining)break;
+      if(this.wakeRequested){this.wakeRequested=false;idle=0;continue;}
       this.sleep=new AbortController();
       await delay(wait,undefined,{signal:AbortSignal.any([signal,this.sleep.signal])}).catch(()=>{});
       this.sleep=undefined;

@@ -8,7 +8,7 @@ test('local UI facade rechecks source identity before admission and supports his
   const sourceId=randomUUID(),runId=randomUUID(),runnerId=randomUUID();let hasOriginal=true,messageId='<expected@test>',calls=0,started:any;
   const mail={id:1,messageId,fetchedAt:'2026-09-18T00:00:00Z',subject:'Synthetic'};
   const history:any={async start(input:any){started=input;return {id:runId};},async get(){return {id:runId,sourceId,mailId:1,messageId,storeId:sourceId,subject:'Synthetic',status:'completed',result:{report:'Saved synthetic report'},reviews:[],relatedMails:[]};}};
-  const context:any={async selection(){return {sourceId,runnerId,agent:'codex',original:hasOriginal?{async call(){calls++;return {...mail,messageId};}}:undefined};}};
+  const context:any={async submit(_kind:any,_selected:any,enqueue:any){return enqueue();},async selection(){return {sourceId,runnerId,agent:'codex',original:hasOriginal?{async call(){calls++;return {...mail,messageId};}}:undefined};}};
   const app=express();app.use(requestContext);app.use(express.json());localUiRoutes(app,history,context);const server=finishRoutes(app).listen(0,'127.0.0.1');await new Promise<void>(r=>server.once('listening',r));const base='http://127.0.0.1:'+(server.address() as any).port;
   const input={storeId:sourceId,mailId:1,messageId:'<expected@test>',requestId:randomUUID()};
   const post=(body:any)=>fetch(base+'/api/runs',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});

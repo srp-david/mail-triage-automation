@@ -24,19 +24,9 @@ interface SourceOption {
   id: string;
   display_name: string;
 }
-interface CollectionOption {
-  id: string;
-  name: string;
-}
 interface RunnerOption extends SourceOption {
   active: boolean;
   agents: string[];
-}
-interface MemberOption {
-  id: string;
-  display_name?: string;
-  username?: string;
-  email?: string;
 }
 interface LocalEnvironment {
   connectionsEditable?: boolean;
@@ -76,7 +66,6 @@ const stateLabel = (state?: string) =>
     stopping: '중지 중',
     recovery_required: '복구 필요',
   })[state ?? ''] ?? '확인 필요';
-const loopActive = (state?: string) => ['idle', 'working', 'retrying'].includes(state ?? '');
 
 export function Settings({
   changed,
@@ -89,10 +78,7 @@ export function Settings({
 }) {
   const { api, notice } = useSession();
   const [sources, setSources] = useState<SourceOption[]>([]),
-    [collections, setCollections] = useState<CollectionOption[]>([]),
-    [runners, setRunners] = useState<RunnerOption[]>([]),
-    [members, setMembers] = useState<MemberOption[]>([]),
-    [member, setMember] = useState('');
+    [runners, setRunners] = useState<RunnerOption[]>([]);
   const form = useForm<z.infer<typeof settingsSchema>>({
     resolver: zodResolver(settingsSchema),
     defaultValues: { sourceId: '', agent: 'codex' },
@@ -128,17 +114,13 @@ export function Settings({
     setSameStore(false);
     revision.current++;
     try {
-      const [s, c, r, m, v] = await Promise.all([
+      const [s, r, v] = await Promise.all([
         api<SourceOption[]>('/sources'),
-        api<CollectionOption[]>('/collections'),
         api<RunnerOption[]>('/runners'),
-        api<MemberOption[]>('/members'),
         api<LocalSettings>('/settings'),
       ]);
       setSources(s);
-      setCollections(c);
       setRunners(r);
-      setMembers(m);
       reset({
         sourceId: v.sourceId,
         agent: v.agent,
@@ -167,25 +149,18 @@ export function Settings({
   const runnerSelected = runners.some(
     (r) => r.id === value.runnerId && r.active && r.agents.includes(value.agent),
   );
-  const canStart = savedSelection && mailBound && runnerSelected;
   const preparationTab = environment?.connectionsEditable ? 3 : 0;
   const next = !value.sourceId
     ? '메일 출처를 선택하거나 이 PC의 메일을 새로 등록하세요.'
     : !runnerSelected
       ? 'AI 도구를 선택하고 이 PC의 실행 장치를 등록하거나 선택하세요.'
       : !savedSelection
-        ? '선택한 연결을 저장한 다음 실행 상태를 확인하세요.'
+        ? '선택한 연결을 저장한 다음 메일함으로 이동하세요.'
         : !originalAvailable
           ? '이 출처의 원본이 이 PC에 없습니다. 공유 보고서를 보거나 기존 원본을 다시 연결하세요.'
           : agentConfigured === false
             ? '연결 환경에서 선택한 AI 도구의 실행 경로를 설정하고 저장하세요.'
-            : !runtime
-              ? '실행 상태를 확인한 다음 분석 실행을 켜세요.'
-              : !runtime.analysisAvailable
-                ? '연결 환경에서 개인 AI 도구의 실행 경로를 설정하고 저장하세요.'
-                : loopActive(runtime.analysis)
-                  ? '메일함에서 분석할 메일을 선택하세요.'
-                  : '분석 실행을 켠 다음 메일함에서 분석을 시작하세요.';
+            : '메일함에서 동기화하거나 분석할 메일을 선택하세요. 필요한 작업은 자동으로 실행됩니다.';
   const refreshRuntime = async () => {
     const version = revision.current;
     setRuntime(null);
@@ -229,7 +204,6 @@ export function Settings({
                 { label: '분석 준비', value: 3 },
               ]
             : [{ label: '개인 연결', value: 0 }]),
-          { label: '공유·장치 관리', value: 1 },
           { label: '중단 작업 복구', value: 2 },
           ...(updates ? [{ label: '앱 업데이트', value: 4 }] : []),
         ].map(({ label, value: i }) => (
@@ -498,7 +472,7 @@ export function Settings({
                     setRunners(await api<RunnerOption[]>('/runners'));
                     invalidate();
                     form.setValue('runnerId', created.id, { shouldDirty: true });
-                    notice('실행 장치를 등록했습니다. 선택 저장 후 실행 상태를 확인하세요.');
+                    notice('실행 장치를 등록했습니다. 선택을 저장한 뒤 메일함으로 이동하세요.');
                   }}
                 />
               </Disclosure>
@@ -538,9 +512,11 @@ export function Settings({
             <SetupStep
               number={4}
               title="저장하고 분석 준비"
-              description="설정을 저장한 뒤 필요한 실행을 켭니다."
-              status={runtime && savedSelection ? stateLabel(runtime.analysis) : '상태 확인 전'}
-              complete={savedSelection && loopActive(runtime?.analysis)}
+              description="설정을 저장하면 메일함에서 바로 동기화와 분석을 요청할 수 있습니다."
+              status={
+                savedSelection && mailBound && runnerSelected ? '설정 저장됨' : '설정 확인 필요'
+              }
+              complete={savedSelection && mailBound && runnerSelected}
             >
               <Form
                 aria-label="연결 선택 저장"
@@ -570,7 +546,7 @@ export function Settings({
               <Typography variant="body2" color="text.secondary">
                 {form.formState.isDirty
                   ? '저장하지 않은 변경이 있습니다. 먼저 선택을 저장하세요.'
-                  : '설정을 저장하거나 로그아웃하면 실행이 중지됩니다.'}
+                  : '동기화·분석을 요청하면 필요한 백그라운드 작업이 자동으로 시작됩니다.'}
               </Typography>
               {runtimeError && (
                 <Alert severity="error">실행 상태를 확인하지 못했습니다. {runtimeError}</Alert>
@@ -587,32 +563,6 @@ export function Settings({
                 </Alert>
               )}
               <Box className="setup-actions">
-                <Action
-                  disabled={
-                    !canStart ||
-                    !runtime?.analysisAvailable ||
-                    agentConfigured === false ||
-                    loopActive(runtime.analysis)
-                  }
-                  onAction={async () => {
-                    await api('/runtime/start', { kind: 'analysis' });
-                    await refreshRuntime();
-                    notice('분석 실행을 켰습니다. 메일함에서 분석할 메일을 선택하세요.');
-                  }}
-                >
-                  분석 실행 켜기
-                </Action>
-                <Action
-                  variant="outlined"
-                  disabled={!canStart || !runtime || loopActive(runtime.sync)}
-                  onAction={async () => {
-                    await api('/runtime/start', { kind: 'sync' });
-                    await refreshRuntime();
-                    notice('동기화 실행을 켰습니다. 메일함에서 동기화를 시작하세요.');
-                  }}
-                >
-                  동기화 실행 켜기
-                </Action>
                 <Button
                   href="#mailbox"
                   variant="text"
@@ -622,17 +572,9 @@ export function Settings({
                 </Button>
               </Box>
               <Typography variant="body2" color="text.secondary">
-                이 앱이 켜져 있는 동안 실행됩니다. 실제 분석은 메일함에서 요청합니다.
+                앱이 켜져 있는 동안 실행됩니다. 전체 작업의 일시 중지·재개는 작업 표시줄의 앱
+                아이콘에서 선택할 수 있습니다. 로그아웃하면 실행이 중지됩니다.
               </Typography>
-              <Action
-                variant="text"
-                onAction={async () => {
-                  await api('/runtime/stop', {});
-                  await refreshRuntime();
-                }}
-              >
-                로컬 실행 중지
-              </Action>
             </SetupStep>
           </Box>
           {!environment?.connectionsEditable && (
@@ -664,129 +606,6 @@ export function Settings({
               </Typography>
             </Disclosure>
           )}
-        </Box>
-        <Box
-          role="tabpanel"
-          id="settings-panel-1"
-          aria-labelledby="settings-tab-1"
-          hidden={tab !== 1}
-          className="setup-management"
-        >
-          <Alert severity="info">
-            공유는 현재 저장한 출처와 문서 모음에 적용됩니다. 개인 연결을 변경했다면 먼저
-            저장하세요.
-          </Alert>
-          <Typography component="h3" variant="h3">
-            이전 문서 모음
-          </Typography>
-          <label>
-            이전 문서 모음
-            <SelectField
-              aria-label="이전 문서 모음"
-              value={value.collectionId ?? ''}
-              onChange={(e) => {
-                invalidate();
-                form.setValue('collectionId', e.target.value || undefined, { shouldDirty: true });
-              }}
-            >
-              <option value="">선택 안 함</option>
-              {collections.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </SelectField>
-          </label>
-          <Registration
-            label="문서 모음 이름"
-            placeholder="예: 팀 참고 문서"
-            button="문서 모음 만들기"
-            onRegister={async (name) => {
-              await api('/collections', { name, requestId: crypto.randomUUID() });
-              setCollections(await api<CollectionOption[]>('/collections'));
-              notice('문서 모음을 만들었습니다. 사용할 모음을 선택하세요.');
-            }}
-          />
-          {form.formState.isDirty && (
-            <Alert
-              severity="warning"
-              action={<Button onClick={() => setTab(0)}>개인 연결로 이동</Button>}
-            >
-              변경한 선택을 개인 연결에서 저장하세요.
-            </Alert>
-          )}
-          <Typography component="h3" variant="h3">
-            공유 관리
-          </Typography>
-          <label>
-            팀 사용자{' '}
-            <SelectField
-              aria-label="팀 사용자"
-              value={member}
-              onChange={(e) => setMember(e.target.value)}
-            >
-              <option value="">사용자 선택</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.display_name
-                    ? `${m.display_name} (${m.username ?? m.email})`
-                    : (m.username ?? m.email)}
-                </option>
-              ))}
-            </SelectField>
-          </label>
-          {(['sources', 'collections'] as const).map((kind) => (
-            <div key={kind}>
-              <span>{kind === 'sources' ? '선택 출처' : '선택 문서 모음'}</span>
-              {(['read', 'write', 'none'] as const).map((permission) => (
-                <Action
-                  key={permission}
-                  disabled={
-                    !savedSelection ||
-                    !member ||
-                    !(kind === 'sources' ? value.sourceId : value.collectionId)
-                  }
-                  onAction={async () => {
-                    await api(
-                      '/' +
-                        kind +
-                        '/' +
-                        (kind === 'sources' ? value.sourceId : value.collectionId) +
-                        '/grants',
-                      { userId: member, permission },
-                    );
-                    notice('공유 권한을 변경했습니다.');
-                  }}
-                >
-                  {permission === 'read'
-                    ? '읽기 허용'
-                    : permission === 'write'
-                      ? '쓰기 허용'
-                      : '권한 회수'}
-                </Action>
-              ))}
-            </div>
-          ))}
-          <Typography component="h3" variant="h3">
-            등록 장치
-          </Typography>
-          {runners.map((r) => (
-            <div key={r.id}>
-              {r.display_name} · {r.active ? '등록됨' : '폐기됨'}
-              {r.active && (
-                <Action
-                  disabled={!savedSelection}
-                  onAction={async () => {
-                    await api('/runners/' + r.id + '/revoke', {});
-                    await load();
-                    await changed();
-                  }}
-                >
-                  장치 폐기
-                </Action>
-              )}
-            </div>
-          ))}
         </Box>
         <Box
           role="tabpanel"

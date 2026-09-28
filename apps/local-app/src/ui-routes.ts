@@ -18,6 +18,7 @@ export interface LocalUiContext {
   registerSource(input:unknown):Promise<unknown>;
   registerRunner(input:unknown):Promise<unknown>;
   status():Promise<unknown>;
+  submit<T>(kind:'analysis'|'sync',selection:LocalSelection,enqueue:()=>Promise<T>):Promise<T>;
   environment?():{connectionsEditable?:boolean;mailConfigured:boolean;agents:('codex'|'claude')[];evidenceRootCount:number;dbConfigured:boolean};
 }
 const number=z.coerce.number().int().positive().safe();
@@ -58,7 +59,7 @@ export function localUiRoutes(app:express.Express,h:HistoryClient,context:LocalU
     const b=z.object({storeId:uuid,mailId:number,messageId:z.string().nullable().optional(),requestId:uuid,parentId:uuid.optional(),answer:z.string().max(20000).optional()}).parse(req.body),s=await context.selection();
     if(b.storeId!==s.sourceId)throw new ApiError(409,'SOURCE_CHANGED');if(!s.runnerId)throw new ApiError(409,'RUNNER_REQUIRED');
     const raw=await original(s).call('get_email',{id:b.mailId,body_limit:1}),mail=identity(raw,{id:b.mailId,messageId:b.messageId});
-    res.status(201).json(await h.start({sourceId:s.sourceId,mailId:b.mailId,messageId:mail.messageId,subject:mail.subject,mailEvidence:evidenceFromMail(raw),requestId:b.requestId,runnerId:s.runnerId,agent:s.agent,executorKind:'local',verifiedAt:new Date().toISOString(),parentId:b.parentId,answer:b.answer}));
+    res.status(201).json(await context.submit('analysis',s,()=>h.start({sourceId:s.sourceId,mailId:b.mailId,messageId:mail.messageId,subject:mail.subject,mailEvidence:evidenceFromMail(raw),requestId:b.requestId,runnerId:s.runnerId!,agent:s.agent,executorKind:'local',verifiedAt:new Date().toISOString(),parentId:b.parentId,answer:b.answer})));
   });
   for(const action of ['handling','reviews','cancel'])app.post('/api/runs/:id/'+action,async(req,res)=>res.json(await h.request('/runs/'+uuid.parse(req.params.id)+'/'+action,req.body)));
   app.get('/api/runs/:id/export',async(req,res)=>{const r=await h.get(uuid.parse(req.params.id));if(!r.result)throw new ApiError(409,'NO_REPORT');const body=r.result.report+r.reviews.map((x:any)=>'\n\n## '+(x.authorDisplay??x.author)+' 리뷰\n\n'+x.body).join('');res.set('X-Report-SHA256',createHash('sha256').update(body).digest('hex')).type('text/markdown').send(body);});
@@ -98,6 +99,6 @@ export function localUiRoutes(app:express.Express,h:HistoryClient,context:LocalU
   app.post('/api/runs/:id/related-mails',async(req,res)=>{const s=await context.selection(),id=uuid.parse(req.params.id),r=await h.get(id),b=z.object({storeId:uuid,mailId:number,messageId:z.string()}).parse(req.body);if(r.sourceId!==s.sourceId||b.storeId!==s.sourceId)throw new ApiError(409,'SOURCE_CHANGED');const mail=identity(await original(s).call('get_email',{id:b.mailId,body_limit:1}),{id:b.mailId,messageId:b.messageId});res.json(await h.request('/runs/'+id+'/related-mails',{mail,verifiedAt:new Date().toISOString()}));});
   app.get('/api/runs/:id/related-mails/:linkId',async(req,res)=>{const s=await context.selection(),r=await h.get(uuid.parse(req.params.id));if(r.sourceId!==s.sourceId)throw new ApiError(409,'ORIGINAL_UNAVAILABLE');const link=r.relatedMails.find((x:any)=>x.id===uuid.parse(req.params.linkId));if(!link)throw new ApiError(404,'LINK_NOT_FOUND');const mail=await original(s).full(Number(link.mail_id));identity(mail,{id:Number(link.mail_id),messageId:link.message_id});res.json(mail);});
   app.post('/api/runs/:id/related-mails/:linkId/unlink',async(req,res)=>res.json(await h.request('/runs/'+uuid.parse(req.params.id)+'/related-mails/'+uuid.parse(req.params.linkId)+'/unlink',{})));
-  app.post('/api/sync',async(_req,res)=>{const s=await context.selection();original(s);if(!s.runnerId)throw new ApiError(409,'RUNNER_REQUIRED');res.status(202).json(await h.request('/sync-runs',{sourceId:s.sourceId,runnerId:s.runnerId,requestId:randomUUID()}));});
+  app.post('/api/sync',async(_req,res)=>{const s=await context.selection();original(s);if(!s.runnerId)throw new ApiError(409,'RUNNER_REQUIRED');res.status(202).json(await context.submit('sync',s,()=>h.request('/sync-runs',{sourceId:s.sourceId,runnerId:s.runnerId,requestId:randomUUID()})));});
   app.post('/api/sync/:id/stop',async(req,res)=>res.json(await h.request('/sync-runs/'+uuid.parse(req.params.id)+'/stop',{})));
 }

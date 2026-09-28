@@ -42,6 +42,11 @@ export function createApi(unauthorized: () => void, csrf: () => string = () => '
         LOCAL_MCP_NOT_CONFIGURED:
           'Mail MCP 주소가 설정되지 않았습니다. 개인 연결의 연결 환경에서 입력하세요.',
         RUNNER_REQUIRED: '이 PC의 실행 장치를 선택하고 저장하세요.',
+        LOCAL_RUNTIME_PAUSED:
+          '작업이 일시 중지되어 있습니다. 작업 표시줄의 앱 아이콘에서 재개한 뒤 다시 요청하세요.',
+        LOCAL_RECOVERY_REQUIRED:
+          '이전에 중단된 작업을 확인해야 합니다. 설정의 작업 복구에서 확인한 뒤 다시 요청하세요.',
+        UPDATE_IN_PROGRESS: '업데이트 설치를 준비하고 있습니다. 앱이 다시 시작된 뒤 요청하세요.',
         RUNNER_DENIED:
           '이 PC에서 사용할 수 없는 실행 장치입니다. 이 PC를 새 장치로 등록하고 선택하세요.',
         ORIGINAL_UNAVAILABLE:

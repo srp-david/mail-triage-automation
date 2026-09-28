@@ -9,7 +9,7 @@ function fixture() {
     sourceId: 'a',
     agent: 'codex',
     runnerId: 'runner',
-    collectionId: undefined as string | undefined,
+    collectionId: 'existing-docs' as string | undefined,
     originalAvailable: true,
     environment: {
       mailConfigured: true,
@@ -61,20 +61,23 @@ async function loaded() {
   await waitFor(() => expect(screen.getByRole('combobox', { name: '메일 출처' })).toHaveValue('a'));
 }
 
-test('unsaved selection invalidates runtime evidence and cannot start or share', async () => {
+test('unsaved selection invalidates runtime evidence; removed management controls never load', async () => {
   const { api } = fixture();
   await loaded();
-  expect(button('분석 실행 켜기')).toBeDisabled();
+  expect(screen.queryByRole('button', { name: '분석 실행 켜기' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '동기화 실행 켜기' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '로컬 실행 중지' })).not.toBeInTheDocument();
   await userEvent.click(button('실행 상태 확인'));
-  await waitFor(() => expect(button('분석 실행 켜기')).toBeEnabled());
+  expect(await screen.findByText('분석: 중지됨')).toBeInTheDocument();
   await userEvent.selectOptions(screen.getByLabelText('메일 출처'), 'b');
-  expect(button('분석 실행 켜기')).toBeDisabled();
   expect(button('실행 상태 확인')).toBeDisabled();
   expect(screen.queryByText('분석: 중지됨')).not.toBeInTheDocument();
-  await userEvent.click(screen.getByRole('tab', { name: '공유·장치 관리' }));
-  await userEvent.selectOptions(screen.getByLabelText('팀 사용자'), 'member');
-  for (const action of screen.getAllByRole('button', { name: '읽기 허용' }))
-    expect(action).toBeDisabled();
+  expect(screen.queryByRole('tab', { name: '공유·장치 관리' })).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('팀 사용자')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '장치 폐기' })).not.toBeInTheDocument();
+  expect(api.mock.calls.some(([path]) => path === '/collections' || path === '/members')).toBe(
+    false,
+  );
   expect(api.mock.calls.filter(([path, body]) => body && path !== '/settings')).toHaveLength(0);
 });
 
@@ -92,23 +95,23 @@ test('late runtime result does not mark a changed selection ready', async () => 
   await userEvent.selectOptions(screen.getByLabelText('분석 도구'), 'claude');
   await act(async () => finish({ analysis: 'idle', sync: 'idle', analysisAvailable: true }));
   expect(screen.queryByText('분석: 대기 중')).not.toBeInTheDocument();
-  expect(button('분석 실행 켜기')).toBeDisabled();
   expect(screen.getByText('도구 설정 필요')).toBeInTheDocument();
 });
 
-test('successful save needs a fresh check and idle loop is shown as started', async () => {
+test('saved settings allow mailbox navigation without manually starting a worker', async () => {
   const { api } = fixture();
   await loaded();
   await userEvent.click(button('선택 저장'));
   await waitFor(() => expect(button('실행 상태 확인')).toBeEnabled());
-  expect(button('분석 실행 켜기')).toBeDisabled();
-  await userEvent.click(button('실행 상태 확인'));
-  await waitFor(() => expect(button('분석 실행 켜기')).toBeEnabled());
-  await userEvent.click(button('분석 실행 켜기'));
-  expect(await screen.findByText('분석: 대기 중')).toBeInTheDocument();
-  expect(button('분석 실행 켜기')).toBeDisabled();
-  expect(screen.getByText('메일함에서 분석할 메일을 선택하세요.')).toBeInTheDocument();
-  expect(api).toHaveBeenCalledWith('/runtime/start', { kind: 'analysis' });
+  expect(api).toHaveBeenCalledWith(
+    '/settings',
+    expect.objectContaining({ collectionId: 'existing-docs', runnerId: 'runner' }),
+  );
+  expect(screen.getByRole('link', { name: '메일함으로 이동' })).toHaveAttribute('href', '#mailbox');
+  expect(
+    screen.getByText('동기화·분석을 요청하면 필요한 백그라운드 작업이 자동으로 시작됩니다.'),
+  ).toBeInTheDocument();
+  expect(api.mock.calls.some(([path]) => path === '/runtime/start')).toBe(false);
 });
 
 test('source registration preserves other draft selections and selects the new source', async () => {
@@ -127,12 +130,12 @@ test('runtime failure stays actionable without presenting old readiness', async 
   const { api } = fixture();
   await loaded();
   await userEvent.click(button('실행 상태 확인'));
-  await waitFor(() => expect(button('분석 실행 켜기')).toBeEnabled());
+  expect(await screen.findByText('분석: 중지됨')).toBeInTheDocument();
   api.mockRejectedValueOnce(Error('연결 실패'));
   await userEvent.click(button('실행 상태 확인'));
   expect(await screen.findByRole('alert')).toHaveTextContent(
     '실행 상태를 확인하지 못했습니다. 연결 실패',
   );
-  expect(button('분석 실행 켜기')).toBeDisabled();
+  expect(screen.queryByText('분석: 중지됨')).not.toBeInTheDocument();
   expect(button('실행 상태 확인')).toBeEnabled();
 });

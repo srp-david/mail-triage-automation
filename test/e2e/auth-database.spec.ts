@@ -72,6 +72,9 @@ test('browser login, password change and logout use real API and PostgreSQL', as
       staticRoot: resolve('public'),
       features: (app) =>
         localUiRoutes(app, history, {
+          async submit() {
+            throw new Error('Not used by authentication scenario');
+          },
           async selection() {
             return { sourceId: '', agent: 'codex' };
           },

@@ -6,6 +6,7 @@ import type {HistoryClient} from '../../../packages/history-client/src/index.js'
 import type {LocalSession} from './session.js';
 import type {LocalProfile} from './profile.js';
 import {askReport} from './report-questions.js';
+import type {LocalSelection} from './ui-routes.js';
 export class LocalRuntime {
   private loops=new Map<string,Scheduler>();
   private runner?:Runner;
@@ -45,6 +46,25 @@ export class LocalRuntime {
     this.key=key;
   }
   async start(kind:'analysis'|'sync'){return this.serial(async()=>{if(this.drained)throw new ApiError(409,'UPDATE_IN_PROGRESS');if(kind==='analysis'&&!this.executor)throw new ApiError(409,'ADAPTER_NOT_RELEASE_APPROVED');await this.initialize();const loop=this.loops.get(kind)!;if(loop.state==='recovery_required')await loop.stop();const started=loop.start();this.pausedKinds=this.pausedKinds.filter(value=>value!==kind);if(!this.pausedKinds.length)this.pausedKey=undefined;return {ok:true,started,state:loop.state};});}
+  // Admission and wake-up share the lifecycle lock with pause, logout and update drain.
+  async submit<T>(kind:'analysis'|'sync',expected:LocalSelection,enqueue:()=>Promise<T>):Promise<T>{return this.serial(async()=>{
+    if(this.drained)throw new ApiError(409,'UPDATE_IN_PROGRESS');
+    if(this.pausedKinds.length)throw new ApiError(409,'LOCAL_RUNTIME_PAUSED');
+    if(kind==='analysis'&&!this.executor)throw new ApiError(409,'AGENT_NOT_CONFIGURED');
+    const selected:LocalSelection=await this.profile.selection(),actor=await this.session.identity();
+    if(actor.mustChangePassword)throw new ApiError(403,'PASSWORD_CHANGE_REQUIRED');
+    if(selected.sourceId!==expected.sourceId||selected.runnerId!==expected.runnerId||selected.agent!==expected.agent||selected.cacheScope!==expected.cacheScope)throw new ApiError(409,'SOURCE_CHANGED');
+    if(!selected.original)throw new ApiError(409,'ORIGINAL_UNAVAILABLE');
+    await this.initialize();const loop=this.loops.get(kind)!;
+    if(loop.state==='recovery_required')throw new ApiError(409,'LOCAL_RECOVERY_REQUIRED');
+    if(loop.state==='stopped'){
+      const receipt=kind==='analysis'?await this.runner!.recovery():await this.sync!.recovery();
+      if(receipt&&!['idle','claiming'].includes(receipt.state))throw new ApiError(409,'LOCAL_RECOVERY_REQUIRED');
+    }
+    const result=await enqueue();
+    if(!loop.start())loop.wake();
+    return result;
+  });}
   private async stopLoops(){this.reportController?.abort(new Error('APP_STOPPED'));await Promise.all([...this.loops.values()].map(s=>s.stop()));await this.reportWork?.catch(()=>{});}
   async askReport(id:string,input:unknown){
     if(this.drained)throw new ApiError(409,'UPDATE_IN_PROGRESS');if(this.reportController)throw new ApiError(409,'REPORT_AGENT_BUSY');

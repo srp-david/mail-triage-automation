@@ -36,7 +36,7 @@ sequenceDiagram
 2. 앱 계정으로 로그인하고 현재 MCP에 대응하는 source를 등록한다. 로컬 `instanceId`와 공용 `sourceId`를 연결한다.
 3. 자신이 접근할 수 있는 source와 지원 Agent를 지정해 Runner를 등록한다. 장치 credential은 브라우저에 반환하지 않고 DPAPI에 저장한다.
 4. source·Runner·Agent를 선택한다. 다른 사용자로 바꾸거나 출처를 바꾸면 실행 loop를 중지하고 현재 권한을 재확인한다.
-5. 분석/sync loop는 명시적으로 시작한다. 등록했다고 자동 업무 분석이 시작되는 것은 아니다.
+5. v0.3.8부터 메일함에서 분석·동기화를 요청하면 해당 loop를 자동으로 시작하거나 대기 중인 loop를 깨운다. 설정에서 수동으로 켤 필요가 없다. 등록·로그인만으로 새 업무 요청을 생성하지 않는다. 트레이 일시 중지와 복구 필요 상태는 먼저 해결하도록 안내한다.
 
 MCP 주소를 바꿔 기존 source를 재사용하려면 최대 10개 기존 메일의 ID·Message-ID·제목 대조와 같은 저장소라는 명시적 확인이 필요하다. 근거가 없으면 새 source를 등록하며 기존 공유 이력은 보존한다.
 
@@ -57,6 +57,7 @@ sequenceDiagram
   Local->>Mail: 메일 식별 재확인
   Local->>API: source·Runner·requestId로 작업 등록
   API-->>Local: queued runId
+  Local->>Runner: 분석 loop 자동 시작 또는 깨우기
   Runner->>API: 장치 credential로 claim
   API-->>Runner: leaseToken·generation·기한
   Runner->>Agent: 제한된 근거 도구와 분석 요청

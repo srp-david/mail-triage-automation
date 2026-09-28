@@ -6,7 +6,7 @@ import type {LocalSession,SessionStore} from './session.js';
 import {mailSource} from './source-client.js';
 import type {LocalUiContext} from './ui-routes.js';
 const selection=z.object({sourceId:uuid.or(z.literal('')),collectionId:uuid.optional(),runnerId:uuid.optional(),agent:z.enum(['codex','claude'])}).strict();
-export class LocalProfile implements LocalUiContext {
+export class LocalProfile implements Omit<LocalUiContext,'submit'> {
   private chain:Promise<unknown>=Promise.resolve();
   private instancePromise?:Promise<string>;
   constructor(private history:HistoryClient,private session:LocalSession,private store:SessionStore,private endpoint?:string,private source=mailSource){}

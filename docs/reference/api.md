@@ -107,6 +107,8 @@ lease는 `{runnerId,leaseToken,generation}`이다. 토큰을 로그나 URL에 �
 
 `/api/mails`, `/api/mails/:id/body`, `/attachments/...`는 로컬 MCP를 이용한다. 공용 history 서버의 메일 원문 API가 아니다. `/api/settings`, `/api/runtime`, `/api/runtime/start|stop|recovery`가 로컬 선택·실행 상태를 관리한다. `/api/settings/reconnect/preview|apply`는 원본 재연결 대조 경로다.
 
+v0.3.8부터 `POST /api/runs`와 `POST /api/sync`는 현재 선택·실행 가능 상태를 확인하고 요청 등록과 실행기 시작/깨우기를 lifecycle lock 안에서 처리한다. UI에서 `/api/runtime/start`를 먼저 호출할 필요가 없다. `LOCAL_RUNTIME_PAUSED`, `LOCAL_RECOVERY_REQUIRED`, `UPDATE_IN_PROGRESS`는 요청 등록 전에 반환하는 409이며 트레이 재개·작업 복구·업데이트 완료 후 재요청을 안내한다. 기존 수동 실행 API는 호환 목적으로 남아 있다.
+
 직접 CLI는 `scripts/history-v1.mjs`로 실행 중 로컬 앱의 제어 채널을 이용한다. CLI 자체에 DB 자격이나 별도 refresh 저장소를 만들지 않는다.
 
 ## 8. 오류·재시도
