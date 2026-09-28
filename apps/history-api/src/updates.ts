@@ -11,7 +11,10 @@ export function checkUpdate(input:unknown,actor:{userId:string;role:string},cata
   const testUsers=(process.env.UPDATE_TEST_USER_IDS??'').split(',').map(x=>x.trim()).filter(Boolean);
   const allowedTest=actor.role==='admin'||testUsers.includes(actor.userId);
   if(wanted.channel==='test'&&!allowedTest)return {status:'channel_denied' as const};
-  if(catalog.channel==='test'&&wanted.channel!=='test')return {status:'unavailable' as const};
+  // Numeric pilot clients send "stable" based on their version label. The
+  // signed catalog and current account eligibility decide pilot access, so
+  // these already-installed clients can update without a manual reinstall.
+  if(catalog.channel==='test'&&!allowedTest)return {status:'channel_denied' as const};
   let comparison:number;try{comparison=compareVersions(catalog.version,wanted.version);}catch{throw new ApiError(400,'INVALID_APP_VERSION');}
   return comparison>0?{status:'offered' as const,update:catalog}:{status:'current' as const};
 }
