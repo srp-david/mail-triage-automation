@@ -510,6 +510,7 @@ export function App() {
         <Snackbar
           open={!!notice && !history}
           anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          sx={{ top: { xs: 72, sm: 80 } }}
         >
           <Alert
             id="notice"
