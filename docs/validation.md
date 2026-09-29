@@ -1,5 +1,15 @@
 # 검증 기록
 
+## 2026-09-29 v0.3.13 공개 Release
+
+- 소스 `3400a28df122881b5e280c96c10db66037931dcd`에 보고서 템플릿 복원과 Windows 패키지의 `marked` 의존성을 포함했다. `v0.3.12..3400a28`의 최종 변경으로 패치노트를 갱신했다. main·태그를 fast-forward/신규 태그로 push했으며 기존 candidate 태그는 보존했다.
+- `npm.cmd run check`, `npm.cmd run build`, build compatibility 통과. 격리 DB 포함 전체 회귀 **57파일 / 229개** 통과(`.runtime/triage-test-bd96a381/tests.log`). 서버 API/계약/migration 소스는 이전 배포 `6a7d402`와 동일하다.
+- 새 패키지 4030개 파일 manifest·스킬 1.0.1/hash·패키지 내부 marked 해석·보고서 검증 함수·서명 metadata/sourceCommit/EXE hash를 대조했다. 소스 6커밋 Gitleaks findings 0, 패키지 탐지 99개는 실파일 SHA-256으로 확인한 manifest 오탐이며 미해결 0이다.
+- 실제 EXE 신규 설치·Chrome 로그인 화면·0.3.12→0.3.13 업그레이드의 설정/DPAPI/작업 파일 byte 보존과 정상 종료를 검증했다(`.runtime/setup-defaults/run-Go0nJg/result.json`). 격리 lifecycle에서 트레이 단일 실행·제어 인증·일시 중지·바로가기·정상 종료를 확인했다(`.runtime/lifecycle/한글 설치-Zl2Jri`). 개인 설치본은 교체하지 않았다.
+- [v0.3.13 Release](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.13)를 숫자 제목·태그와 `prerelease=false`로 게시했다. 자산 5개를 다시 내려받아 로컬/GitHub digest·태그·본문·metadata 서명을 대조했다. EXE 49602048 bytes, SHA-256 `a18dc0f3e82b9aa2b32fff1e74eb1ed5a937e2445896f71327025e5c82069fb4`, Authenticode `NotSigned`. `releaseApproved=false`와 `channel=test`를 유지한다.
+- 공용 프로젝트 catalog만 갱신했다. digest `4a687136016fb82bb5e57fa28b9851420587ebf2cfe08a0fb595c90679287d3d`, health 200, 비인증 업데이트 401. 기존 0.3.12 catalog를 공개 metadata와 서버 digest로 대조해 복구용으로 보관했다. 증거는 `.runtime/release-0.3.13-publish/`다. 실계정 offered·앱 updater 설치·실메일 생성 품질·실제 WSL·두 PC 업무 수용은 미검증이다.
+- 설치본 내장 문서는 배포 소스 시점이며 이 게시 완료 기록은 후속 문서 커밋으로 관리한다.
+
 ## 2026-09-29 분석 보고서 템플릿 복원
 
 - 기존 erp-manager `.claude/commands/mail-triage.md`의 Step 3을 확인해 9개 보고서 항목, 파일별 변경 명세, 검증 범위 구분, 고객 화면 기준 회신 형식과 내부 알림의 공유 초안을 패키지 스킬에 복원했다. 스킬 버전은 `1.0.1`이며 manifest hash와 합성 검증 marker를 함께 갱신했다. 외부 erp-manager 경로 없이 설치본에서 읽는다. 원본 보고서 지침이 바뀌면 배포용 스킬도 함께 갱신해야 한다.

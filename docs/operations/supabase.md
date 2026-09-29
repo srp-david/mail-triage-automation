@@ -1,5 +1,7 @@
 # Supabase 팀 배포 안내
 
+v0.3.13 catalog 갱신 (2026-09-29): 공개된 서명 metadata로 `UPDATE_CATALOG_JSON`만 교체했다. digest `4a687136016fb82bb5e57fa28b9851420587ebf2cfe08a0fb595c90679287d3d`, health 200·비인증 업데이트 401. `test` 채널과 기존 권한 제한을 유지한다. 이번 게시에서 함수 재배포·DB migration은 하지 않았고, 기존 배포 API/계약 소스가 릴리스 소스와 동일함을 대조했다. 실계정의 offered 및 앱 updater 설치는 미검증이다. 아래 0.3.12 유지 문구는 이전 서버 배포 시점 기록이다.
+
 2026-09-29 팀 이력·메일 확인 기록 배포: `010_team_history.sql`·`011_mail_identity_checks.sql`과 runtime 테이블 권한을 적용하고, 소스 `6a7d40296685f1eb1739511c5f11024a9ca028d3`의 `history` 함수를 배포했다. 기존 12개 주요 테이블의 행 내용 보존을 트랜잭션에서 검사했고, 적용 후 보고서 53건·계정 6개·출처 4개와 전체 마이그레이션 checksum을 확인했다. live/ready 200, 새 API 비인증 401, 배포 소스 byte 일치 및 anon/authenticated의 private 스키마 접근 차단을 확인했다. 배포 번들 SHA-256은 `7c2c332637575cdd91ababafa8b6efbde43c984a06df39a4817c62a3c277ad64`다. 실계정 로그인·업무 흐름은 별도 검증이며 catalog는 0.3.12를 유지한다. 증거: `.runtime/release-0.3.13/hosted-verification.json`.
 
 2026-09-28 업데이트 채널 수정: `history` 함수를 소스 `a37a272`(문서 포함 `59a02ce`)로 배포했다. 기존 숫자 버전의 `stable` 요청에도 관리자·지정 시험 계정이면 `test` catalog를 제공한다. 실제 0.3.11 설치본의 0.3.12 `offered`, health 200·비인증 401을 확인했다. 기존 bundle과 조건문 하나만 다르며 catalog·DB·계정 권한 목록은 그대로다.

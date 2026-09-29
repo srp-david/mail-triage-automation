@@ -1,8 +1,8 @@
 # 현재 구현·배포 상태
 
-갱신일: 2026-09-29. 팀 이력·WSL 지원과 메일 확인 기록 개선을 포함한 **0.3.13 로컬 설치본**을 소스 `6a7d40296685f1eb1739511c5f11024a9ca028d3`로 다시 생성했다. Supabase 010·011 마이그레이션 및 공용 API 배포, 기존 자료 보존, 서버 live/ready 200과 배포 코드 일치를 확인했다. 설치 검증 결과는 [검증 기록](validation.md)을 따른다. 설치파일은 `.runtime/packages/0.3.13-setup.exe`이며, GitHub push·Release 게시·0.3.13 catalog 갱신 및 개인 설치본 교체는 수행하지 않았다. 실제 WSL·두 PC 업무 수용은 남는다.
+갱신일: 2026-09-29. 팀 분석 이력·메일 식별 개선·Windows/WSL 선택·보고서 템플릿 복원을 포함한 **[v0.3.13](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.13)** 공개와 시험 업데이트 catalog 갱신을 완료했다. 배포 소스는 `3400a28df122881b5e280c96c10db66037931dcd`다. 실제 EXE 신규 설치·0.3.12→0.3.13 업그레이드 설정 보존·트레이 기동/종료 및 공개 자산 5개 다운로드 대조를 확인했다. 공용 API·DB는 앞서 적용한 010·011과 같은 코드를 유지한다. 개인 설치본 교체·실메일 생성 품질·실제 WSL·두 PC 업무 수용은 별도다. [검증 기록](validation.md)을 따른다.
 
-갱신일: 2026-09-28. 비밀번호 변경 실패 안내를 개선한 [v0.3.12](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.12) 배포와 테스트 채널 catalog 갱신을 완료했다. 배포 소스는 `579f0553bc5cdaebdad8f8261383dd5af7bc1923`이며 이후 문서 커밋은 게시 기록이다. 현재 비밀번호 오류 후 화면 유지·재시도·변경·재로그인을 실제 브라우저와 격리 DB로 검증했다. 실제 EXE 신규 설치와 0.3.11→0.3.12 설정 보존, 공개 자산 5개 다운로드 대조도 완료했다. 실계정 앱 updater 수용·업무 분석은 별도다.
+이전 배포 기록(2026-09-28). 비밀번호 변경 실패 안내를 개선한 [v0.3.12](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.12) 배포와 테스트 채널 catalog 갱신을 완료했다. 배포 소스는 `579f0553bc5cdaebdad8f8261383dd5af7bc1923`이며 이후 문서 커밋은 게시 기록이다. 현재 비밀번호 오류 후 화면 유지·재시도·변경·재로그인을 실제 브라우저와 격리 DB로 검증했다. 실제 EXE 신규 설치와 0.3.11→0.3.12 설정 보존, 공개 자산 5개 다운로드 대조도 완료했다. 실계정 앱 updater 수용·업무 분석은 별도다.
 
 ## 2026-09-28 팀 단위 분석 이력 구현 당시 기록
 
@@ -16,7 +16,7 @@
 
 2026-09-28 서버 후속 수정: 숫자 버전의 업데이트 채널 불일치를 해결했다. 기존 0.3.11의 수동 확인에서 0.3.12 `offered`와 공개 EXE hash 일치를 실제 로그인된 설치본으로 확인했다. 관리자·지정 시험 계정 제한은 유지하며 새 설치 파일 없이 서버만 반영했다. 앱 updater의 실제 설치 완료는 사용자 확인 전이다. [검증 기록](validation.md)을 따른다.
 
-최신 설치 파일은 **[0.3.12-setup.exe](https://github.com/srp-david/mail-triage-automation/releases/download/v0.3.12/0.3.12-setup.exe)**다. 현재 비밀번호 오류는 변경 화면에서 재입력할 수 있고 세션 만료는 재로그인으로 안내한다. 기존 개인 설정과 저장소는 유지한다. EXE SHA-256 `769c01fbd552f08fc97c7fb72e386d419a47e28580ce56881e8aa673d87d2095`. GitHub 일반 Release와 테스트 채널 catalog에 게시했으며 개인 설치본은 교체하지 않았다. [패치노트](releases/v0.3.12.md), [로그인 안내](operations/login.md)를 따른다.
+최신 설치 파일은 **[0.3.13-setup.exe](https://github.com/srp-david/mail-triage-automation/releases/download/v0.3.13/0.3.13-setup.exe)**다. 기존 개인 설정과 저장소를 보존한다. EXE SHA-256 `a18dc0f3e82b9aa2b32fff1e74eb1ed5a937e2445896f71327025e5c82069fb4`. GitHub 일반 Release이며 앱의 제공 정책은 기존 `test` 채널이다. 개인 설치본은 교체하지 않았다. [패치노트](releases/v0.3.13.md)를 따른다.
 
 사용자가 **0.3.6 설치 후** 설정·새로고침 피드백을 제공했다. 이전 자동 검증에서는 개인 PC에 0.3.5를 설치하고 Codex를 앱 버전 폴더 밖의 실제 `codex.exe`로 설정했으며 자동 찾기·실행 옵션·제공 UI hash 대조를 확인했다. 당시 ZIP SHA-256은 `e36a0d8be5396a73f8ecb3b1e253c3316222570a3e6665c5bfc1ed3670dac906`이다.
 
