@@ -1,6 +1,6 @@
 {
   "id": "mail-triage-readonly",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "contracts": [
     "1"
   ],
@@ -17,7 +17,7 @@
     "BUSINESS_DOCUMENT_ROOT"
   ],
   "files": {
-    "mail-triage/SKILL.md": "cc5e5f1026362acfb817516406dc48af87164e239090096a537eb86e2795d6e5"
+    "mail-triage/SKILL.md": "a8c91e09cf38c5b3b58c0ab77538e33b3b09bbee7f8289d8b8cfc3b7ed0059ac"
   },
   "releaseApproved": false
 }

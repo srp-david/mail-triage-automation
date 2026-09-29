@@ -1,5 +1,14 @@
 # 검증 기록
 
+## 2026-09-29 분석 보고서 템플릿 복원
+
+- 기존 erp-manager `.claude/commands/mail-triage.md`의 Step 3을 확인해 9개 보고서 항목, 파일별 변경 명세, 검증 범위 구분, 고객 화면 기준 회신 형식과 내부 알림의 공유 초안을 패키지 스킬에 복원했다. 스킬 버전은 `1.0.1`이며 manifest hash와 합성 검증 marker를 함께 갱신했다. 외부 erp-manager 경로 없이 설치본에서 읽는다. 원본 보고서 지침이 바뀌면 배포용 스킬도 함께 갱신해야 한다.
+- `LocalExecutor`는 새 메일 분석·추가 답변 재분석의 결과를 반환하기 전에 Markdown의 9개 2단계 제목 순서와 각 절의 본문을 검사한다. 5절은 원인 분석/현재 동작 설명을 허용한다. 코드 블록·인용 안의 제목은 인정하지 않는다. 불일치하면 `REPORT_TEMPLATE_INVALID`로 거절하고 기존 Runner 계약상 `AGENT_FAILED`로 처리하며 완료 보고서로 저장하지 않는다. 내용의 정확성이나 파일별 명세의 충실도까지 자동 판정하는 검사는 아니다.
+- 저장 보고서 조회·편집·대화와 기존 결과 스키마는 유지한다. 대화는 `report-conversation`, 분석은 `mail-analysis`로 구분하며 합성 fixture 검증도 별도로 유지한다. ERP 코드·DB와 기존 저장 보고서는 변경하지 않았다.
+- `npm.cmd run check`, `npm.cmd run build`, skill-creator `quick_validate.py`, `scripts/verify-build-compat.mjs` 통과. 빌드된 스킬의 원본 byte 일치·버전·manifest SHA-256과 컴파일된 검증 함수 로드를 확인했다. 번들 크기 경고는 기존과 동일하다.
+- 관련 회귀 **6파일 / 26개** 통과: `report-template`, `local-executor`, `agent-adapter`, `wsl-evidence`, `runner`, `v1-contract`. 정상 문의/버그, 누락·순서 변경·빈 절·주석·코드 블록·인용·중복 제목, completed/needs_input 검사, 이전 형식의 보고서를 참고한 재분석, 대화의 형식 예외, 양 Agent 스킬 복사 및 합성 검증을 포함한다. 최초 Vite 시작은 sandbox `spawn EPERM`으로 차단됐고 허용된 실행 환경에서 재검증했다.
+- CLI/실메일을 이용한 실제 생성 품질, 설치 EXE 재생성·개인 설치본 교체·GitHub Release·서버 배포는 수행하지 않았다. 현재 변경은 소스와 로컬 빌드에 반영됐으며 실행 중인 기존 설치본에는 아직 적용되지 않는다.
+
 ## 2026-09-29 팀 기능 서버 배포·0.3.13 설치본 재생성
 
 - 작업별 커밋: `83a18ae` 메일 식별 확인 기록, `e4012ed` 업데이트 알림 표시, `90874bb` 팀 보고서의 관련 메일 원본 권한, `6a7d402` 패치노트·Edge 검증. 설치본 소스는 `6a7d40296685f1eb1739511c5f11024a9ca028d3`이며 이후 문서 커밋은 배포 결과 기록이다.
