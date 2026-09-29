@@ -21,7 +21,7 @@ await rm(join(target,'installer/tray.cs'));
 await mkdir(join(target,'scripts'));await cp('scripts/history-v1.mjs',join(target,'scripts/history-v1.mjs'));
 await cp(process.execPath,join(target,'node.exe'));
 await writeFile(join(target,'NODE-LICENSE'),await license.text());
-const deps={};for(const name of ['express','jose','zod','@modelcontextprotocol/sdk'])deps[name]=JSON.parse(await readFile('node_modules/'+name+'/package.json','utf8')).version;
+const deps={};for(const name of ['express','jose','zod','marked','@modelcontextprotocol/sdk'])deps[name]=JSON.parse(await readFile('node_modules/'+name+'/package.json','utf8')).version;
 await writeFile(join(target,'package.json'),JSON.stringify({name:'mail-triage-local',version,private:true,type:'module',dependencies:deps},null,2));
 const npm=join(dirname(process.execPath),'node_modules/npm/bin/npm-cli.js');
 await exec(process.execPath,[npm,'install','--omit=dev','--ignore-scripts','--no-audit','--no-fund'],{cwd:target,maxBuffer:1000000});
