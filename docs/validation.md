@@ -1,5 +1,15 @@
 # 검증 기록
 
+## 2026-09-29 팀 기능 서버 배포·0.3.13 설치본 재생성
+
+- 작업별 커밋: `83a18ae` 메일 식별 확인 기록, `e4012ed` 업데이트 알림 표시, `90874bb` 팀 보고서의 관련 메일 원본 권한, `6a7d402` 패치노트·Edge 검증. 설치본 소스는 `6a7d40296685f1eb1739511c5f11024a9ca028d3`이며 이후 문서 커밋은 배포 결과 기록이다.
+- 최종 `npm.cmd run check`, `npm.cmd run build`, build compatibility 통과. 단위·화면 46파일 148개와 격리 DB 10파일 68개를 확인했고, 원본 권한 수정 후 협업 통합 11개를 재검증했다. 실제 runtime 역할을 쓰는 격리 Supabase Edge 13개도 통과했다(`.runtime/triage-free-85798cd6/result.json`). 업데이트 알림은 데스크톱·모바일 6개 viewport에서 잘림 없이 표시됨을 확인했다(`.runtime/update-ui/run-jFM1z7`).
+- 공용 프로젝트 `tborximfpwrzzwuazjrb`에 010·011 마이그레이션과 `mail_identity_check` runtime CRUD 권한을 적용했다. 트랜잭션 내 12개 주요 테이블의 행 내용 보존 검사 후 기존 보고서 53건·계정 6개·출처 4개, 개발1팀 이름 및 전체 migration checksum을 확인했다. 적용 후 확인 SQL의 스키마 지정 누락으로 CLI 오류가 있었으나, 별도 읽기 조회에서 commit 완료를 확인해 재적용하지 않았다.
+- `history` 함수 배포 후 다운로드한 소스가 로컬 검증 번들과 byte 단위로 일치한다. SHA-256 `7c2c332637575cdd91ababafa8b6efbde43c984a06df39a4817c62a3c277ad64`, live/ready 200, 새 확인 기록 API 비인증 401, anon/authenticated private 스키마 차단을 확인했다. 이전 함수 소스와 배포 증거는 `.runtime/release-0.3.13/`에 보관했다. hosted 실계정 로그인·업무 흐름 검증은 수행하지 않았다.
+- 이전 0.3.13 산출물을 별도 보관하고 새 EXE·ZIP·checksum·서명 metadata를 생성했다. EXE 49,447,936 bytes, SHA-256 `7fe7e0b78e7047b821e843cd4ad021c05d7302ab2be14ea0554e22220e63df1a`. 4,014개 manifest 파일 hash, metadata 서명·sourceCommit·EXE hash를 대조했다. 소스 10개 커밋 비밀 검사 findings 0; 패키지 99개 탐지는 모두 manifest의 실제 파일 SHA-256과 일치하는 오탐으로 검증했다(`.runtime/release-0.3.13/package-verification.json`). Authenticode는 `NotSigned`다.
+- 실제 EXE를 격리 한글 경로에 신규 설치해 무입력 설치·공용 기본값·로그인 화면을 확인했다. 0.3.12→0.3.13 업그레이드에서 기존 설정·DPAPI 파일·작업 파일 byte 보존과 종료를 확인했다(`.runtime/setup-defaults/run-PfSKaA/result.json`). 별도 격리 lifecycle에서 앱 기동·인증 없는 제어 차단·트레이 단일 실행·일시 정지·바로가기·정상 종료·설정 보존을 확인했다(`.runtime/lifecycle/한글 설치-WIVFbF`).
+- GitHub push·Release 게시·0.3.13 catalog 갱신·개인 설치본 교체는 하지 않았다. 실제 WSL 배포판의 AI 로그인·분석·중지와 두 PC 업무 수용은 남는다. 공개 배포 및 기존 catalog는 0.3.12다.
+
 ## 2026-09-28 팀 이력·동일 메일·팀 관리 검증
 
 - 단위·화면 **45파일 / 147개** 통과. 설정 없는 팀 조회, 검색/페이지 초기화, 한글 IME, 팀 생성·계정 선택을 포함한다.

@@ -1,5 +1,7 @@
 # GitHub Release 배포·업데이트 계획
 
+2026-09-29 로컬 준비: 소스 `6a7d40296685f1eb1739511c5f11024a9ca028d3`로 0.3.13 설치 EXE·ZIP·checksum·서명 metadata를 다시 생성했다. 010·011 DB 마이그레이션과 공용 API 배포를 완료했다. GitHub push·Release 게시와 catalog 갱신은 수행하지 않았으며 공개 버전은 아래 0.3.12다. [0.3.13 패치노트](../releases/v0.3.13.md), [검증 기록](../validation.md)을 따른다.
+
 최신 배포: **[v0.3.12](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.12) (2026-09-28)**. 비밀번호 변경 오류·세션 만료 구분, 실패 후 화면 유지와 재시도 안내. 소스 `579f0553bc5cdaebdad8f8261383dd5af7bc1923`, 실제 EXE 설치·0.3.11→0.3.12 설정 보존·공개 자산 5개 다운로드 대조·테스트 채널 catalog 갱신 완료. [검증 기록](../validation.md)을 따른다.
 
 이전 배포: **[v0.3.11](https://github.com/srp-david/mail-triage-automation/releases/tag/v0.3.11) (2026-09-28)**. 신규 설치의 공용 API·issuer 자동 설정, 무입력 설치와 기존 설정 보존 검증 완료. 소스 `87be9a0aff916c0e35cba7a5f42e7e276e6eb6c3`, 공개 자산 5개 대조와 테스트 채널 catalog 갱신 완료. [검증 기록](../validation.md)을 따른다.

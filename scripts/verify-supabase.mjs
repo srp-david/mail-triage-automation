@@ -64,20 +64,27 @@ try{
  const request={sourceId:source.data.id,mailId:1,messageId:'<synthetic@invalid>',subject:'Synthetic only',requestId:randomUUID(),runnerId:device.data.id,agent:'codex',verifiedAt:new Date().toISOString()};
  const run=await call('/api/v1/runs',request,b.access_token);assert.equal(run.status,201,run.data.code);
  assert.equal((await call('/api/v1/runs',request,b.access_token)).data.id,run.data.id);
- assert.equal((await call('/api/v1/runs/'+run.data.id,undefined,a.access_token)).status,404);
+ assert.equal((await call('/api/v1/runs/'+run.data.id,undefined,a.access_token)).status,200);
  const claim=await deviceCall('/runners/'+device.data.id+'/claim',{requestId:randomUUID()});assert.equal(claim.status,200,claim.data?.code);
  const lease={runnerId:device.data.id,leaseToken:claim.data.leaseToken,generation:claim.data.generation};
  assert.equal((await deviceCall('/runs/'+run.data.id+'/heartbeat',lease)).status,200);
  const fixture={outcome:'completed',project:'unknown',report:'# Synthetic',knowledge:'',question:'',evidence:[]};
  const complete=await deviceCall('/runs/'+run.data.id+'/result',{...lease,requestId:randomUUID(),result:fixture});assert.equal(complete.status,200,complete.data?.code);
  result.metrics.reportResponseBytes=(await call('/api/v1/runs/'+run.data.id,undefined,b.access_token)).bytes;
- pass('source ACL admin private denial run admission claim heartbeat result');
+ pass('source ACL and team report access run admission claim heartbeat result');
  const commonEvidence={messageId:request.messageId,subject:request.subject,from:[{address:'synthetic@example.test'}],sentAt:'2026-09-28T00:00:00Z'};
  const otherSource=await call('/api/v1/sources',{instanceId:randomUUID(),displayName:'Other mailbox'},a.access_token);assert.equal(otherSource.status,201);
  for(const [sourceId,mailId,token] of [[source.data.id,1,b.access_token],[otherSource.data.id,999,a.access_token]]){
   const bound=await call('/api/v1/sources/'+sourceId+'/mail-identity',{mailId,evidence:commonEvidence,verifiedAt:new Date().toISOString()},token);assert.equal(bound.status,200,bound.data.code);assert.equal(bound.data.matched,true);
  }
- assert.equal((await call('/api/v1/reports/'+run.data.id+'/share',{permission:'write'},b.access_token)).status,200);
+ const scopeHash='a'.repeat(64),checkPath='/api/v1/sources/'+source.data.id+'/mail-identity-checks';
+ assert.equal((await call('/api/v1/sources/'+source.data.id+'/mail-identities',{scopeHash,mails:[{mailId:1,evidence:commonEvidence,verifiedAt:new Date().toISOString()}]},b.access_token)).status,200);
+ assert.equal((await call(checkPath,{scopeHash,mailIds:[1]},b.access_token)).data.length,1);
+ assert.equal((await call(checkPath,{scopeHash,mailIds:[1]},a.access_token)).status,404);
+ assert.equal((await call(checkPath,{scopeHash,mailIds:[1],refresh:true},b.access_token)).data.length,0);
+ assert.equal((await call(checkPath,{scopeHash,mailIds:[1]},b.access_token)).data.length,0);
+ pass('runtime role persistent identity checks insert read refresh and source denial');
+ assert.equal((await call('/api/v1/reports/'+run.data.id+'/share',{permission:'write'},b.access_token)).status,409);
  assert.equal((await call('/api/v1/sources/'+otherSource.data.id+'/mails/999/shared-reports',undefined,a.access_token)).data.length,1);
  const changes=await Promise.all([a.access_token,b.access_token].map(token=>call('/api/v1/reports/'+run.data.id+'/revisions',{requestId:randomUUID(),expectedVersion:1,report:'Shared revision',changeNote:'Synthetic change',evidence:'Synthetic proof'},token)));
  assert.deepEqual(changes.map(x=>x.status).sort(),[200,409]);
@@ -86,9 +93,9 @@ try{
  const question=await deviceCall('/reports/'+run.data.id+'/questions',{requestId:randomUUID(),runnerId:device.data.id,agent:'codex',expectedVersion:2,question:'Synthetic question',allowEvidence:false});assert.equal(question.status,200,question.data.code);
  assert.equal((await deviceCall('/report-questions/'+question.data.id+'/result',{result:fixture})).status,200);
  assert.equal((await call('/api/v1/reports/'+run.data.id+'/collaboration',undefined,a.access_token)).data.messages.length,3);
- assert.equal((await call('/api/v1/reports/'+run.data.id+'/share',{permission:'none'},b.access_token)).status,200);
- assert.equal((await call('/api/v1/reports/'+run.data.id+'/collaboration',undefined,a.access_token)).status,404);
- pass('runtime role common mail sharing revision CAS conversation question result revocation');
+ assert.equal((await call('/api/v1/reports/'+run.data.id+'/share',{permission:'none'},b.access_token)).status,409);
+ assert.equal((await call('/api/v1/reports/'+run.data.id+'/collaboration',undefined,a.access_token)).status,200);
+ pass('runtime role team reports revision CAS conversation question result and sharing policy');
  const {Runner}=await import('../packages/runner/src/runner.ts'),{HistoryClient}=await import('../packages/history-client/src/index.ts'),{ProtectedStore}=await import('../apps/local-app/src/protected-store.ts');
  let executions=0,lose=true,runnerToken=b.access_token;
  const runnerClient=new HistoryClient(base,async()=>runnerToken,async(url,init)=>{const r=await fetch(url,init);if(String(url).endsWith('/result')&&r.ok&&lose){lose=false;await r.text();throw TypeError('synthetic response lost');}return r;});
