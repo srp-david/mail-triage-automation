@@ -31,6 +31,32 @@ const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
 try{
   const ticket=await(await fetch(origin+'/api/browser-ticket',{method:'POST',headers:{authorization:'Bearer '+control,'x-local-client':'1','content-type':'application/json'},body:JSON.stringify({page:'updates'})})).json();await page.goto(ticket.url);
   const panel=page.getByRole('tabpanel',{name:'앱 업데이트'});await panel.getByRole('button',{name:'지금 설치'}).waitFor();
+  await page.getByRole('link',{name:'분석 이력',exact:true}).click();
+  const notice=page.getByRole('alert').filter({hasText:'새 버전 0.3.9을 사용할 수 있습니다.'});
+  await notice.waitFor();
+  for(const viewport of [{width:1440,height:1000},{width:1024,height:768},{width:901,height:701},{width:1024,height:600},{width:390,height:844},{width:320,height:568}]){
+    await page.setViewportSize(viewport);
+    await page.screenshot({path:join(home,`notice-${viewport.width}x${viewport.height}.png`),animations:'disabled'});
+    const layout=await notice.evaluate(el=>{
+      const rect=el.getBoundingClientRect();
+      const clipped=[];
+      for(const child of [el,...el.querySelectorAll('*')]){
+        if(child instanceof SVGElement)continue;
+        const r=child.getBoundingClientRect();
+        if(r.left<rect.left-1||r.right>rect.right+1||r.top<rect.top-1||r.bottom>rect.bottom+1)clipped.push(child.tagName);
+        for(let parent=child.parentElement;parent;parent=parent.parentElement){
+          const style=getComputedStyle(parent),p=parent.getBoundingClientRect();
+          if(/hidden|clip|auto|scroll/.test(style.overflowX)&&(r.left<p.left-1||r.right>p.right+1))clipped.push('horizontal '+parent.tagName);
+          if(/hidden|clip|auto|scroll/.test(style.overflowY)&&(r.top<p.top-1||r.bottom>p.bottom+1))clipped.push('vertical '+parent.tagName);
+        }
+      }
+      return {clipped,withinViewport:rect.left>=0&&rect.top>=0&&rect.right<=innerWidth&&rect.bottom<=innerHeight,noPageOverflow:document.documentElement.scrollWidth<=innerWidth};
+    });
+    assert.deepEqual(layout,{clipped:[],withinViewport:true,noPageOverflow:true},`update notice at ${viewport.width}x${viewport.height}`);
+  }
+  await notice.getByRole('link',{name:'업데이트 보기'}).click();
+  await panel.getByRole('button',{name:'지금 설치'}).waitFor();
+  await page.setViewportSize({width:1440,height:1000});
   assert.equal((await fetch(origin+'/api/updates/check',{method:'POST'})).status,401);
   assert.equal(await page.evaluate(async()=> (await fetch('/api/updates/check',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status),403);
   await panel.getByRole('button',{name:'나중에'}).click();await panel.getByText(/업데이트를 미뤘습니다/).waitFor();assert.equal(installs,0);

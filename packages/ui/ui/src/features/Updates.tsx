@@ -1,4 +1,13 @@
-import { Alert, Box, Button, LinearProgress, Stack, Typography } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  LinearProgress,
+  Portal,
+  Snackbar,
+  Stack,
+  Typography,
+} from '@mui/material';
 import { useRef, useState } from 'react';
 import type { UpdateState } from '../../../../contracts/src/update-state';
 import type { Api } from '../api/types';
@@ -160,18 +169,30 @@ export function UpdateNotice({ model }: { model: Model }) {
   const s = model.state;
   if (!s || s.deferred || s.status !== 'offered' || s.phase !== 'idle') return null;
   return (
-    <Alert severity="info" sx={{ my: 1 }}>
-      <Stack spacing={1}>
-        <Typography>새 버전 {s.update?.version}을 사용할 수 있습니다.</Typography>
-        <Stack direction="row" spacing={1}>
-          <Button component="a" href="#updates" size="small">
-            업데이트 보기
-          </Button>
-          <Button size="small" disabled={model.busy} onClick={() => void model.defer()}>
-            나중에
-          </Button>
-        </Stack>
-      </Stack>
-    </Alert>
+    <Portal>
+      <Snackbar
+        open
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        sx={{
+          width: 420,
+          maxWidth: 'calc(100% - 48px)',
+          '@media (max-width: 599px)': { maxWidth: 'calc(100% - 16px)' },
+        }}
+      >
+        <Alert severity="info" sx={{ width: '100%', alignItems: 'flex-start' }}>
+          <Stack spacing={1}>
+            <Typography>새 버전 {s.update?.version}을 사용할 수 있습니다.</Typography>
+            <Stack direction="row" useFlexGap sx={{ flexWrap: 'wrap', gap: 1 }}>
+              <Button component="a" href="#updates" size="small">
+                업데이트 보기
+              </Button>
+              <Button size="small" disabled={model.busy} onClick={() => void model.defer()}>
+                나중에
+              </Button>
+            </Stack>
+          </Stack>
+        </Alert>
+      </Snackbar>
+    </Portal>
   );
 }
